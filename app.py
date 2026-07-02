@@ -5,7 +5,7 @@ from datetime import datetime
 # Mobile-friendly layout configuration
 st.set_page_config(page_title="My TV Time", layout="centered", initial_sidebar_state="collapsed")
 
-# --- CUSTOM CSS: THE "TV TIME" THEME OVERHAUL & MOBILE GRID FIX ---
+# --- CUSTOM CSS: NATIVE APP & MOBILE GRID ---
 st.markdown("""
 <style>
     /* Hide Streamlit Header & Footer */
@@ -13,13 +13,15 @@ st.markdown("""
     footer {visibility: hidden;}
     header {visibility: hidden;}
     
+    /* Remove top padding for a flush, native feel */
     .block-container {
         padding-top: 1rem !important;
         padding-bottom: 5rem !important;
     }
     
+    /* Round all images */
     img {
-        border-radius: 8px;
+        border-radius: 8px !important;
     }
     
     /* TV Time Gold Theme for Progress Bars */
@@ -32,17 +34,17 @@ st.markdown("""
         border-radius: 12px !important;
         border: 1px solid rgba(200, 200, 200, 0.2) !important;
         box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1) !important;
-        padding: 0.5rem !important; /* Tighter padding for mobile screens */
+        padding: 0.5rem !important;
     }
     
-    /* Sleek Native Buttons */
+    /* Pill Buttons */
     div.stButton > button {
         border-radius: 20px;
         font-weight: 600;
         border: 1px solid #555;
         background-color: transparent;
-        padding: 2px 5px;
-        font-size: 0.8rem;
+        padding: 2px 5px !important;
+        font-size: 0.75rem !important;
     }
     div.stButton > button:active {
         transform: scale(0.95);
@@ -50,34 +52,37 @@ st.markdown("""
         color: #FFC107;
     }
     
-    /* FORCE COLUMNS TO STAY SIDE-BY-SIDE ON MOBILE */
+    /* FORCE 3-COLUMNS ON MOBILE PHONE SCREENS */
     @media (max-width: 768px) {
         [data-testid="stHorizontalBlock"] {
             flex-direction: row !important;
             flex-wrap: nowrap !important;
-            gap: 0.4rem !important; /* Bring columns closer together */
+            gap: 0.3rem !important;
         }
         [data-testid="column"] {
-            min-width: 0 !important; /* Allows columns to shrink and fit 3 on a screen */
+            width: 33.33% !important;
+            flex: 1 1 0% !important;
+            min-width: 0 !important;
+            padding: 0 2px !important;
         }
     }
     
     /* 3x3 Grid Text Formatting */
     .grid-title {
-        font-size: 0.75rem;
+        font-size: 0.65rem !important;
         font-weight: 700;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
-        margin-bottom: 0.2rem;
         text-align: center;
-        margin-top: 5px;
+        margin-top: 4px;
+        line-height: 1.2;
     }
     .grid-sub {
         text-align: center;
-        font-size: 0.65rem;
+        font-size: 0.6rem;
         color: gray;
-        margin-bottom: 5px;
+        margin-bottom: 2px;
     }
     
     /* Genre Badges */
@@ -131,14 +136,25 @@ def save_db():
 if "db" not in st.session_state:
     st.session_state.db = load_db()
 
+# --- HELPERS ---
 def render_badges(items, is_gold=False):
     css_class = "badge badge-gold" if is_gold else "badge"
     html = "".join([f'<span class="{css_class}">{item}</span>' for item in items])
     st.markdown(html, unsafe_allow_html=True)
 
+def quick_watch_episode(show_id, ep_code):
+    for s in st.session_state.db["shows"]:
+        if s["id"] == show_id:
+            if ep_code not in s["watched_episodes"]:
+                s["watched_episodes"].append(ep_code)
+                save_db()
+                st.toast(f"Marked {ep_code} as watched! ✅")
+                st.rerun()
+
 def show_cast_grid(cast_list, limit=6):
     cast_list = cast_list[:limit]
-    if not cast_list: return
+    if not cast_list:
+        return
     for i in range(0, len(cast_list), 3):
         cols = st.columns(3)
         for j in range(3):
@@ -161,8 +177,14 @@ def show_episode_details(show_id, show_name, ep_code, ep_data, is_watched):
     st.write(ep_data.get("overview", "No synopsis available for this episode yet."))
     
     st.divider()
-    st.markdown("#### Guest Stars")
-    show_cast_grid(ep_data.get("guest_stars", []), limit=6)
+    st.markdown("#### Series Regulars")
+    credits = fetch_api(f"https://api.themoviedb.org/3/tv/{show_id}/credits?api_key={TMDB_KEY}")
+    show_cast_grid(credits.get("cast", []), limit=6)
+    
+    guest_stars = ep_data.get("guest_stars", [])
+    if guest_stars:
+        st.markdown("#### Guest Stars")
+        show_cast_grid(guest_stars, limit=6)
     
     st.divider()
     btn_label = "❌ Unmark as Watched" if is_watched else "✅ Mark as Watched"
@@ -182,6 +204,13 @@ def manage_show_dialog(show_id, show_name, details):
     genres = [g["name"] for g in details.get("genres", [])]
     render_badges([details.get('status')] + genres)
     st.write(details.get("overview", "No overview available."))
+    
+    providers = fetch_api(f"https://api.themoviedb.org/3/tv/{show_id}/watch/providers?api_key={TMDB_KEY}")
+    if "AE" in providers.get("results", {}):
+        streams = providers["results"]["AE"].get("flatrate", [])
+        if streams:
+            p_names = ", ".join([p["provider_name"] for p in streams])
+            st.info(f"📱 **Streaming locally:** {p_names}")
             
     st.divider()
     st.markdown("#### Episodes")
@@ -367,7 +396,7 @@ with t_search:
                                         st.button("Added", key=f"dsbl_mov_{item_id}", disabled=True, use_container_width=True)
 
 # ==========================================
-# TAB 4: TV LIBRARY (PERFECT 3-COLUMN GRID)
+# TAB 4: TV LIBRARY (MOBILE OPTIMIZED 3-COLUMN GRID)
 # ==========================================
 with t_tv:
     st.markdown("### My TV Collection")
@@ -376,9 +405,8 @@ with t_tv:
     if not shows:
         st.info("Your TV library is empty.")
     else:
-        # Loop chunks of 3 to create perfect horizontal rows
         for i in range(0, len(shows), 3):
-            cols = st.columns(3)
+            cols = st.columns(3, gap="small")
             for j in range(3):
                 if i + j < len(shows):
                     show = shows[i + j]
@@ -389,7 +417,8 @@ with t_tv:
                         
                         with st.container(border=True):
                             if details.get("poster_path"):
-                                st.image(f"https://image.tmdb.org/t/p/w342{details['poster_path']}", use_container_width=True)
+                                # Use w185 specifically so posters shrink cleanly on phones
+                                st.image(f"https://image.tmdb.org/t/p/w185{details['poster_path']}", use_container_width=True)
                             
                             st.markdown(f'<div class="grid-title" title="{show["name"]}">{show["name"]}</div>', unsafe_allow_html=True)
                             st.progress(min(w_eps / t_eps, 1.0) if t_eps > 0 else 0.0)
@@ -399,7 +428,7 @@ with t_tv:
                                 manage_show_dialog(show['id'], show['name'], details)
 
 # ==========================================
-# TAB 5: MOVIE LIBRARY (PERFECT 3-COLUMN GRID)
+# TAB 5: MOVIE LIBRARY (MOBILE OPTIMIZED 3-COLUMN GRID)
 # ==========================================
 with t_movies:
     st.markdown("### My Movies")
@@ -409,7 +438,7 @@ with t_movies:
         st.info("Your Movie library is empty.")
     else:
         for i in range(0, len(movies), 3):
-            cols = st.columns(3)
+            cols = st.columns(3, gap="small")
             for j in range(3):
                 if i + j < len(movies):
                     m = movies[i + j]
@@ -419,15 +448,10 @@ with t_movies:
                         
                         with st.container(border=True):
                             if details.get("poster_path"):
-                                st.image(f"https://image.tmdb.org/t/p/w342{details['poster_path']}", use_container_width=True)
+                                # Use w185 specifically so posters shrink cleanly on phones
+                                st.image(f"https://image.tmdb.org/t/p/w185{details['poster_path']}", use_container_width=True)
                             
                             st.markdown(f'<div class="grid-title" title="{m["name"]}">{m["name"]}</div>', unsafe_allow_html=True)
-                            
-                            def on_mov_check(mid=m['id']):
-                                st.session_state.db["movies"] = [mov | {"watched": st.session_state[f"mov_{mid}"]} if mov["id"] == mid else mov for mov in st.session_state.db["movies"]]
-                                save_db()
-                            
-                            st.checkbox("Done", value=is_watched, key=f"mov_{m['id']}", on_change=on_mov_check)
                             
                             if st.button("Info", key=f"m_mgr_{m['id']}", use_container_width=True):
                                 show_movie_details(m['id'], m['name'], details, is_watched)
