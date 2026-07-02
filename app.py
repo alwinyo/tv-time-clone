@@ -12,6 +12,7 @@ st.set_page_config(page_title="My TV Time", layout="centered", initial_sidebar_s
 # --- CUSTOM CSS: SMART MOBILE GRID & APP STYLING ---
 st.markdown("""
 <style>
+    /* Hide Streamlit Header & Footer */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
     header {visibility: hidden;}
@@ -69,8 +70,6 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-st.title("📺 My TV Time")
-
 # --- CREDENTIALS & DB ---
 TMDB_KEY = st.secrets["TMDB_KEY"]
 BIN_KEY = st.secrets["JSONBIN_KEY"]
@@ -87,67 +86,33 @@ def fetch_api(url):
     except: return {}
 
 def fetch_robust(url):
-    """Fetches TMDB with built-in retry logic for Rate Limits"""
     for _ in range(3):
         try:
             r = requests.get(url, timeout=5)
-            if r.status_code == 429: # TMDB Rate limit hit
+            if r.status_code == 429:
                 time.sleep(1.5)
                 continue
             if r.status_code == 200:
                 return r.json()
-            return {} # Fallback for 404s
         except: time.sleep(1)
     return {}
-
-# --- DATABASE COMPRESSION ENGINE ---
-def compress_db(db):
-    """Shrinks dictionary keys to tiny arrays to survive JSONBin limits"""
-    cdb = {"m": [], "s": [], "h": []}
-    for m in db.get("movies", []):
-        cdb["m"].append([m.get("id"), m.get("name"), 1 if m.get("watched") else 0, m.get("poster_path") or "", m.get("release_date") or "", m.get("runtime") or 0])
-    for s in db.get("shows", []):
-        cdb["s"].append([s.get("id"), s.get("name"), s.get("poster_path") or "", s.get("first_air_date") or "", s.get("total_episodes") or 1, "|".join(s.get("watched_episodes", []))])
-    for h in db.get("history", []):
-        try: ts = int(datetime.strptime(h["watched_at"], "%Y-%m-%d %H:%M:%S").timestamp())
-        except: ts = 0
-        cdb["h"].append([1 if h.get("type")=="tv" else 0, h.get("id"), h.get("detail") or "", ts])
-    return cdb
-
-def decompress_db(cdb):
-    """Expands DB back to normal dictionaries for the app"""
-    db = {"movies": [], "shows": [], "history": []}
-    for m in cdb.get("m", []):
-        db["movies"].append({"id": m[0], "name": m[1], "watched": bool(m[2]), "poster_path": m[3], "release_date": m[4], "runtime": m[5]})
-    for s in cdb.get("s", []):
-        db["shows"].append({"id": s[0], "name": s[1], "poster_path": s[2], "first_air_date": s[3], "total_episodes": s[4], "watched_episodes": str(s[5]).split("|") if s[5] else []})
-    for h in cdb.get("h", []):
-        dt = datetime.fromtimestamp(h[3]).strftime("%Y-%m-%d %H:%M:%S") if h[3] else "2000-01-01 12:00:00"
-        db["history"].append({"type": "tv" if h[0]==1 else "movie", "id": h[1], "detail": h[2], "watched_at": dt, "title": ""})
-    
-    title_map = { **{m["id"]: m["name"] for m in db["movies"]}, **{s["id"]: s["name"] for s in db["shows"]} }
-    for h in db["history"]:
-        h["title"] = title_map.get(h["id"], "Unknown")
-    return db
 
 def load_db():
     res = requests.get(BIN_URL, headers=headers)
     if res.status_code == 200:
         data = res.json().get("record", {})
-        if "shows" in data or "movies" in data: # Legacy uncompressed backup
-            if "shows" not in data: data["shows"] = []
-            if "movies" not in data: data["movies"] = []
-            if "history" not in data: data["history"] = []
-            return data
-        elif "s" in data or "m" in data: # New compressed system
-            return decompress_db(data)
-    return {"shows": [], "movies": [], "history": []}
+        # Normalize fields for aggregated storage structure
+        if "shows" not in data: data["shows"] = []
+        if "movies" not in data: data["movies"] = []
+        if "analytics" not in data: data["analytics"] = {}
+        if "recent_history" not in data: data["recent_history"] = []
+        return data
+    return {"shows": [], "movies": [], "analytics": {}, "recent_history": []}
 
 def save_db():
-    payload = compress_db(st.session_state.db)
-    res = requests.put(BIN_URL, json=payload, headers=headers)
+    res = requests.put(BIN_URL, json=st.session_state.db, headers=headers)
     if res.status_code != 200:
-        st.error(f"⚠️ Cloud Save Failed! Your library exceeds the JSONBin free tier limits. (Error {res.status_code})")
+        st.error(f"⚠️ Cloud Save Failed! Code: {res.status_code}")
 
 if "db" not in st.session_state:
     st.session_state.db = load_db()
@@ -159,7 +124,6 @@ def render_badges(items, is_gold=False):
     st.markdown(html, unsafe_allow_html=True)
 
 def display_poster(path, width=185):
-    """Safely renders TMDB poster or a clean placeholder if missing"""
     if path and str(path).lower() not in ["none", "null", ""]:
         st.image(f"https://image.tmdb.org/t/p/w{width}{path}", use_container_width=True)
     else:
@@ -183,7 +147,7 @@ def show_cast_grid(cast_list, limit=6):
 def parse_tvtime_date(d_str):
     if not d_str: return "2000-01-01 12:00:00"
     try:
-        clean_str = str(d_str).replace("Z", "").split(".")[0] # Fixes millisecond bugs
+        clean_str = str(d_str).replace("Z", "").split(".")[0]
         dt = datetime.strptime(clean_str, "%Y-%m-%dT%H:%M:%S")
         return dt.strftime("%Y-%m-%d %H:%M:%S")
     except:
@@ -215,10 +179,14 @@ def show_episode_details(show_id, show_name, ep_code, ep_data, is_watched):
             if s["id"] == show_id:
                 if is_watched and ep_code in s["watched_episodes"]: 
                     s["watched_episodes"].remove(ep_code)
-                    st.session_state.db["history"] = [h for h in st.session_state.db.get("history", []) if not (h["type"]=="tv" and h["id"]==show_id and h["detail"]==ep_code)]
+                    st.session_state.db["recent_history"] = [h for h in st.session_state.db.get("recent_history", []) if not (h["type"]=="tv" and h["id"]==show_id and h["detail"]==ep_code)]
                 elif not is_watched and ep_code not in s["watched_episodes"]: 
                     s["watched_episodes"].append(ep_code)
-                    st.session_state.db.setdefault("history", []).append({"type": "tv", "id": show_id, "title": show_name, "detail": ep_code, "watched_at": datetime.now().strftime('%Y-%m-%d %H:%M:%S')})
+                    now_str = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                    m_key = datetime.now().strftime('%Y-%m')
+                    st.session_state.db.setdefault("analytics", {}).setdefault(m_key, {"tv": 0, "movie": 0})
+                    st.session_state.db["analytics"][m_key]["tv"] += 1
+                    st.session_state.db.setdefault("recent_history", []).insert(0, {"type": "tv", "id": show_id, "title": show_name, "detail": ep_code, "watched_at": now_str})
                 save_db(); break
         st.rerun()
 
@@ -255,10 +223,14 @@ def manage_show_dialog(show_id, show_name, details):
                     if s["id"] == sid:
                         if chkd and ecode not in s["watched_episodes"]: 
                             s["watched_episodes"].append(ecode)
-                            st.session_state.db.setdefault("history", []).append({"type": "tv", "id": sid, "title": sname, "detail": ecode, "watched_at": datetime.now().strftime('%Y-%m-%d %H:%M:%S')})
+                            now_str = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                            m_key = datetime.now().strftime('%Y-%m')
+                            st.session_state.db.setdefault("analytics", {}).setdefault(m_key, {"tv": 0, "movie": 0})
+                            st.session_state.db["analytics"][m_key]["tv"] += 1
+                            st.session_state.db.setdefault("recent_history", []).insert(0, {"type": "tv", "id": sid, "title": sname, "detail": ecode, "watched_at": now_str})
                         elif not chkd and ecode in s["watched_episodes"]: 
                             s["watched_episodes"].remove(ecode)
-                            st.session_state.db["history"] = [h for h in st.session_state.db.get("history", []) if not (h["type"]=="tv" and h["id"]==sid and h["detail"]==ecode)]
+                            st.session_state.db["recent_history"] = [h for h in st.session_state.db.get("recent_history", []) if not (h["type"]=="tv" and h["id"]==sid and h["detail"]==ecode)]
                         save_db(); break
             ep_col1, ep_col2 = st.columns([6, 1])
             with ep_col1:
@@ -297,9 +269,13 @@ def show_movie_details(m_id, m_name, details, is_watched):
             if m["id"] == m_id:
                 m["watched"] = not is_watched
                 if m["watched"]:
-                    st.session_state.db.setdefault("history", []).append({"type": "movie", "id": m_id, "title": m_name, "detail": "", "watched_at": datetime.now().strftime('%Y-%m-%d %H:%M:%S')})
+                    now_str = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                    m_key = datetime.now().strftime('%Y-%m')
+                    st.session_state.db.setdefault("analytics", {}).setdefault(m_key, {"tv": 0, "movie": 0})
+                    st.session_state.db["analytics"][m_key]["movie"] += 1
+                    st.session_state.db.setdefault("recent_history", []).insert(0, {"type": "movie", "id": m_id, "title": m_name, "detail": "", "watched_at": now_str})
                 else:
-                    st.session_state.db["history"] = [h for h in st.session_state.db.get("history", []) if not (h["type"]=="movie" and h["id"]==m_id)]
+                    st.session_state.db["recent_history"] = [h for h in st.session_state.db.get("recent_history", []) if not (h["type"]=="movie" and h["id"]==m_id)]
                 save_db(); break
         st.rerun()
 
@@ -352,13 +328,17 @@ with t_next:
                     if st.button("ℹ️ Info", key=f"info_next_{show['id']}_{ep_code}", use_container_width=True):
                         show_episode_details(show['id'], show['name'], ep_code, ep, is_watched=False)
                 with c2:
-                    def fast_watch(sid=show['id'], sname=show['name'], ecode=ep_code):
+                    def fast_watch_dashboard(sid=show['id'], sname=show['name'], ecode=ep_code):
                         for s in st.session_state.db["shows"]:
                             if s["id"] == sid:
                                 s["watched_episodes"].append(ecode)
-                                st.session_state.db.setdefault("history", []).append({"type": "tv", "id": sid, "title": sname, "detail": ecode, "watched_at": datetime.now().strftime('%Y-%m-%d %H:%M:%S')})
+                                now_str = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                                m_key = datetime.now().strftime('%Y-%m')
+                                st.session_state.db.setdefault("analytics", {}).setdefault(m_key, {"tv": 0, "movie": 0})
+                                st.session_state.db["analytics"][m_key]["tv"] += 1
+                                st.session_state.db.setdefault("recent_history", []).insert(0, {"type": "tv", "id": sid, "title": sname, "detail": ecode, "watched_at": now_str})
                                 save_db(); st.toast("Watched! ✅"); break
-                    st.button("✔️ Watched", key=f"btn_next_{show['id']}_{ep_code}", on_click=fast_watch, use_container_width=True)
+                    st.button("✔️ Watched", key=f"btn_next_{show['id']}_{ep_code}", on_click=fast_watch_dashboard, use_container_width=True)
 
 # ==========================================
 # TAB 2: UPCOMING CALENDAR
@@ -401,7 +381,11 @@ with t_soon:
                                 for s in st.session_state.db["shows"]:
                                     if s["id"] == sid:
                                         s["watched_episodes"].append(ecode)
-                                        st.session_state.db.setdefault("history", []).append({"type": "tv", "id": sid, "title": sname, "detail": ecode, "watched_at": datetime.now().strftime('%Y-%m-%d %H:%M:%S')})
+                                        now_str = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                                        m_key = datetime.now().strftime('%Y-%m')
+                                        st.session_state.db.setdefault("analytics", {}).setdefault(m_key, {"tv": 0, "movie": 0})
+                                        st.session_state.db["analytics"][m_key]["tv"] += 1
+                                        st.session_state.db.setdefault("recent_history", []).insert(0, {"type": "tv", "id": sid, "title": sname, "detail": ecode, "watched_at": now_str})
                                         save_db(); st.toast("Watched! ✅"); break
                             st.button("✔️ Watched", key=f"btn_soon_{show['id']}_{ep_code}", on_click=fast_watch_soon, use_container_width=True)
                     break
@@ -454,7 +438,7 @@ with t_search:
                             else: st.button("✔️ Added", key=f"dsbl_mov_{item_id}", disabled=True, use_container_width=True)
 
 # ==========================================
-# TAB 4: TV LIBRARY
+# TAB 4: TV LIBRARY (CACHED FROM DB)
 # ==========================================
 with t_tv:
     st.markdown("### My TV Collection")
@@ -604,41 +588,31 @@ with t_profile:
     
     # --- PANDAS GRAPHS: MONTHLY WATCH ACTIVITY ---
     st.markdown("### 📊 Watch Activity")
-    history = st.session_state.db.get("history", [])
+    analytics = st.session_state.db.get("analytics", {})
     
-    if history:
-        monthly_tv = {}; monthly_mov = {}
-        for h in history:
-            try:
-                dt = datetime.strptime(h["watched_at"], '%Y-%m-%d %H:%M:%S')
-                m_key = dt.strftime('%Y-%m')
-                if h["type"] == "tv": monthly_tv[m_key] = monthly_tv.get(m_key, 0) + 1
-                else: monthly_mov[m_key] = monthly_mov.get(m_key, 0) + 1
-            except: pass
+    if analytics:
+        df = pd.DataFrame.from_dict(analytics, orient='index').sort_index()
+        df.index = pd.to_datetime(df.index).strftime('%b %Y')
         
-        if monthly_tv:
-            df_tv = pd.DataFrame(list(monthly_tv.items()), columns=['Month', 'Episodes Watched']).set_index('Month').sort_index()
-            df_tv.index = pd.to_datetime(df_tv.index).strftime('%b %Y')
+        if "tv" in df.columns and df["tv"].sum() > 0:
             st.markdown("#### Series Watched per Month")
-            st.bar_chart(df_tv, color="#FFC107")
+            st.bar_chart(df[["tv"]], color="#FFC107")
         
-        if monthly_mov:
-            df_mov = pd.DataFrame(list(monthly_mov.items()), columns=['Month', 'Movies Watched']).set_index('Month').sort_index()
-            df_mov.index = pd.to_datetime(df_mov.index).strftime('%b %Y')
+        if "movie" in df.columns and df["movie"].sum() > 0:
             st.markdown("#### Movies Watched per Month")
-            st.bar_chart(df_mov, color="#555555")
+            st.bar_chart(df[["movie"]], color="#555555")
     else: st.info("Start watching to see your activity graph!")
 
     st.divider()
     
     # --- MONTHLY WATCH HISTORY JOURNAL ---
-    st.markdown("### 📜 Watch History Journal")
-    h_tv, h_mov = st.tabs(["📺 Series", "🎬 Movies"])
-    history_sorted = sorted(history, key=lambda x: x["watched_at"], reverse=True)
+    st.markdown("### 📜 Watch History Journal (Recent Logs)")
+    h_tv, h_mov = st.tabs(["📺 Recent Series Logs", "🎬 Movies Journal"])
+    recent_history = st.session_state.db.get("recent_history", [])
     
     with h_tv:
-        tv_hist = [h for h in history_sorted if h["type"] == "tv"]
-        if not tv_hist: st.info("No series history recorded yet.")
+        tv_hist = [h for h in recent_history if h["type"] == "tv"]
+        if not tv_hist: st.info("No recent series logs recorded.")
         else:
             grouped_tv = {}
             for item in tv_hist:
@@ -671,23 +645,29 @@ with t_profile:
                             st.write(ep_data.get("overview", "No synopsis available."))
                     
     with h_mov:
-        mov_hist = [h for h in history_sorted if h["type"] == "movie"]
-        if not mov_hist: st.info("No movie history recorded yet.")
+        # Movies log completely because of smaller footprint sizes
+        mov_items = []
+        for m in st.session_state.db.get("movies", []):
+            if m.get("watched"):
+                # Fallback matching timestamps from historical logs or generation defaults
+                match_hist = next((h for h in recent_history if h["type"]=="movie" and h["id"]==m["id"]), None)
+                w_at = match_hist["watched_at"] if match_hist else "2026-01-01 12:00:00"
+                mov_items.append((m, datetime.strptime(w_at, '%Y-%m-%d %H:%M:%S')))
+        
+        mov_items.sort(key=lambda x: x[1], reverse=True)
+        if not mov_items: st.info("No movie history recorded yet.")
         else:
             grouped_mov = {}
-            for item in mov_hist:
-                try:
-                    dt = datetime.strptime(item["watched_at"], '%Y-%m-%d %H:%M:%S')
-                    grouped_mov.setdefault(dt.strftime('%B %Y'), []).append((item, dt))
-                except: pass
+            for item, dt in mov_items:
+                grouped_mov.setdefault(dt.strftime('%B %Y'), []).append((item, dt))
                 
             for month_str, items in grouped_mov.items():
                 st.markdown(f"#### {month_str}")
                 for item, dt in items:
-                    info_key = f"h_mov_{item['id']}_{item['watched_at']}"
+                    info_key = f"h_mov_{item['id']}_{dt.strftime('%Y%m%d%H%M')}"
                     with st.container(border=True):
                         c1, c2, c3 = st.columns([5, 4, 1])
-                        c1.markdown(f"**{item['title']}**")
+                        c1.markdown(f"**{item['name']}**")
                         c2.caption(dt.strftime('%b %d • %I:%M %p'))
                         with c3:
                             st.markdown('<div class="hist-toggle-btn">', unsafe_allow_html=True)
@@ -703,9 +683,9 @@ with t_profile:
 
     st.divider()
     
-    # --- TV TIME DATA COMPRESSED IMPORTER ---
+    # --- TV TIME COMPRESSED MATRIX DATA IMPORTER ---
     with st.expander("⚙️ Import TV Time Data"):
-        st.warning("Ensure you keep the app open until the progress bar reaches 100%. TMDB limits requests so this will process carefully.")
+        st.warning("Ensure you keep the app open until the progress bar reaches 100%.")
         wipe_db = st.checkbox("Wipe current test library before importing", value=True)
         m_file = st.file_uploader("Upload Movies JSON", type="json")
         t_file = st.file_uploader("Upload Series JSON", type="json")
@@ -718,7 +698,8 @@ with t_profile:
                 new_db = {
                     "movies": [] if wipe_db else st.session_state.db.get("movies", []),
                     "shows": [] if wipe_db else st.session_state.db.get("shows", []),
-                    "history": [] if wipe_db else st.session_state.db.get("history", [])
+                    "analytics": {} if wipe_db else st.session_state.db.get("analytics", {}),
+                    "recent_history": [] if wipe_db else st.session_state.db.get("recent_history", [])
                 }
                 
                 # Process Movies
@@ -731,7 +712,7 @@ with t_profile:
                             
                             raw_title = m.get("title") or ""
                             imdb_id = m.get("id", {}).get("imdb") if m.get("id") else None
-                            if not imdb_id and not raw_title: continue # Safe guard against ghost data
+                            if not imdb_id and not raw_title: continue 
                             
                             res = fetch_robust(f"https://api.themoviedb.org/3/find/{imdb_id}?api_key={TMDB_KEY}&external_source=imdb_id") if imdb_id else {}
                                 
@@ -753,18 +734,22 @@ with t_profile:
                                         "id": tmdb_id, "name": title, "watched": is_watched,
                                         "poster_path": poster if poster else "",
                                         "release_date": release_date if release_date else "",
-                                        "runtime": 120 # Fast default
+                                        "runtime": 120
                                     })
                                     if is_watched:
                                         w_dt = parse_tvtime_date(m.get("watched_at"))
-                                        new_db["history"].append({"type": "movie", "id": tmdb_id, "title": title, "detail": "", "watched_at": w_dt})
+                                        dt_obj = datetime.strptime(w_dt, "%Y-%m-%d %H:%M:%S")
+                                        m_key = dt_obj.strftime("%Y-%m")
+                                        new_db["analytics"].setdefault(m_key, {"tv": 0, "movie": 0})
+                                        new_db["analytics"][m_key]["movie"] += 1
+                                        new_db["recent_history"].append({"type": "movie", "id": tmdb_id, "title": title, "detail": "", "watched_at": w_dt})
                     except Exception as e: st.error(f"Error processing movies: {e}")
                 
                 if m_file and t_file: prog.progress(0)
                 
                 # Process Shows
                 if t_file:
-                    stat_txt.text("Processing Series... fetching data safely.")
+                    stat_txt.text("Processing Series... compressing matrix keys.")
                     try:
                         t_data = json.load(t_file)
                         for idx, s in enumerate(t_data):
@@ -772,7 +757,7 @@ with t_profile:
                             
                             raw_title = s.get("title") or ""
                             tvdb_id = s.get("id", {}).get("tvdb") if s.get("id") else None
-                            if not tvdb_id and not raw_title: continue # Safe guard against ghost data
+                            if not tvdb_id and not raw_title: continue 
                                 
                             res = fetch_robust(f"https://api.themoviedb.org/3/find/{tvdb_id}?api_key={TMDB_KEY}&external_source=tvdb_id") if tvdb_id else {}
                             
@@ -802,7 +787,13 @@ with t_profile:
                                             e_code = f"S{s_num}E{ep.get('number')}"
                                             watched_eps.append(e_code)
                                             w_dt = parse_tvtime_date(ep.get("watched_at"))
-                                            new_db["history"].append({"type": "tv", "id": tmdb_id, "title": title, "detail": e_code, "watched_at": w_dt})
+                                            dt_obj = datetime.strptime(w_dt, "%Y-%m-%d %H:%M:%S")
+                                            m_key = dt_obj.strftime("%Y-%m")
+                                            
+                                            # Increment the atomic matrix map counter instead of storing duplicated lists
+                                            new_db["analytics"].setdefault(m_key, {"tv": 0, "movie": 0})
+                                            new_db["analytics"][m_key]["tv"] += 1
+                                            new_db["recent_history"].append({"type": "tv", "id": tmdb_id, "title": title, "detail": e_code, "watched_at": w_dt})
                                             
                                 if is_new_show:
                                     new_db["shows"].append({
@@ -812,16 +803,18 @@ with t_profile:
                                         "total_episodes": t_eps
                                     })
                                 else:
-                                    # Merge duplicates
                                     for show in new_db["shows"]:
                                         if show["id"] == tmdb_id:
                                             show["watched_episodes"] = list(set(show["watched_episodes"] + watched_eps))
                                             break
                     except Exception as e: st.error(f"Error processing series: {e}")
                 
+                # Sort and cap recent history log to avoid storage overflow crashes
+                new_db["recent_history"] = sorted(new_db["recent_history"], key=lambda x: x["watched_at"], reverse=True)[:100]
+                
                 st.session_state.db = new_db
                 save_db()
-                stat_txt.text("✅ Mass Import & Compression Complete!")
+                stat_txt.text("✅ Mass Import & Cloud Sync Complete!")
                 st.toast("Library successfully imported.")
                 st.rerun()
             else:
