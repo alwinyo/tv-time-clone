@@ -2,24 +2,25 @@ import streamlit as st
 import requests
 from datetime import datetime
 
-st.set_page_config(page_title="My TV Time", layout="centered")
+# Mobile-friendly layout configuration
+st.set_page_config(page_title="My TV Time", layout="centered", initial_sidebar_state="collapsed")
 st.title("📺 My TV Time")
 
-# 1. Credentials & Configuration
+# 1. Credentials
 TMDB_KEY = st.secrets["TMDB_KEY"]
 BIN_KEY = st.secrets["JSONBIN_KEY"]
 BIN_ID = st.secrets["JSONBIN_ID"]
 BIN_URL = f"https://api.jsonbin.io/v3/b/{BIN_ID}"
 
-headers = {
-    "X-Master-Key": BIN_KEY,
-    "Content-Type": "application/json"
-}
-
-# Get current date string (YYYY-MM-DD) for air-date validation
+headers = {"X-Master-Key": BIN_KEY, "Content-Type": "application/json"}
 TODAY = datetime.today().strftime('%Y-%m-%d')
 
-# 2. Database Core Operations
+# 2. Performance Caching (Makes the app lightning fast)
+@st.cache_data(ttl=3600)
+def fetch_api(url):
+    return requests.get(url).json()
+
+# 3. Database Core Operations
 def load_db():
     res = requests.get(BIN_URL, headers=headers)
     if res.status_code == 200:
@@ -27,9 +28,7 @@ def load_db():
         if "shows" not in data: data["shows"] = []
         if "movies" not in data: data["movies"] = []
         return data
-    else:
-        st.error("Failed to sync with cloud storage.")
-        return {"shows": [], "movies": []}
+    return {"shows": [], "movies": []}
 
 def save_db():
     requests.put(BIN_URL, json=st.session_state.db, headers=headers)
@@ -37,232 +36,233 @@ def save_db():
 if "db" not in st.session_state:
     st.session_state.db = load_db()
 
-# Helper function for quick-logging from the dashboard
 def quick_watch_episode(show_id, ep_code):
     for s in st.session_state.db["shows"]:
         if s["id"] == show_id:
             if ep_code not in s["watched_episodes"]:
                 s["watched_episodes"].append(ep_code)
                 save_db()
-                st.toast(f"Marked {ep_code} as watched!")
+                st.toast(f"Marked {ep_code} as watched! ✅")
                 st.rerun()
 
-# 3. SMART DASHBOARD: "UP NEXT"
-st.subheader("🔥 Up Next to Watch")
-up_next_count = 0
+# --- APP NAVIGATION BAR ---
+t_next, t_soon, t_search, t_tv, t_movies, t_profile = st.tabs(["🔥 Next", "📅 Soon", "🔍", "📺", "🎬", "👤"])
 
-if not st.session_state.db["shows"]:
-    st.caption("Add shows below to populate your dashboard.")
-else:
+# ==========================================
+# TAB 1: UP NEXT DASHBOARD
+# ==========================================
+with t_next:
+    st.subheader("Up Next to Watch")
+    up_next_count = 0
+    
     for show in st.session_state.db["shows"]:
-        # Pull live show structure
-        d_url = f"https://api.themoviedb.org/3/tv/{show['id']}?api_key={TMDB_KEY}"
-        details = requests.get(d_url).json()
-        
+        details = fetch_api(f"https://api.themoviedb.org/3/tv/{show['id']}?api_key={TMDB_KEY}")
         found_next = False
         watched_set = set(show.get("watched_episodes", []))
         
-        # Scan seasons chronologically
         seasons = [s for s in details.get("seasons", []) if s["season_number"] > 0]
         for s_info in seasons:
             if found_next: break
-            s_num = s_info["season_number"]
-            
-            s_url = f"https://api.themoviedb.org/3/tv/{show['id']}/season/{s_num}?api_key={TMDB_KEY}"
-            s_data = requests.get(s_url).json()
+            s_data = fetch_api(f"https://api.themoviedb.org/3/tv/{show['id']}/season/{s_info['season_number']}?api_key={TMDB_KEY}")
             
             for ep in s_data.get("episodes", []):
-                ep_num = ep["episode_number"]
-                ep_code = f"S{s_num}E{ep_num}"
+                ep_code = f"S{s_info['season_number']}E{ep['episode_number']}"
                 air_date = ep.get("air_date", "")
                 
-                # If this episode is unwatched AND has already aired, it is "Up Next"
                 if ep_code not in watched_set:
                     if air_date and air_date <= TODAY:
                         up_next_count += 1
                         found_next = True
-                        
-                        # UI Card layout for Up Next item
                         with st.container(border=True):
-                            c1, c2 = st.columns([1, 4])
+                            c1, c2 = st.columns([1, 3])
                             if ep.get("still_path"):
                                 c1.image(f"https://image.tmdb.org/t/p/w185{ep['still_path']}")
                             elif details.get("poster_path"):
                                 c1.image(f"https://image.tmdb.org/t/p/w92{details['poster_path']}")
-                                
+                            
                             with c2:
-                                st.markdown(f"**{show['name']}** — {ep_code}")
-                                st.markdown(f"*{ep.get('name', 'Untitled Episode')}*")
-                                if ep.get("overview"):
-                                    st.caption(ep["overview"][:120] + "...")
-                                
-                                # Quick action button directly on dashboard
-                                st.button(
-                                    "Mark Watched", 
-                                    key=f"next_{show['id']}_{ep_code}",
-                                    on_click=quick_watch_episode,
-                                    args=(show['id'], ep_code)
-                                )
-                    break # Stop evaluating this show once the true next item is handled
+                                st.markdown(f"**{show['name']}**")
+                                st.caption(f"{ep_code}: {ep.get('name', 'Episode')}")
+                                st.button("👁️ Mark Watched", key=f"btn_next_{show['id']}_{ep_code}", on_click=quick_watch_episode, args=(show['id'], ep_code))
+                    break
 
     if up_next_count == 0:
-        st.info("🎉 You are completely caught up on all your active shows!")
+        st.info("You are completely caught up! 🎉")
 
-# 4. MULTI-RESULT SEARCH SECTION
-st.divider()
-st.subheader("🔍 Global Search & Discover")
-search_type = st.radio("Category", ["TV Shows", "Movies"], horizontal=True)
-search_query = st.text_input("Enter title:")
-
-if search_query:
-    endpoint = "tv" if search_type == "TV Shows" else "movie"
-    url = f"https://api.themoviedb.org/3/search/{endpoint}?api_key={TMDB_KEY}&query={search_query}"
-    res = requests.get(url).json()
+# ==========================================
+# TAB 2: UPCOMING CALENDAR
+# ==========================================
+with t_soon:
+    st.subheader("Upcoming Episodes")
+    upcoming_count = 0
     
-    # CHANGED: Now pulls all 20 results instead of slicing to 5
-    results = res.get("results", []) 
+    for show in st.session_state.db["shows"]:
+        details = fetch_api(f"https://api.themoviedb.org/3/tv/{show['id']}?api_key={TMDB_KEY}")
+        found_next = False
+        watched_set = set(show.get("watched_episodes", []))
+        
+        seasons = [s for s in details.get("seasons", []) if s["season_number"] > 0]
+        for s_info in seasons:
+            if found_next: break
+            s_data = fetch_api(f"https://api.themoviedb.org/3/tv/{show['id']}/season/{s_info['season_number']}?api_key={TMDB_KEY}")
+            
+            for ep in s_data.get("episodes", []):
+                ep_code = f"S{s_info['season_number']}E{ep['episode_number']}"
+                air_date = ep.get("air_date", "")
+                
+                if ep_code not in watched_set:
+                    if air_date and air_date > TODAY:
+                        upcoming_count += 1
+                        found_next = True
+                        
+                        # Calculate days until release
+                        air_date_obj = datetime.strptime(air_date, '%Y-%m-%d')
+                        days_left = (air_date_obj - datetime.today()).days
+                        
+                        with st.container(border=True):
+                            c1, c2 = st.columns([1, 3])
+                            if details.get("poster_path"):
+                                c1.image(f"https://image.tmdb.org/t/p/w92{details['poster_path']}")
+                            with c2:
+                                st.markdown(f"**{show['name']}**")
+                                st.markdown(f"*{ep_code} airs in **{days_left} days***")
+                                st.caption(f"Date: {air_date}")
+                    break
+
+    if upcoming_count == 0:
+        st.info("No upcoming episodes scheduled yet.")
+
+# ==========================================
+# TAB 3: GLOBAL SEARCH
+# ==========================================
+with t_search:
+    st.subheader("Discover")
+    search_type = st.radio("Looking for:", ["TV Shows", "Movies"], horizontal=True)
+    search_query = st.text_input("Enter title:")
+
+    if search_query:
+        endpoint = "tv" if search_type == "TV Shows" else "movie"
+        res = fetch_api(f"https://api.themoviedb.org/3/search/{endpoint}?api_key={TMDB_KEY}&query={search_query}")
+        results = res.get("results", [])
+        
+        if results:
+            for item in results:
+                item_id = item["id"]
+                title = item["name"] if search_type == "TV Shows" else item["title"]
+                date_label = item.get("first_air_date", "N/A") if search_type == "TV Shows" else item.get("release_date", "N/A")
+                
+                with st.expander(f"{title} ({date_label[:4] if date_label else 'N/A'})"):
+                    c1, c2 = st.columns([1, 2])
+                    if item.get("poster_path"): c1.image(f"https://image.tmdb.org/t/p/w154{item['poster_path']}")
+                    with c2:
+                        st.markdown(f"**Rating:** ⭐ {item.get('vote_average', 0.0)}/10")
+                        st.caption(item.get("overview", ""))
+                        
+                        if search_type == "TV Shows":
+                            if not any(s["id"] == item_id for s in st.session_state.db["shows"]):
+                                if st.button("➕ Add Series", key=f"add_tv_{item_id}"):
+                                    st.session_state.db["shows"].append({"id": item_id, "name": title, "watched_episodes": []})
+                                    save_db(); st.success("Added!"); st.rerun()
+                        else:
+                            if not any(m["id"] == item_id for m in st.session_state.db["movies"]):
+                                if st.button("➕ Add Movie", key=f"add_mov_{item_id}"):
+                                    st.session_state.db["movies"].append({"id": item_id, "name": title, "watched": False})
+                                    save_db(); st.success("Added!"); st.rerun()
+
+# ==========================================
+# TABS 4 & 5: TV & MOVIE LIBRARY
+# ==========================================
+with t_tv:
+    st.subheader("My TV Collection")
+    for show in st.session_state.db["shows"]:
+        details = fetch_api(f"https://api.themoviedb.org/3/tv/{show['id']}?api_key={TMDB_KEY}")
+        t_eps = details.get("number_of_episodes", 0)
+        w_eps = len(show.get("watched_episodes", []))
+        
+        with st.expander(f"📺 {show['name']} ({w_eps}/{t_eps})"):
+            st.progress(min(w_eps / t_eps, 1.0) if t_eps > 0 else 0.0)
+            
+            s_nums = [s["season_number"] for s in details.get("seasons", []) if s["season_number"] > 0]
+            if s_nums:
+                sel_s = st.selectbox("Season", s_nums, key=f"lib_s_{show['id']}")
+                s_data = fetch_api(f"https://api.themoviedb.org/3/tv/{show['id']}/season/{sel_s}?api_key={TMDB_KEY}")
+                
+                for ep in s_data.get("episodes", []):
+                    e_code = f"S{sel_s}E{ep['episode_number']}"
+                    def on_check(sid=show['id'], ecode=e_code):
+                        chkd = st.session_state[f"chk_{sid}_{ecode}"]
+                        for s in st.session_state.db["shows"]:
+                            if s["id"] == sid:
+                                if chkd and ecode not in s["watched_episodes"]: s["watched_episodes"].append(ecode)
+                                elif not chkd and ecode in s["watched_episodes"]: s["watched_episodes"].remove(ecode)
+                                save_db(); break
+                    
+                    st.checkbox(
+                        f"{ep['episode_number']}. {ep.get('name', 'Episode')}",
+                        value=(e_code in show.get("watched_episodes", [])),
+                        key=f"chk_{show['id']}_{e_code}",
+                        on_change=on_check
+                    )
+
+with t_movies:
+    st.subheader("My Movies")
+    for m in st.session_state.db["movies"]:
+        details = fetch_api(f"https://api.themoviedb.org/3/movie/{m['id']}?api_key={TMDB_KEY}")
+        with st.expander(f"🎬 {m['name']}"):
+            c1, c2 = st.columns([1, 2])
+            if details.get("poster_path"): c1.image(f"https://image.tmdb.org/t/p/w92{details['poster_path']}")
+            
+            def on_mov_check(mid=m['id']):
+                st.session_state.db["movies"] = [mov | {"watched": st.session_state[f"mov_{mid}"]} if mov["id"] == mid else mov for mov in st.session_state.db["movies"]]
+                save_db()
+            
+            c2.checkbox("✅ Watched", value=m.get("watched", False), key=f"mov_{m['id']}", on_change=on_mov_check)
+            c2.caption(f"{details.get('runtime', 0)} mins")
+
+# ==========================================
+# TAB 6: PROFILE STATS (Time Watched)
+# ==========================================
+with t_profile:
+    st.subheader("Profile Stats")
     
-    if not results:
-        st.warning("No matches found.")
-    else:
-        st.caption(f"Showing {len(results)} matches. Tap a card to inspect details and add to library.")
-        for item in results:
-            item_id = item["id"]
-            title = item["name"] if search_type == "TV Shows" else item["title"]
-            date_label = item.get("first_air_date", "N/A") if search_type == "TV Shows" else item.get("release_date", "N/A")
+    total_tv_mins = 0
+    total_episodes_watched = 0
+    total_mov_mins = 0
+    total_movies_watched = 0
+    
+    # Calculate TV Time
+    for show in st.session_state.db["shows"]:
+        details = fetch_api(f"https://api.themoviedb.org/3/tv/{show['id']}?api_key={TMDB_KEY}")
+        w_eps = len(show.get("watched_episodes", []))
+        total_episodes_watched += w_eps
+        
+        # Get average runtime per episode
+        runtimes = details.get("episode_run_time", [])
+        avg_runtime = runtimes[0] if runtimes else 45 # Default to 45 mins if unknown
+        total_tv_mins += (w_eps * avg_runtime)
+        
+    # Calculate Movie Time
+    for m in st.session_state.db["movies"]:
+        if m.get("watched", False):
+            details = fetch_api(f"https://api.themoviedb.org/3/movie/{m['id']}?api_key={TMDB_KEY}")
+            total_mov_mins += details.get("runtime", 0)
+            total_movies_watched += 1
             
-            with st.expander(f"🎬 {title} ({date_label[:4] if date_label else 'N/A'})"):
-                col1, col2 = st.columns([1, 2])
-                if item.get("poster_path"):
-                    col1.image(f"https://image.tmdb.org/t/p/w154{item['poster_path']}")
-                
-                with col2:
-                    st.markdown(f"### {title}")
-                    st.markdown(f"**Release/Air Date:** {date_label}")
-                    st.markdown(f"**Community Rating:** ⭐ {item.get('vote_average', 0.0)}/10")
-                    st.write(item.get("overview", "No synopsis available."))
-                    
-                    if search_type == "TV Shows":
-                        already_added = any(s["id"] == item_id for s in st.session_state.db["shows"])
-                        if not already_added:
-                            if st.button("Add to Library", key=f"add_tv_{item_id}"):
-                                st.session_state.db["shows"].append({"id": item_id, "name": title, "watched_episodes": []})
-                                save_db()
-                                st.success("Added to TV collection!")
-                                st.rerun()
-                        else:
-                            st.info("Already tracking this series.")
-                    else:
-                        already_added = any(m["id"] == item_id for m in st.session_state.db["movies"])
-                        if not already_added:
-                            if st.button("Add to Library", key=f"add_mov_{item_id}"):
-                                st.session_state.db["movies"].append({"id": item_id, "name": title, "watched": False})
-                                save_db()
-                                st.success("Added to Movie collection!")
-                                st.rerun()
-                        else:
-                            st.info("Already tracking this movie.")
-
-# 5. DETAILED LIBRARY VIEWS (With Deep Meta-Data)
-st.divider()
-tab_tv, tab_movies = st.tabs(["📺 TV Collection", "🎬 Movie Collection"])
-
-with tab_tv:
-    if not st.session_state.db["shows"]:
-        st.info("Your TV library is currently empty.")
-    else:
-        for show in st.session_state.db["shows"]:
-            # Query advanced metadata directly from show profile
-            d_url = f"https://api.themoviedb.org/3/tv/{show['id']}?api_key={TMDB_KEY}"
-            details = requests.get(d_url).json()
-            
-            total_eps = details.get("number_of_episodes", 0)
-            watched_eps = len(show.get("watched_episodes", []))
-            progress_val = (watched_eps / total_eps) if total_eps > 0 else 0.0
-            
-            genres = ", ".join([g["name"] for g in details.get("genres", [])])
-            networks = ", ".join([n["name"] for n in details.get("networks", [])])
-            
-            with st.expander(f"📺 {show['name']} ({watched_eps}/{total_eps})"):
-                c1, c2 = st.columns([1, 2])
-                if details.get("poster_path"):
-                    c1.image(f"https://image.tmdb.org/t/p/w185{details['poster_path']}")
-                
-                with c2:
-                    st.markdown(f"### {show['name']}")
-                    st.markdown(f"**Genres:** {genres}")
-                    st.markdown(f"**Network:** {networks}")
-                    st.markdown(f"**Status:** {details.get('status', 'Unknown')}")
-                    st.markdown(f"**Total Seasons:** {details.get('number_of_seasons', 0)}")
-                    st.progress(min(progress_val, 1.0))
-                
-                st.markdown("#### Episode Breakdown")
-                seasons = [s for s in details.get("seasons", []) if s["season_number"] > 0]
-                if seasons:
-                    s_nums = [s["season_number"] for s in seasons]
-                    selected_s = st.selectbox("Select Season Focus", s_nums, key=f"lib_s_{show['id']}")
-                    
-                    s_url = f"https://api.themoviedb.org/3/tv/{show['id']}/season/{selected_s}?api_key={TMDB_KEY}"
-                    s_data = requests.get(s_url).json()
-                    
-                    for ep in s_data.get("episodes", []):
-                        e_num = ep["episode_number"]
-                        e_code = f"S{selected_s}E{e_num}"
-                        is_checked = e_code in show.get("watched_episodes", [])
-                        
-                        # Checkbox with callback architecture
-                        def on_check_change(sid=show['id'], ecode=e_code):
-                            k = f"chk_lib_{sid}_{ecode}"
-                            checked = st.session_state[k]
-                            for s in st.session_state.db["shows"]:
-                                if s["id"] == sid:
-                                    if checked and ecode not in s["watched_episodes"]: s["watched_episodes"].append(ecode)
-                                    elif not checked and ecode in s["watched_episodes"]: s["watched_episodes"].remove(ecode)
-                                    save_db()
-                                    break
-                        
-                        st.checkbox(
-                            f"**E{e_num}:** {ep.get('name', 'Episode')}",
-                            value=is_checked,
-                            key=f"chk_lib_{show['id']}_{e_code}",
-                            on_change=on_check_change
-                        )
-                        # Embedded per-episode details
-                        st.markdown(f"   *Air Date: {ep.get('air_date', 'N/A')} | ⭐️ Rating: {ep.get('vote_average', 0.0)}/10*")
-                        if ep.get("overview"):
-                            st.caption(f"   {ep['overview']}")
-                        st.write("")
-
-with tab_movies:
-    if not st.session_state.db["movies"]:
-        st.info("Your Movie library is currently empty.")
-    else:
-        for m in st.session_state.db["movies"]:
-            m_url = f"https://api.themoviedb.org/3/movie/{m['id']}?api_key={TMDB_KEY}"
-            details = requests.get(m_url).json()
-            
-            genres = ", ".join([g["name"] for g in details.get("genres", [])])
-            runtime = details.get("runtime", 0)
-            
-            with st.expander(f"🎬 {m['name']} " + ("✅ (Watched)" if m.get("watched") else "⏳ (Plan to Watch)")):
-                c1, c2 = st.columns([1, 2])
-                if details.get("poster_path"):
-                    c1.image(f"https://image.tmdb.org/t/p/w185{details['poster_path']}")
-                
-                with c2:
-                    st.markdown(f"### {m['name']}")
-                    st.markdown(f"**Genres:** {genres}")
-                    st.markdown(f"**Runtime:** {runtime} mins")
-                    st.markdown(f"**Tagline:** *{details.get('tagline', '')}*")
-                    st.write(details.get("overview", ""))
-                    
-                    def on_movie_change(mid=m['id']):
-                        k = f"chk_mov_lib_{mid}"
-                        checked = st.session_state[k]
-                        for mov in st.session_state.db["movies"]:
-                            if mov["id"] == mid:
-                                mov["watched"] = checked
-                                save_db()
-                                break
-                    
-                    st.checkbox("Mark Movie as Watched", value=m.get("watched", False), key=f"chk_mov_lib_{m['id']}", on_change=on_movie_change)
+    total_mins = total_tv_mins + total_mov_mins
+    
+    # Math to convert minutes to Months, Days, Hours
+    months = total_mins // 43800
+    days = (total_mins % 43800) // 1440
+    hours = (total_mins % 1440) // 60
+    
+    # Display Visual Dashboard
+    st.markdown("### Time Spent Watching")
+    col1, col2, col3 = st.columns(3)
+    col1.metric("Months", f"{months}")
+    col2.metric("Days", f"{days}")
+    col3.metric("Hours", f"{hours}")
+    
+    st.divider()
+    c1, c2 = st.columns(2)
+    c1.metric("Episodes Watched", total_episodes_watched)
+    c2.metric("Movies Watched", total_movies_watched)
