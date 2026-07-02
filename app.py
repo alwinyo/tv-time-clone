@@ -62,6 +62,21 @@ st.markdown("""
         border: 1px solid #444 !important;
     }
     
+    /* CLEAN EPISODE ACCORDION TOGGLE */
+    .ep-toggle-btn div.stButton > button {
+        background: transparent !important;
+        border: none !important;
+        color: #888 !important;
+        font-size: 0.9rem !important;
+        padding: 0 !important;
+        margin-top: 6px !important; /* Perfect vertical alignment with checkbox */
+        box-shadow: none !important;
+    }
+    .ep-toggle-btn div.stButton > button:active {
+        color: #FFC107 !important;
+        transform: none !important;
+    }
+    
     /* ========================================================
        THE MAGIC FIX: ONLY FORCE 3-COLUMN GRIDS ON MOBILE 
        ======================================================== */
@@ -255,16 +270,20 @@ def manage_show_dialog(show_id, show_name, details):
                             st.session_state.db["history"] = [h for h in st.session_state.db.get("history", []) if not (h["type"]=="tv" and h["id"]==sid and h["detail"]==ecode)]
                         save_db(); break
             
-            ep_col1, ep_col2 = st.columns([5, 1])
+            # --- CLEAN INLINE ACCORDION LOGIC ---
+            ep_col1, ep_col2 = st.columns([6, 1])
             with ep_col1:
                 st.checkbox(f"**E{ep['episode_number']}.** {ep.get('name', 'Episode')}", value=is_watched, key=f"chk_dlg_{show_id}_{e_code}", on_change=on_check)
             with ep_col2:
-                # Toggle function for inline viewing to avoid nested dialogs
+                # Apply custom CSS to make it a borderless chevron
+                st.markdown('<div class="ep-toggle-btn">', unsafe_allow_html=True)
                 def toggle_info(k=info_key):
                     st.session_state[k] = not st.session_state.get(k, False)
-                st.button("ℹ️", key=f"btn_i_{show_id}_{e_code}", on_click=toggle_info)
+                is_open = st.session_state.get(info_key, False)
+                st.button("▲" if is_open else "▼", key=f"btn_i_{show_id}_{e_code}", on_click=toggle_info)
+                st.markdown('</div>', unsafe_allow_html=True)
 
-            # If toggled ON, smoothly display the episode details inline right below the checkbox
+            # Instantly opens a sleek inline card below the episode if the chevron is clicked
             if st.session_state.get(info_key, False):
                 with st.container(border=True):
                     if ep.get("still_path"): 
