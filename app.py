@@ -8,23 +8,19 @@ st.set_page_config(page_title="My TV Time", layout="centered", initial_sidebar_s
 # --- CUSTOM CSS: NATIVE APP AESTHETIC ---
 st.markdown("""
 <style>
-    /* Hide Streamlit Header & Footer */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
     header {visibility: hidden;}
     
-    /* Remove default top padding */
     .block-container {
         padding-top: 2rem !important;
         padding-bottom: 5rem !important;
     }
     
-    /* Round all images for modern card look */
     img {
         border-radius: 12px;
     }
     
-    /* Style buttons to look like native mobile buttons (pill shape) */
     div.stButton > button {
         border-radius: 20px;
         font-weight: 600;
@@ -35,7 +31,6 @@ st.markdown("""
         transform: scale(0.95);
     }
     
-    /* Make the tab bar scrollable and visually balanced on mobile */
     button[data-baseweb="tab"] {
         font-size: 14px;
         padding-left: 10px;
@@ -101,7 +96,7 @@ def show_cast_grid(cast_list, limit=6):
                         st.image(f"https://image.tmdb.org/t/p/w185{actor['profile_path']}", use_container_width=True)
                     else:
                         st.info("No Photo") 
-                    st.caption(f"**{actor['name']}**  \n*{actor.get('character', '')}*")
+                    st.caption(f"**{actor['name']}** \n*{actor.get('character', '')}*")
 
 # --- DIALOG / POPUP FUNCTIONS ---
 @st.dialog("Episode Details")
@@ -136,15 +131,53 @@ def show_episode_details(show_id, show_name, ep_code, ep_data, is_watched):
                 break
         st.rerun()
 
-@st.dialog("Show Info")
-def show_series_details(show_id, show_name, details):
-    if details.get("poster_path"):
-        st.image(f"https://image.tmdb.org/t/p/w342{details['poster_path']}", use_container_width=True)
+@st.dialog("Manage Show")
+def manage_show_dialog(show_id, show_name, details):
+    if details.get("backdrop_path"):
+        st.image(f"https://image.tmdb.org/t/p/w500{details['backdrop_path']}", use_container_width=True)
+    
     st.markdown(f"### {show_name}")
     genres = ", ".join([g["name"] for g in details.get("genres", [])])
     st.caption(f"**Status:** {details.get('status')} • **Genres:** {genres} • ⭐ {details.get('vote_average', 0.0)}/10")
     st.write(details.get("overview", "No overview available."))
     
+    providers = fetch_api(f"https://api.themoviedb.org/3/tv/{show_id}/watch/providers?api_key={TMDB_KEY}")
+    if "AE" in providers.get("results", {}):
+        streams = providers["results"]["AE"].get("flatrate", [])
+        if streams:
+            p_names = ", ".join([p["provider_name"] for p in streams])
+            st.info(f"📱 **Streaming locally:** {p_names}")
+            
+    st.divider()
+    st.markdown("#### Episodes")
+    
+    s_nums = [s["season_number"] for s in details.get("seasons", []) if s["season_number"] > 0]
+    if s_nums:
+        sel_s = st.selectbox("Season", s_nums, key=f"dlg_s_{show_id}")
+        s_data = fetch_api(f"https://api.themoviedb.org/3/tv/{show_id}/season/{sel_s}?api_key={TMDB_KEY}")
+        
+        current_show = next((s for s in st.session_state.db["shows"] if s["id"] == show_id), None)
+        watched_list = current_show.get("watched_episodes", []) if current_show else []
+        
+        for ep in s_data.get("episodes", []):
+            e_code = f"S{sel_s}E{ep['episode_number']}"
+            is_watched = e_code in watched_list
+            
+            def on_check(sid=show_id, ecode=e_code):
+                chkd = st.session_state[f"chk_dlg_{sid}_{ecode}"]
+                for s in st.session_state.db["shows"]:
+                    if s["id"] == sid:
+                        if chkd and ecode not in s["watched_episodes"]: s["watched_episodes"].append(ecode)
+                        elif not chkd and ecode in s["watched_episodes"]: s["watched_episodes"].remove(ecode)
+                        save_db(); break
+            
+            st.checkbox(
+                f"E{ep['episode_number']}. {ep.get('name', 'Episode')}",
+                value=is_watched,
+                key=f"chk_dlg_{show_id}_{e_code}",
+                on_change=on_check
+            )
+
     st.divider()
     st.markdown("#### Top Cast")
     credits = fetch_api(f"https://api.themoviedb.org/3/tv/{show_id}/credits?api_key={TMDB_KEY}")
@@ -154,6 +187,7 @@ def show_series_details(show_id, show_name, details):
 def show_movie_details(m_id, m_name, details, is_watched):
     if details.get("backdrop_path"):
         st.image(f"https://image.tmdb.org/t/p/w500{details['backdrop_path']}", use_container_width=True)
+    
     st.markdown(f"### {m_name}")
     genres = ", ".join([g["name"] for g in details.get("genres", [])])
     st.caption(f"**Released:** {details.get('release_date', 'N/A')} • **Runtime:** {details.get('runtime', 0)} mins • {genres}")
@@ -173,7 +207,6 @@ def show_movie_details(m_id, m_name, details, is_watched):
                 save_db()
                 break
         st.rerun()
-
 
 # --- APP NAVIGATION BAR ---
 t_next, t_soon, t_search, t_tv, t_movies, t_profile = st.tabs(["🔥 Next", "📅 Soon", "🔍 Search", "📺 TV", "🎬 Movies", "👤 Stats"])
@@ -310,80 +343,64 @@ with t_search:
                                 st.button("✔️ Added", key=f"dsbl_mov_{item_id}", disabled=True, use_container_width=True)
 
 # ==========================================
-# TABS 4 & 5: TV & MOVIE LIBRARY
+# TAB 4: TV LIBRARY (CARD LAYOUT)
 # ==========================================
 with t_tv:
     st.markdown("## My TV Collection")
+    
+    if not st.session_state.db["shows"]:
+        st.info("Your TV library is empty.")
+    
     for show in st.session_state.db["shows"]:
         details = fetch_api(f"https://api.themoviedb.org/3/tv/{show['id']}?api_key={TMDB_KEY}")
-        t_eps = details.get("number_of_episodes", 0)
+        t_eps = details.get("number_of_episodes", 1) 
         w_eps = len(show.get("watched_episodes", []))
         
-        with st.expander(f"📺 {show['name']} ({w_eps}/{t_eps})"):
-            if details.get("backdrop_path"):
-                st.image(f"https://image.tmdb.org/t/p/w500{details['backdrop_path']}", use_container_width=True)
-            
-            st.progress(min(w_eps / t_eps, 1.0) if t_eps > 0 else 0.0)
-            
-            if st.button("ℹ️ About this Show", key=f"s_info_{show['id']}", use_container_width=True):
-                show_series_details(show['id'], show['name'], details)
-            
-            providers = fetch_api(f"https://api.themoviedb.org/3/tv/{show['id']}/watch/providers?api_key={TMDB_KEY}")
-            if "AE" in providers.get("results", {}):
-                streams = providers["results"]["AE"].get("flatrate", [])
-                if streams:
-                    p_names = ", ".join([p["provider_name"] for p in streams])
-                    st.caption(f"📱 **Streaming locally:** {p_names}")
-            
-            s_nums = [s["season_number"] for s in details.get("seasons", []) if s["season_number"] > 0]
-            if s_nums:
-                sel_s = st.selectbox("Season", s_nums, key=f"lib_s_{show['id']}")
-                s_data = fetch_api(f"https://api.themoviedb.org/3/tv/{show['id']}/season/{sel_s}?api_key={TMDB_KEY}")
+        with st.container(border=True):
+            c1, c2 = st.columns([1, 2])
+            with c1:
+                if details.get("poster_path"):
+                    st.image(f"https://image.tmdb.org/t/p/w342{details['poster_path']}", use_container_width=True)
+            with c2:
+                st.markdown(f"### {show['name']}")
+                st.caption(details.get("overview", "")[:90] + "...")
                 
-                for ep in s_data.get("episodes", []):
-                    e_code = f"S{sel_s}E{ep['episode_number']}"
-                    is_watched = e_code in show.get("watched_episodes", [])
-                    
-                    col1, col2 = st.columns([4, 1])
-                    with col1:
-                        def on_check(sid=show['id'], ecode=e_code):
-                            chkd = st.session_state[f"chk_{sid}_{ecode}"]
-                            for s in st.session_state.db["shows"]:
-                                if s["id"] == sid:
-                                    if chkd and ecode not in s["watched_episodes"]: s["watched_episodes"].append(ecode)
-                                    elif not chkd and ecode in s["watched_episodes"]: s["watched_episodes"].remove(ecode)
-                                    save_db(); break
-                        
-                        st.checkbox(
-                            f"E{ep['episode_number']}. {ep.get('name', 'Episode')}",
-                            value=is_watched,
-                            key=f"chk_{show['id']}_{e_code}",
-                            on_change=on_check
-                        )
-                    with col2:
-                        if st.button("ℹ️", key=f"info_{show['id']}_{e_code}"):
-                            show_episode_details(show['id'], show['name'], e_code, ep, is_watched)
+                st.progress(min(w_eps / t_eps, 1.0) if t_eps > 0 else 0.0)
+                st.caption(f"{w_eps} of {t_eps} episodes watched")
+                
+                if st.button("Manage Show", key=f"s_mgr_{show['id']}", use_container_width=True):
+                    manage_show_dialog(show['id'], show['name'], details)
 
+# ==========================================
+# TAB 5: MOVIE LIBRARY (CARD LAYOUT)
+# ==========================================
 with t_movies:
     st.markdown("## My Movies")
+    
+    if not st.session_state.db["movies"]:
+        st.info("Your Movie library is empty.")
+        
     for m in st.session_state.db["movies"]:
         details = fetch_api(f"https://api.themoviedb.org/3/movie/{m['id']}?api_key={TMDB_KEY}")
         is_watched = m.get("watched", False)
         
-        with st.expander(f"🎬 {m['name']}"):
-            if details.get("backdrop_path"):
-                st.image(f"https://image.tmdb.org/t/p/w500{details['backdrop_path']}", use_container_width=True)
-            
-            c1, c2 = st.columns(2)
+        with st.container(border=True):
+            c1, c2 = st.columns([1, 2])
             with c1:
-                if st.button("ℹ️ Movie Info", key=f"m_info_{m['id']}", use_container_width=True):
-                    show_movie_details(m['id'], m['name'], details, is_watched)
+                if details.get("poster_path"):
+                    st.image(f"https://image.tmdb.org/t/p/w342{details['poster_path']}", use_container_width=True)
             with c2:
+                st.markdown(f"### {m['name']}")
+                st.caption(details.get("overview", "")[:90] + "...")
+                
                 def on_mov_check(mid=m['id']):
                     st.session_state.db["movies"] = [mov | {"watched": st.session_state[f"mov_{mid}"]} if mov["id"] == mid else mov for mov in st.session_state.db["movies"]]
                     save_db()
                 
                 st.checkbox("✅ Watched", value=is_watched, key=f"mov_{m['id']}", on_change=on_mov_check)
+                
+                if st.button("Movie Info", key=f"m_mgr_{m['id']}", use_container_width=True):
+                    show_movie_details(m['id'], m['name'], details, is_watched)
 
 # ==========================================
 # TAB 6: PROFILE STATS
