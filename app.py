@@ -256,13 +256,13 @@ t_next, t_soon, t_search, t_tv, t_movies, t_profile = st.tabs(["ðŸ”¥ Next", "ðŸ“
 # ==========================================
 with t_next:
     st.markdown("### Up Next to Watch")
-    next_sort = st.selectbox("Sort by:", ["Release Date", "Alphabetical"], key="sort_next")
+    next_sort = st.selectbox("Sort by:", ["Release Date", "Alphabetical", "Recently Added"], key="sort_next")
     up_next_items = []
     
     for show in st.session_state.db["shows"]:
         w_eps = len(show.get("watched_episodes", []))
         t_eps = show.get("total_episodes", 1)
-        if w_eps >= t_eps: continue # Skip fully watched shows to save API calls
+        if w_eps >= t_eps and t_eps > 0: continue
         
         details = fetch_api(f"https://api.themoviedb.org/3/tv/{show['id']}?api_key={TMDB_KEY}")
         found_next = False
@@ -314,7 +314,7 @@ with t_soon:
     for show in st.session_state.db["shows"]:
         w_eps = len(show.get("watched_episodes", []))
         t_eps = show.get("total_episodes", 1)
-        if w_eps >= t_eps: continue
+        if w_eps >= t_eps and t_eps > 0: continue
         
         details = fetch_api(f"https://api.themoviedb.org/3/tv/{show['id']}?api_key={TMDB_KEY}")
         found_next = False
@@ -525,11 +525,11 @@ with t_profile:
     for show in st.session_state.db["shows"]:
         w_eps = len(show.get("watched_episodes", []))
         total_episodes_watched += w_eps
-        total_tv_mins += (w_eps * 45) # Average estimation
+        total_tv_mins += (w_eps * 45) 
         
     for m in st.session_state.db["movies"]:
         if m.get("watched", False):
-            total_mov_mins += m.get("runtime", 120) # Average estimation
+            total_mov_mins += m.get("runtime", 120) 
             total_movies_watched += 1
             
     total_mins = total_tv_mins + total_mov_mins
@@ -673,14 +673,20 @@ with t_profile:
                         m_data = json.load(m_file)
                         for idx, m in enumerate(m_data):
                             prog.progress((idx + 1) / len(m_data))
+                            time.sleep(0.05)
                             
                             imdb_id = m.get("id", {}).get("imdb")
+                            raw_title = m.get("title") or ""
                             res = {}
+                            
+                            if not imdb_id and not raw_title:
+                                continue # Safe guard against blank data
+                                
                             if imdb_id:
                                 res = fetch_robust(f"https://api.themoviedb.org/3/find/{imdb_id}?api_key={TMDB_KEY}&external_source=imdb_id")
                                 
-                            if not res.get("movie_results"):
-                                title_query = m.get("title", "").replace(" ", "+")
+                            if not res.get("movie_results") and raw_title:
+                                title_query = raw_title.replace(" ", "+")
                                 res = fetch_robust(f"https://api.themoviedb.org/3/search/movie?api_key={TMDB_KEY}&query={title_query}&year={m.get('year', '')}")
                                 if res.get("results"): res["movie_results"] = [res["results"][0]]
                                 
@@ -710,14 +716,20 @@ with t_profile:
                         t_data = json.load(t_file)
                         for idx, s in enumerate(t_data):
                             prog.progress((idx + 1) / len(t_data))
+                            time.sleep(0.05)
                             
                             tvdb_id = s.get("id", {}).get("tvdb")
+                            raw_title = s.get("title") or ""
                             res = {}
+                            
+                            if not tvdb_id and not raw_title:
+                                continue # Safe guard against blank data
+                                
                             if tvdb_id:
                                 res = fetch_robust(f"https://api.themoviedb.org/3/find/{tvdb_id}?api_key={TMDB_KEY}&external_source=tvdb_id")
                             
-                            if not res.get("tv_results"):
-                                title_query = re.sub(r'\(\d{4}\)', '', s.get("title", "")).strip().replace(" ", "+")
+                            if not res.get("tv_results") and raw_title:
+                                title_query = re.sub(r'\(\d{4}\)', '', raw_title).strip().replace(" ", "+")
                                 res = fetch_robust(f"https://api.themoviedb.org/3/search/tv?api_key={TMDB_KEY}&query={title_query}")
                                 if res.get("results"): res["tv_results"] = [res["results"][0]]
                                 
