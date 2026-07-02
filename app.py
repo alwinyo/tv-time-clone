@@ -37,24 +37,29 @@ st.markdown("""
         padding: 0.5rem !important;
     }
     
-    /* Pill Buttons (Restored to normal sizes) */
+    /* Premium Pill Buttons */
     div.stButton > button {
         border-radius: 20px;
         font-weight: 600;
-        border: 1px solid #555;
-        background-color: transparent;
         transition: all 0.2s;
+        padding: 2px 5px !important;
+        font-size: 0.75rem !important;
     }
     div.stButton > button:active {
         transform: scale(0.95);
-        border-color: #FFC107;
-        color: #FFC107;
     }
     
-    /* Style the toggle radios to look like native header tabs */
-    div.row-widget.stRadio > div {
-        justify-content: space-around;
-        margin-bottom: 15px;
+    /* Gold Theme for Active (Primary) Tabs */
+    button[kind="primary"] {
+        background-color: #FFC107 !important;
+        color: #000 !important;
+        border: none !important;
+    }
+    /* Sleek Dark Theme for Inactive (Secondary) Tabs */
+    button[kind="secondary"] {
+        background-color: #222 !important;
+        color: #ccc !important;
+        border: 1px solid #444 !important;
     }
     
     /* ========================================================
@@ -64,7 +69,7 @@ st.markdown("""
         div[data-testid="stHorizontalBlock"]:has(> div[data-testid="column"]:nth-child(3):last-child) {
             flex-direction: row !important;
             flex-wrap: nowrap !important;
-            gap: 2px !important; 
+            gap: 4px !important; 
         }
         div[data-testid="stHorizontalBlock"]:has(> div[data-testid="column"]:nth-child(3):last-child) > div[data-testid="column"] {
             width: 33.33% !important;
@@ -396,41 +401,56 @@ with t_search:
                                 st.button("✔️ Added", key=f"dsbl_mov_{item_id}", disabled=True, use_container_width=True)
 
 # ==========================================
-# TAB 4: TV LIBRARY (DYNAMIC WATCHLIST VS UPCOMING FILTER)
+# TAB 4: TV LIBRARY (NATIVE TAB BUTTONS)
 # ==========================================
 with t_tv:
     st.markdown("### My TV Collection")
     
-    # Functional native toggle for the TV Tab
-    tv_view = st.radio("TV View", ["WATCH LIST", "UPCOMING"], horizontal=True, label_visibility="collapsed")
+    # Initialize session state for TV tabs
+    if "tv_tab" not in st.session_state:
+        st.session_state.tv_tab = "WATCHLIST"
+        
+    # Render Custom Tab Buttons (Forced 3-column via CSS)
+    c1, c2, c3 = st.columns(3)
+    if c1.button("Watchlist", type="primary" if st.session_state.tv_tab == "WATCHLIST" else "secondary", use_container_width=True, key="tv_wl"):
+        st.session_state.tv_tab = "WATCHLIST"; st.rerun()
+    if c2.button("Upcoming", type="primary" if st.session_state.tv_tab == "UPCOMING" else "secondary", use_container_width=True, key="tv_up"):
+        st.session_state.tv_tab = "UPCOMING"; st.rerun()
+    if c3.button("Watched", type="primary" if st.session_state.tv_tab == "WATCHED" else "secondary", use_container_width=True, key="tv_wd"):
+        st.session_state.tv_tab = "WATCHED"; st.rerun()
+        
+    st.divider()
     
     shows = st.session_state.db.get("shows", [])
     if not shows:
         st.info("Your TV library is empty.")
     else:
-        # Pre-sort active vs unreleased shows based on first_air_date
         display_shows = []
         for show in shows:
             details = fetch_api(f"https://api.themoviedb.org/3/tv/{show['id']}?api_key={TMDB_KEY}")
             air_date = details.get("first_air_date", "")
             
-            is_upcoming = bool(air_date and air_date > TODAY)
+            t_eps = details.get("number_of_episodes", 1) 
+            w_eps = len(show.get("watched_episodes", []))
             
-            if tv_view == "WATCH LIST" and not is_upcoming:
-                display_shows.append((show, details))
-            elif tv_view == "UPCOMING" and is_upcoming:
-                display_shows.append((show, details))
+            is_upcoming = bool(air_date and air_date > TODAY)
+            is_completed = (w_eps >= t_eps and t_eps > 0)
+            
+            if st.session_state.tv_tab == "WATCHED" and is_completed:
+                display_shows.append((show, details, t_eps, w_eps))
+            elif st.session_state.tv_tab == "UPCOMING" and is_upcoming and not is_completed:
+                display_shows.append((show, details, t_eps, w_eps))
+            elif st.session_state.tv_tab == "WATCHLIST" and not is_upcoming and not is_completed:
+                display_shows.append((show, details, t_eps, w_eps))
                 
         if not display_shows:
-            st.info(f"Your TV {tv_view.lower()} is currently empty.")
+            st.info(f"Your {st.session_state.tv_tab.lower()} is currently empty.")
         else:
             for i in range(0, len(display_shows), 3):
                 cols = st.columns(3)
                 for j in range(3):
                     if i + j < len(display_shows):
-                        show, details = display_shows[i + j]
-                        t_eps = details.get("number_of_episodes", 1) 
-                        w_eps = len(show.get("watched_episodes", []))
+                        show, details, t_eps, w_eps = display_shows[i + j]
                         
                         with cols[j]:
                             with st.container(border=True):
@@ -444,7 +464,7 @@ with t_tv:
                                     manage_show_dialog(show['id'], show['name'], details)
 
 # ==========================================
-# TAB 5: MOVIE LIBRARY (EDGE-TO-EDGE POSTER WALL)
+# TAB 5: MOVIE LIBRARY (NATIVE TAB BUTTONS)
 # ==========================================
 with t_movies:
     st.markdown("""
@@ -467,7 +487,22 @@ with t_movies:
         </style>
     """, unsafe_allow_html=True)
     
-    movie_view = st.radio("Movie View", ["WATCH LIST", "UPCOMING"], horizontal=True, label_visibility="collapsed")
+    st.markdown("### My Movies")
+    
+    # Initialize session state for Movie tabs
+    if "mov_tab" not in st.session_state:
+        st.session_state.mov_tab = "WATCHLIST"
+        
+    # Render Custom Tab Buttons (Forced 3-column via CSS)
+    c1, c2, c3 = st.columns(3)
+    if c1.button("Watchlist", type="primary" if st.session_state.mov_tab == "WATCHLIST" else "secondary", use_container_width=True, key="m_wl"):
+        st.session_state.mov_tab = "WATCHLIST"; st.rerun()
+    if c2.button("Upcoming", type="primary" if st.session_state.mov_tab == "UPCOMING" else "secondary", use_container_width=True, key="m_up"):
+        st.session_state.mov_tab = "UPCOMING"; st.rerun()
+    if c3.button("Watched", type="primary" if st.session_state.mov_tab == "WATCHED" else "secondary", use_container_width=True, key="m_wd"):
+        st.session_state.mov_tab = "WATCHED"; st.rerun()
+        
+    st.divider()
     
     movies = st.session_state.db.get("movies", [])
     if not movies:
@@ -477,23 +512,26 @@ with t_movies:
         for m in movies:
             details = fetch_api(f"https://api.themoviedb.org/3/movie/{m['id']}?api_key={TMDB_KEY}")
             r_date = details.get("release_date", "")
+            is_watched = m.get("watched", False)
             
             is_upcoming = bool(r_date and r_date > TODAY)
             
-            if movie_view == "WATCH LIST" and not is_upcoming:
-                display_movies.append((m, details))
-            elif movie_view == "UPCOMING" and is_upcoming:
-                display_movies.append((m, details))
+            # Prioritize 'Watched' first, so early-viewings don't get stuck in Upcoming
+            if st.session_state.mov_tab == "WATCHED" and is_watched:
+                display_movies.append((m, details, is_watched))
+            elif st.session_state.mov_tab == "UPCOMING" and is_upcoming and not is_watched:
+                display_movies.append((m, details, is_watched))
+            elif st.session_state.mov_tab == "WATCHLIST" and not is_upcoming and not is_watched:
+                display_movies.append((m, details, is_watched))
                 
         if not display_movies:
-            st.info(f"Your Movie {movie_view.lower()} is currently empty.")
+            st.info(f"Your {st.session_state.mov_tab.lower()} is currently empty.")
         else:
             for i in range(0, len(display_movies), 3):
                 cols = st.columns(3)
                 for j in range(3):
                     if i + j < len(display_movies):
-                        m, details = display_movies[i + j]
-                        is_watched = m.get("watched", False)
+                        m, details, is_watched = display_movies[i + j]
                         
                         st.markdown('<div class="movie-poster-sharp">', unsafe_allow_html=True)
                         if details.get("poster_path"):
