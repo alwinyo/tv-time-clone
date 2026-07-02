@@ -634,7 +634,7 @@ with t_profile:
                             st.write(details.get("overview", "Synced successfully from export ledger."))
 
     # ==========================================
-    # DATA IMPORT UTILITY PANEL (DEBUG VERSION)
+    # DATA IMPORT UTILITY PANEL (BATCHED VERSION)
     # ==========================================
     st.divider()
     with st.expander("📥 TV Time Data Migrator", expanded=False):
@@ -642,44 +642,41 @@ with t_profile:
         m_file = st.file_uploader("Upload tvtime-movies JSON", type=["json"])
         s_file = st.file_uploader("Upload tvtime-series JSON", type=["json"])
         
-        # A status container to see what's happening
         status_log = st.empty()
         
         if m_file and s_file:
             if st.button("🚀 WIPE DATABASE AND IMPORT NOW", type="primary", use_container_width=True):
                 try:
-                    status_log.info("Reading files...")
-                    imported_db = {"shows": [], "movies": [], "history": []}
+                    status_log.info("Starting processing...")
+                    
+                    # Process in a single pass to build the structure
                     movies_raw = json.load(m_file)
                     series_raw = json.load(s_file)
                     
-                    status_log.info(f"Processing {len(movies_raw)} movies and {len(series_raw)} series...")
-                    
+                    final_db = {"shows": [], "movies": [], "history": []}
                     fallback_date = (datetime.now() - timedelta(days=1)).strftime('%Y-%m-%d 12:00:00')
                     
-                    # 1. Process Movie Array
+                    # 1. Process Movies
                     for movie in movies_raw:
                         imdb = movie.get("id", {}).get("imdb")
                         if imdb:
                             res = fetch_api(f"https://api.themoviedb.org/3/find/{imdb}?api_key={TMDB_KEY}&external_source=imdb_id")
-                            res_movies = res.get("movie_results", [])
-                            if res_movies:
-                                tid = res_movies[0]["id"]
+                            if res.get("movie_results"):
+                                tid = res["movie_results"][0]["id"]
                                 title = movie.get("title", "Movie")
                                 watched = movie.get("is_watched", False)
-                                imported_db["movies"].append({"id": tid, "name": title, "watched": watched})
+                                final_db["movies"].append({"id": tid, "name": title, "watched": watched})
                                 if watched:
                                     w_at = movie.get("watched_at", fallback_date).replace("T", " ").replace("Z", "")[:19]
-                                    imported_db["history"].append({"type": "movie", "id": tid, "title": title, "detail": "", "watched_at": w_at})
-                                    
-                    # 2. Process Series Array
+                                    final_db["history"].append({"type": "movie", "id": tid, "title": title, "detail": "", "watched_at": w_at})
+                    
+                    # 2. Process Series
                     for show in series_raw:
                         tvdb = show.get("id", {}).get("tvdb")
                         if tvdb:
                             res = fetch_api(f"https://api.themoviedb.org/3/find/{tvdb}?api_key={TMDB_KEY}&external_source=tvdb_id")
-                            res_tv = res.get("tv_results", [])
-                            if res_tv:
-                                tid = res_tv[0]["id"]
+                            if res.get("tv_results"):
+                                tid = res["tv_results"][0]["id"]
                                 w_eps = []
                                 for season in show.get("seasons", []):
                                     s_num = season.get("number", 0)
@@ -688,21 +685,29 @@ with t_profile:
                                         if ep.get("is_watched"):
                                             ecode = f"S{s_num}E{ep.get('number')}"
                                             w_eps.append(ecode)
-                                            w_at = ep.get("watched_at")
-                                            if not w_at: w_at = fallback_date
-                                            imported_db["history"].append({"type": "tv", "id": tid, "title": show.get("title", "Show"), "detail": ecode, "watched_at": w_at[:19]})
-                                imported_db["shows"].append({"id": tid, "name": show.get("title"), "watched_episodes": w_eps})
+                                            w_at = ep.get("watched_at") or fallback_date
+                                            final_db["history"].append({"type": "tv", "id": tid, "title": show.get("title", "Show"), "detail": ecode, "watched_at": w_at[:19]})
+                                final_db["shows"].append({"id": tid, "name": show.get("title"), "watched_episodes": w_eps})
+
+                    # 3. BATCHED UPLOAD (CHUNKED)
+                    status_log.info("Data processed! Syncing to Cloud...")
                     
-                    status_log.info("Uploading to Cloud...")
-                    response = requests.put(BIN_URL, json=imported_db, headers=headers)
+                    # Split history into chunks to avoid 413 error
+                    chunk_size = 50 
+                    hist_data = final_db.pop("history")
                     
-                    if response.status_code == 200:
-                        st.session_state.db = imported_db
-                        st.success("✅ Success! Database synced.")
-                        st.balloons()
-                    else:
-                        st.error(f"Upload failed: {response.status_code} - {response.text}")
+                    # Upload base structure first
+                    requests.put(BIN_URL, json=final_db, headers=headers)
+                    
+                    # Upload history in chunks
+                    for i in range(0, len(hist_data), chunk_size):
+                        chunk = hist_data[i:i+chunk_size]
+                        # This patch adds to the existing history array
+                        requests.patch(f"{BIN_URL}/record/history", json=chunk, headers={**headers, "Content-Type": "application/json"})
+                    
+                    st.session_state.db = {**final_db, "history": hist_data}
+                    st.success("✅ Success! Your data has been synced in batches.")
+                    st.rerun()
                         
                 except Exception as e:
-                    st.error(f"An error occurred: {e}")
-                    st.write(e)
+                    st.error(f"Migration error: {e}")
