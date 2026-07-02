@@ -78,7 +78,13 @@ TMDB_KEY = st.secrets["TMDB_KEY"]
 BIN_KEY = st.secrets["JSONBIN_KEY"]
 BIN_ID = st.secrets["JSONBIN_ID"]
 BIN_URL = f"https://api.jsonbin.io/v3/b/{BIN_ID}"
-headers = {"X-Master-Key": BIN_KEY, "Content-Type": "application/json"}
+
+# THE MAGIC FIX: Turning off versioning to prevent 403 lockouts
+headers = {
+    "X-Master-Key": BIN_KEY, 
+    "Content-Type": "application/json",
+    "X-Bin-Versioning": "false" 
+}
 TODAY = datetime.today().strftime('%Y-%m-%d')
 
 @st.cache_data(ttl=3600)
@@ -580,7 +586,7 @@ with t_tv:
     if c3.button("Watched", type="primary" if st.session_state.tv_tab == "WATCHED" else "secondary", use_container_width=True, key="tv_wd"):
         st.session_state.tv_tab = "WATCHED"; st.rerun()
         
-    tv_sort = st.selectbox("Sort Library by:", ["Release Date", "Recently Added", "Alphabetical"], key="sort_tv")
+    tv_sort = st.selectbox("Sort Library by:", ["Release Date", "Recently Added", "Alphabetical"], key="sort_tv_lib")
     st.divider()
     
     shows = st.session_state.db.get("shows", [])
@@ -633,7 +639,7 @@ with t_movies:
     if c3.button("Watched", type="primary" if st.session_state.mov_tab == "WATCHED" else "secondary", use_container_width=True, key="m_wd"):
         st.session_state.mov_tab = "WATCHED"; st.rerun()
         
-    mov_sort = st.selectbox("Sort Library by:", ["Release Date", "Recently Added", "Alphabetical"], key="sort_mov")
+    mov_sort = st.selectbox("Sort Library by:", ["Release Date", "Recently Added", "Alphabetical"], key="sort_mov_lib")
     st.divider()
     
     movies = st.session_state.db.get("movies", [])
@@ -840,109 +846,113 @@ with t_profile:
                     "history": [] if wipe_db else st.session_state.db.get("history", [])
                 }
                 
+                # Process Movies
                 if m_file:
                     stat_txt.text("Processing Movies... fetching data safely.")
                     try:
                         m_data = json.load(m_file)
                         for idx, m in enumerate(m_data):
                             prog.progress((idx + 1) / len(m_data))
-                            
-                            raw_title = m.get("title") or ""
-                            imdb_id = m.get("id", {}).get("imdb") if m.get("id") else None
-                            if not imdb_id and not raw_title: continue 
-                            
-                            res = fetch_robust(f"https://api.themoviedb.org/3/find/{imdb_id}?api_key={TMDB_KEY}&external_source=imdb_id") if imdb_id else {}
+                            try:
+                                raw_title = m.get("title") or ""
+                                imdb_id = m.get("id", {}).get("imdb") if m.get("id") else None
+                                if not imdb_id and not raw_title: continue 
                                 
-                            if not res.get("movie_results") and raw_title:
-                                title_query = raw_title.replace(" ", "+")
-                                res = fetch_robust(f"https://api.themoviedb.org/3/search/movie?api_key={TMDB_KEY}&query={title_query}&year={m.get('year', '')}")
-                                if res.get("results"): res["movie_results"] = [res["results"][0]]
-                                
-                            if res.get("movie_results"):
-                                match = res["movie_results"][0]
-                                tmdb_id = match["id"]
-                                title = match.get("title", raw_title)
-                                poster = match.get("poster_path", "")
-                                release_date = match.get("release_date", "")
-                                is_watched = m.get("is_watched", False)
-                                
-                                if not any(movie["id"] == tmdb_id for movie in new_db["movies"]):
-                                    new_db["movies"].append({
-                                        "id": tmdb_id, "name": title, "watched": is_watched,
-                                        "poster_path": poster if poster else "",
-                                        "release_date": release_date if release_date else "",
-                                        "runtime": 120
-                                    })
-                                    if is_watched:
-                                        w_dt_raw = m.get("watched_at")
-                                        w_dt = parse_tvtime_date(w_dt_raw) if w_dt_raw else datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                                        m_key = datetime.strptime(w_dt, "%Y-%m-%d %H:%M:%S").strftime("%Y-%m")
-                                        
-                                        new_db["analytics"].setdefault(m_key, {"tv": 0, "movie": 0})
-                                        new_db["analytics"][m_key]["movie"] += 1
-                                        new_db["history"].append({"t": "m", "i": tmdb_id, "d": w_dt})
+                                res = fetch_robust(f"https://api.themoviedb.org/3/find/{imdb_id}?api_key={TMDB_KEY}&external_source=imdb_id") if imdb_id else {}
+                                    
+                                if not res.get("movie_results") and raw_title:
+                                    title_query = raw_title.replace(" ", "+")
+                                    res = fetch_robust(f"https://api.themoviedb.org/3/search/movie?api_key={TMDB_KEY}&query={title_query}&year={m.get('year', '')}")
+                                    if res.get("results"): res["movie_results"] = [res["results"][0]]
+                                    
+                                if res.get("movie_results"):
+                                    match = res["movie_results"][0]
+                                    tmdb_id = match["id"]
+                                    title = match.get("title", raw_title)
+                                    poster = match.get("poster_path", "")
+                                    release_date = match.get("release_date", "")
+                                    is_watched = m.get("is_watched", False)
+                                    
+                                    if not any(movie["id"] == tmdb_id for movie in new_db["movies"]):
+                                        new_db["movies"].append({
+                                            "id": tmdb_id, "name": title, "watched": is_watched,
+                                            "poster_path": poster if poster else "",
+                                            "release_date": release_date if release_date else "",
+                                            "runtime": 120
+                                        })
+                                        if is_watched:
+                                            w_dt_raw = m.get("watched_at")
+                                            w_dt = parse_tvtime_date(w_dt_raw) if w_dt_raw else datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                                            m_key = datetime.strptime(w_dt, "%Y-%m-%d %H:%M:%S").strftime("%Y-%m")
+                                            
+                                            new_db["analytics"].setdefault(m_key, {"tv": 0, "movie": 0})
+                                            new_db["analytics"][m_key]["movie"] += 1
+                                            new_db["history"].append({"t": "m", "i": tmdb_id, "d": w_dt})
+                            except Exception as item_error: continue 
                     except Exception as e: st.error(f"Error processing movies: {e}")
                 
                 if m_file and t_file: prog.progress(0)
                 
+                # Process Shows
                 if t_file:
                     stat_txt.text("Processing Series... fetching data safely.")
                     try:
                         t_data = json.load(t_file)
                         for idx, s in enumerate(t_data):
                             prog.progress((idx + 1) / len(t_data))
-                            
-                            raw_title = s.get("title") or ""
-                            tvdb_id = s.get("id", {}).get("tvdb") if s.get("id") else None
-                            if not tvdb_id and not raw_title: continue 
+                            try:
+                                raw_title = s.get("title") or ""
+                                tvdb_id = s.get("id", {}).get("tvdb") if s.get("id") else None
+                                if not tvdb_id and not raw_title: continue 
+                                    
+                                res = fetch_robust(f"https://api.themoviedb.org/3/find/{tvdb_id}?api_key={TMDB_KEY}&external_source=tvdb_id") if tvdb_id else {}
                                 
-                            res = fetch_robust(f"https://api.themoviedb.org/3/find/{tvdb_id}?api_key={TMDB_KEY}&external_source=tvdb_id") if tvdb_id else {}
-                            
-                            if not res.get("tv_results") and raw_title:
-                                title_query = re.sub(r'\(\d{4}\)', '', raw_title).strip().replace(" ", "+")
-                                res = fetch_robust(f"https://api.themoviedb.org/3/search/tv?api_key={TMDB_KEY}&query={title_query}")
-                                if res.get("results"): res["tv_results"] = [res["results"][0]]
-                                
-                            if res.get("tv_results"):
-                                match = res["tv_results"][0]
-                                tmdb_id = match["id"]
-                                title = match.get("name", raw_title)
-                                poster = match.get("poster_path", "")
-                                first_air_date = match.get("first_air_date", "")
-                                watched_eps = []
-                                
-                                is_new_show = not any(show["id"] == tmdb_id for show in new_db["shows"])
-                                if is_new_show:
-                                    full_s = fetch_robust(f"https://api.themoviedb.org/3/tv/{tmdb_id}?api_key={TMDB_KEY}")
-                                    t_eps = full_s.get("number_of_episodes", 1) if full_s else 1
-                                else: t_eps = 1
-                                
-                                for season in s.get("seasons", []):
-                                    s_num = season.get("number")
-                                    for ep in season.get("episodes", []):
-                                        if ep.get("is_watched"):
-                                            e_code = f"S{s_num}E{ep.get('number')}"
-                                            watched_eps.append(e_code)
-                                            w_dt_raw = ep.get("watched_at")
-                                            w_dt = parse_tvtime_date(w_dt_raw) if w_dt_raw else datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                                            m_key = datetime.strptime(w_dt, "%Y-%m-%d %H:%M:%S").strftime("%Y-%m")
-                                            
-                                            new_db["analytics"].setdefault(m_key, {"tv": 0, "movie": 0})
-                                            new_db["analytics"][m_key]["tv"] += 1
-                                            new_db["history"].append({"t": "s", "i": tmdb_id, "e": e_code, "d": w_dt})
-                                            
-                                if is_new_show:
-                                    new_db["shows"].append({
-                                        "id": tmdb_id, "name": title, "watched_episodes": watched_eps,
-                                        "poster_path": poster if poster else "",
-                                        "first_air_date": first_air_date if first_air_date else "",
-                                        "total_episodes": t_eps
-                                    })
-                                else:
-                                    for show in new_db["shows"]:
-                                        if show["id"] == tmdb_id:
-                                            show["watched_episodes"] = list(set(show["watched_episodes"] + watched_eps))
-                                            break
+                                if not res.get("tv_results") and raw_title:
+                                    title_query = re.sub(r'\(\d{4}\)', '', raw_title).strip().replace(" ", "+")
+                                    res = fetch_robust(f"https://api.themoviedb.org/3/search/tv?api_key={TMDB_KEY}&query={title_query}")
+                                    if res.get("results"): res["tv_results"] = [res["results"][0]]
+                                    
+                                if res.get("tv_results"):
+                                    match = res["tv_results"][0]
+                                    tmdb_id = match["id"]
+                                    title = match.get("name", raw_title)
+                                    poster = match.get("poster_path", "")
+                                    first_air_date = match.get("first_air_date", "")
+                                    watched_eps = []
+                                    
+                                    is_new_show = not any(show["id"] == tmdb_id for show in new_db["shows"])
+                                    if is_new_show:
+                                        full_s = fetch_robust(f"https://api.themoviedb.org/3/tv/{tmdb_id}?api_key={TMDB_KEY}")
+                                        t_eps = full_s.get("number_of_episodes", 1) if full_s else 1
+                                    else: t_eps = 1
+                                    
+                                    for season in s.get("seasons", []):
+                                        s_num = season.get("number")
+                                        for ep in season.get("episodes", []):
+                                            if ep.get("is_watched"):
+                                                e_code = f"S{s_num}E{ep.get('number')}"
+                                                watched_eps.append(e_code)
+                                                w_dt_raw = ep.get("watched_at")
+                                                w_dt = parse_tvtime_date(w_dt_raw) if w_dt_raw else datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                                                m_key = datetime.strptime(w_dt, "%Y-%m-%d %H:%M:%S").strftime("%Y-%m")
+                                                
+                                                new_db["analytics"].setdefault(m_key, {"tv": 0, "movie": 0})
+                                                new_db["analytics"][m_key]["tv"] += 1
+                                                new_db["history"].append({"t": "s", "i": tmdb_id, "e": e_code, "d": w_dt})
+                                                
+                                    if is_new_show:
+                                        new_db["shows"].append({
+                                            "id": tmdb_id, "name": title, "watched_episodes": watched_eps,
+                                            "poster_path": poster if poster else "",
+                                            "first_air_date": first_air_date if first_air_date else "",
+                                            "total_episodes": t_eps
+                                        })
+                                    else:
+                                        for show in new_db["shows"]:
+                                            if show["id"] == tmdb_id:
+                                                show["watched_episodes"] = list(set(show["watched_episodes"] + watched_eps))
+                                                break
+                            except Exception as item_error: continue
                     except Exception as e: st.error(f"Error processing series: {e}")
                 
                 new_db["history"].sort(key=lambda x: x.get("d", "2000-01-01 12:00:00"), reverse=True)
