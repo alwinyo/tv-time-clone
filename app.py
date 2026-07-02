@@ -51,17 +51,21 @@ st.markdown("""
         color: #FFC107;
     }
     
+    /* Style the Movie toggle radio to look like tabs */
+    div.row-widget.stRadio > div {
+        justify-content: space-around;
+        margin-bottom: 15px;
+    }
+    
     /* ========================================================
        THE MAGIC FIX: ONLY FORCE 3-COLUMN GRIDS ON MOBILE 
        ======================================================== */
     @media (max-width: 768px) {
-        /* Only target horizontal blocks that contain EXACTLY 3 children */
         div[data-testid="stHorizontalBlock"]:has(> div[data-testid="column"]:nth-child(3):last-child) {
             flex-direction: row !important;
             flex-wrap: nowrap !important;
-            gap: 2px !important; /* Extremely tight gap for the poster wall */
+            gap: 2px !important; 
         }
-        /* Lock those 3 children into 33% width so images don't stretch */
         div[data-testid="stHorizontalBlock"]:has(> div[data-testid="column"]:nth-child(3):last-child) > div[data-testid="column"] {
             width: 33.33% !important;
             flex: 1 1 0% !important;
@@ -422,17 +426,11 @@ with t_tv:
                                 manage_show_dialog(show['id'], show['name'], details)
 
 # ==========================================
-# TAB 5: MOVIE LIBRARY (EDGE-TO-EDGE POSTER WALL)
+# TAB 5: MOVIE LIBRARY (EDGE-TO-EDGE POSTER WALL + DYNAMIC TABS)
 # ==========================================
 with t_movies:
-    # Custom HTML to mimic the 'WATCH LIST | UPCOMING' header in the image
     st.markdown("""
-        <div style="display: flex; justify-content: space-around; border-bottom: 1px solid #333; padding-bottom: 10px; margin-bottom: 10px;">
-            <div style="font-weight: bold; color: white; border-bottom: 2px solid white; padding-bottom: 8px; font-size: 0.8rem; letter-spacing: 1px;">WATCH LIST</div>
-            <div style="font-weight: bold; color: #666; padding-bottom: 8px; font-size: 0.8rem; letter-spacing: 1px;">UPCOMING</div>
-        </div>
         <style>
-            /* Make the invisible gear button blend into the wall */
             .movie-wall-btn div.stButton > button {
                 border: none !important;
                 background-color: transparent !important;
@@ -445,24 +443,44 @@ with t_movies:
             .movie-wall-btn div.stButton > button:active {
                 color: white !important;
             }
-            /* Sharpen the movie posters specifically to match the image grid */
             .movie-poster-sharp img {
                 border-radius: 0px !important;
             }
         </style>
     """, unsafe_allow_html=True)
     
+    # ----------------------------------------------------
+    # NEW FUNCTIONAL TOGGLE FOR WATCHLIST VS UPCOMING
+    # ----------------------------------------------------
+    movie_view = st.radio("Movie View", ["WATCH LIST", "UPCOMING"], horizontal=True, label_visibility="collapsed")
+    
     movies = st.session_state.db.get("movies", [])
+    
     if not movies:
         st.info("Your Movie library is empty.")
     else:
-        for i in range(0, len(movies), 3):
-            cols = st.columns(3)
-            for j in range(3):
-                if i + j < len(movies):
-                    m = movies[i + j]
-                    with cols[j]:
-                        details = fetch_api(f"https://api.themoviedb.org/3/movie/{m['id']}?api_key={TMDB_KEY}")
+        # Pre-sort the movies based on release date
+        display_movies = []
+        for m in movies:
+            details = fetch_api(f"https://api.themoviedb.org/3/movie/{m['id']}?api_key={TMDB_KEY}")
+            r_date = details.get("release_date", "")
+            
+            # If the release date is after today, it is Upcoming
+            is_upcoming = bool(r_date and r_date > TODAY)
+            
+            if movie_view == "WATCH LIST" and not is_upcoming:
+                display_movies.append((m, details))
+            elif movie_view == "UPCOMING" and is_upcoming:
+                display_movies.append((m, details))
+                
+        if not display_movies:
+            st.info(f"Your {movie_view} is currently empty.")
+        else:
+            for i in range(0, len(display_movies), 3):
+                cols = st.columns(3)
+                for j in range(3):
+                    if i + j < len(display_movies):
+                        m, details = display_movies[i + j]
                         is_watched = m.get("watched", False)
                         
                         st.markdown('<div class="movie-poster-sharp">', unsafe_allow_html=True)
@@ -470,7 +488,6 @@ with t_movies:
                             st.image(f"https://image.tmdb.org/t/p/w185{details['poster_path']}", use_container_width=True)
                         st.markdown('</div>', unsafe_allow_html=True)
                         
-                        # Tiny borderless gear icon to maintain your ability to open the movie details
                         st.markdown('<div class="movie-wall-btn">', unsafe_allow_html=True)
                         if st.button("⚙️", key=f"m_mgr_{m['id']}", use_container_width=True):
                             show_movie_details(m['id'], m['name'], details, is_watched)
