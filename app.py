@@ -61,10 +61,15 @@ st.markdown("""
         border-radius: 12px; font-size: 0.7rem; font-weight: 600; margin-right: 4px; margin-bottom: 6px;
     }
     .badge-gold { background-color: #FFC107; color: #000000; }
+    
+    .movie-poster-sharp img { border-radius: 0px !important; }
+    .movie-wall-btn div.stButton > button {
+        border: none !important; background-color: transparent !important; color: #aaa !important;
+        font-size: 0.7rem !important; padding: 0 !important; margin-top: 2px !important; margin-bottom: 5px !important; text-transform: uppercase; letter-spacing: 1px;
+    }
+    .movie-wall-btn div.stButton > button:active { color: white !important; }
 </style>
 """, unsafe_allow_html=True)
-
-st.title("📺 My TV Time")
 
 # --- CREDENTIALS & DB ---
 TMDB_KEY = st.secrets["TMDB_KEY"]
@@ -135,16 +140,13 @@ def log_watch(item_type, item_id, detail=""):
     m_key = datetime.now().strftime('%Y-%m')
     db = st.session_state.db
     
-    # 1. Update Lifetime Analytics Matrix
     db.setdefault("analytics", {}).setdefault(m_key, {"tv": 0, "movie": 0})
     if item_type == "tv": db["analytics"][m_key]["tv"] += 1
     else: db["analytics"][m_key]["movie"] += 1
     
-    # 2. Add to Recent History Array
     t_flag = "s" if item_type == "tv" else "m"
     db.setdefault("history", []).insert(0, {"t": t_flag, "i": item_id, "e": detail, "d": now_str})
     
-    # 3. Cap Arrays Independently to Prevent Overwrites!
     tv_h = [h for h in db["history"] if h.get("t") == "s"][:100]
     mov_h = [h for h in db["history"] if h.get("t") == "m"][:100]
     db["history"] = tv_h + mov_h
@@ -321,12 +323,18 @@ t_next, t_soon, t_search, t_tv, t_movies, t_profile = st.tabs(["🔥 Next", "�
 # ==========================================
 with t_next:
     st.markdown("### Up Next to Watch")
-    next_sort = st.selectbox("Sort by:", ["Release Date", "Alphabetical"], key="sort_next")
+    next_sort = st.selectbox("Sort by:", ["Smart Priority", "Release Date", "Alphabetical"], key="sort_next")
+    up_next_items = []
     
-    up_next_tv = []
-    up_next_mov = []
+    # Track Last 15 Days Priority
+    fifteen_days_ago = datetime.now() - timedelta(days=15)
+    recent_active_ids = set()
+    for h in st.session_state.db.get("history", []):
+        try:
+            dt = datetime.strptime(h.get("d", "2000-01-01 12:00:00"), '%Y-%m-%d %H:%M:%S')
+            if dt >= fifteen_days_ago: recent_active_ids.add((h.get("t"), h.get("i")))
+        except: pass
     
-    # TV Search
     for show in st.session_state.db["shows"]:
         w_eps = len(show.get("watched_episodes", []))
         t_eps = show.get("total_episodes", 1)
@@ -344,29 +352,31 @@ with t_next:
                 ep_code = f"S{s_info['season_number']}E{ep['episode_number']}"
                 air_date = ep.get("air_date", "")
                 if ep_code not in watched_set and air_date and air_date <= TODAY:
-                    up_next_tv.append({"item": show, "details": details, "ep": ep, "code": ep_code, "date": air_date})
+                    is_rec = ("s", show["id"]) in recent_active_ids
+                    up_next_items.append({"type": "tv", "item": show, "details": details, "ep": ep, "code": ep_code, "date": air_date, "is_rec": is_rec})
                     found_next = True; break
 
-    # Movie Search
     for m in st.session_state.db["movies"]:
         if not m.get("watched"):
             r_date = m.get("release_date", "")
             if r_date and r_date <= TODAY:
-                up_next_mov.append({"item": m, "date": r_date})
+                is_rec = ("m", m["id"]) in recent_active_ids
+                up_next_items.append({"type": "movie", "item": m, "code": "Movie", "date": r_date, "is_rec": is_rec})
 
-    # Sort
     if next_sort == "Alphabetical":
-        up_next_tv.sort(key=lambda x: x["item"]["name"].lower())
-        up_next_mov.sort(key=lambda x: x["item"]["name"].lower())
+        up_next_items.sort(key=lambda x: x["item"]["name"].lower())
     elif next_sort == "Release Date":
-        up_next_tv.sort(key=lambda x: x["date"] or "1900-01-01", reverse=True)
-        up_next_mov.sort(key=lambda x: x["date"] or "1900-01-01", reverse=True)
+        up_next_items.sort(key=lambda x: x["date"] or "1900-01-01", reverse=True)
+    elif next_sort == "Smart Priority":
+        up_next_items.sort(key=lambda x: (x["is_rec"], x["date"] or "1900-01-01"), reverse=True)
 
-    # UI Render
+    tv_items = [i for i in up_next_items if i["type"] == "tv"]
+    mov_items = [i for i in up_next_items if i["type"] == "movie"]
+
     st.markdown("#### 📺 Series")
-    if not up_next_tv: st.info("You are completely caught up on series! 🎉")
+    if not tv_items: st.info("You are completely caught up on series! 🎉")
     else:
-        for item in up_next_tv:
+        for item in tv_items:
             show, details, ep, ep_code = item["item"], item["details"], item["ep"], item["code"]
             with st.container(border=True):
                 if ep.get("still_path"): display_poster(ep['still_path'], width=500)
@@ -388,9 +398,9 @@ with t_next:
                     st.button("✔️ Watched", key=f"next_w_tv_{show['id']}_{ep_code}", on_click=f_w_tv, use_container_width=True)
 
     st.markdown("#### 🎬 Movies")
-    if not up_next_mov: st.info("You have no unwatched movies left! 🎉")
+    if not mov_items: st.info("You have no unwatched movies left! 🎉")
     else:
-        for item in up_next_mov:
+        for item in mov_items:
             m = item["item"]
             with st.container(border=True):
                 display_poster(m.get('poster_path'), width=500)
@@ -419,7 +429,6 @@ with t_soon:
     soon_tv = []
     soon_mov = []
     
-    # TV Search
     for show in st.session_state.db["shows"]:
         w_eps = len(show.get("watched_episodes", []))
         t_eps = show.get("total_episodes", 1)
@@ -439,18 +448,15 @@ with t_soon:
                     soon_tv.append({"item": show, "details": details, "ep": ep, "code": ep_code, "date": air_date})
                     found_next = True; break
                     
-    # Movie Search
     for m in st.session_state.db["movies"]:
         if not m.get("watched"):
             r_date = m.get("release_date", "")
             if r_date and r_date > TODAY:
                 soon_mov.append({"item": m, "date": r_date})
 
-    # Sort Ascending - Closest date first
     soon_tv.sort(key=lambda x: x["date"] or "2099-01-01")
     soon_mov.sort(key=lambda x: x["date"] or "2099-01-01")
 
-    # UI Render
     st.markdown("#### 📺 Series")
     if not soon_tv: st.info("No upcoming episodes scheduled yet.")
     else:
@@ -549,7 +555,7 @@ with t_search:
                             else: st.button("✔️ Added", key=f"dsbl_mov_{item_id}", disabled=True, use_container_width=True)
 
 # ==========================================
-# TAB 4: TV LIBRARY 
+# TAB 4: TV LIBRARY
 # ==========================================
 with t_tv:
     st.markdown("### My TV Collection")
@@ -721,18 +727,18 @@ with t_profile:
         if not tv_hist: st.info("No series history recorded yet.")
         else:
             grouped_tv = {}
-            for h in tv_hist[:st.session_state.tv_hist_limit]:
+            for h_idx, h in enumerate(tv_hist[:st.session_state.tv_hist_limit]):
                 try:
                     dt = datetime.strptime(h["d"], '%Y-%m-%d %H:%M:%S')
-                    grouped_tv.setdefault(dt.strftime('%B %Y'), []).append((h, dt))
+                    grouped_tv.setdefault(dt.strftime('%B %Y'), []).append((h, dt, h_idx))
                 except: pass
             
             for month_str, items in grouped_tv.items():
                 st.markdown(f"#### {month_str}")
-                for h, dt in items:
+                for h, dt, h_idx in items:
                     show = next((s for s in st.session_state.db["shows"] if s["id"] == h.get("i")), None)
                     s_name = show["name"] if show else "Unknown Series"
-                    info_key = f"h_tv_{h.get('i')}_{h.get('e','')}_{h.get('d')}"
+                    info_key = f"h_tv_{h.get('i')}_{h.get('e','')}_{h_idx}"
                     
                     with st.container(border=True):
                         c1, c2, c3 = st.columns([5, 4, 1])
@@ -763,18 +769,18 @@ with t_profile:
         if not mov_hist: st.info("No movie history recorded yet.")
         else:
             grouped_mov = {}
-            for h in mov_hist[:st.session_state.mov_hist_limit]:
+            for h_idx, h in enumerate(mov_hist[:st.session_state.mov_hist_limit]):
                 try:
                     dt = datetime.strptime(h["d"], '%Y-%m-%d %H:%M:%S')
-                    grouped_mov.setdefault(dt.strftime('%B %Y'), []).append((h, dt))
+                    grouped_mov.setdefault(dt.strftime('%B %Y'), []).append((h, dt, h_idx))
                 except: pass
                 
             for month_str, items in grouped_mov.items():
                 st.markdown(f"#### {month_str}")
-                for h, dt in items:
+                for h, dt, h_idx in items:
                     mov = next((m for m in st.session_state.db["movies"] if m["id"] == h.get("i")), None)
                     m_name = mov["name"] if mov else "Unknown Movie"
-                    info_key = f"h_mov_{h.get('i')}_{h.get('d')}"
+                    info_key = f"h_mov_{h.get('i')}_{h_idx}"
                     
                     with st.container(border=True):
                         c1, c2, c3 = st.columns([5, 4, 1])
@@ -801,10 +807,10 @@ with t_profile:
     
     # --- TV TIME ZLIB COMPRESSED IMPORTER ---
     with st.expander("⚙️ Import TV Time Data"):
-        st.warning("Ensure you keep the app open until the progress bar reaches 100%. TMDB limits requests so this will process carefully.")
-        wipe_db = st.checkbox("Wipe current test library before importing", value=True)
-        m_file = st.file_uploader("Upload 'tvtime-movies-2026-07-01.json'", type="json")
-        t_file = st.file_uploader("Upload 'tvtime-series-2026-07-01.json'", type="json")
+        st.warning("Ensure you keep the app open until the progress bar reaches 100%.")
+        wipe_db = st.checkbox("Wipe current library before importing", value=True)
+        m_file = st.file_uploader("Upload Movies JSON", type="json")
+        t_file = st.file_uploader("Upload Series JSON", type="json")
         
         if st.button("Start Safe Import"):
             if m_file or t_file:
@@ -866,7 +872,7 @@ with t_profile:
                 
                 # Process Shows
                 if t_file:
-                    stat_txt.text("Processing Series... compressing matrix keys.")
+                    stat_txt.text("Processing Series... fetching data safely.")
                     try:
                         t_data = json.load(t_file)
                         for idx, s in enumerate(t_data):
@@ -925,14 +931,15 @@ with t_profile:
                                             break
                     except Exception as e: st.error(f"Error processing series: {e}")
                 
-                # --- The Ultimate File Size Defense ---
-                tv_h = sorted([h for h in new_db["history"] if h.get("t") == "s"], key=lambda x: x.get("d", "2000-01-01"), reverse=True)[:100]
-                mov_h = sorted([h for h in new_db["history"] if h.get("t") == "m"], key=lambda x: x.get("d", "2000-01-01"), reverse=True)[:100]
+                # Sort history, then strictly cap to 100 for each to guarantee saving.
+                new_db["history"].sort(key=lambda x: x.get("d", "2000-01-01 12:00:00"), reverse=True)
+                tv_h = [h for h in new_db["history"] if h.get("t") == "s"][:100]
+                mov_h = [h for h in new_db["history"] if h.get("t") == "m"][:100]
                 new_db["history"] = tv_h + mov_h
                 
                 st.session_state.db = new_db
                 save_db()
-                stat_txt.text("✅ Mass Import & Cloud Sync Complete!")
+                stat_txt.text("✅ Mass Import & Compression Complete!")
                 st.toast("Library successfully imported.")
                 st.rerun()
             else:
