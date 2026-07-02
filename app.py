@@ -45,24 +45,50 @@ def quick_watch_episode(show_id, ep_code):
                 st.toast(f"Marked {ep_code} as watched! ✅")
                 st.rerun()
 
+# --- NEW: VISUAL CAST GRID HELPER ---
+def show_cast_grid(cast_list, limit=6):
+    cast_list = cast_list[:limit]
+    if not cast_list:
+        return
+    
+    # Creates rows of 3 columns for a clean mobile grid
+    for i in range(0, len(cast_list), 3):
+        cols = st.columns(3)
+        for j in range(3):
+            if i + j < len(cast_list):
+                actor = cast_list[i + j]
+                with cols[j]:
+                    if actor.get("profile_path"):
+                        st.image(f"https://image.tmdb.org/t/p/w185{actor['profile_path']}", use_container_width=True)
+                    else:
+                        # Fallback if the actor doesn't have a photo on file
+                        st.info("No Photo") 
+                    
+                    st.caption(f"**{actor['name']}**  \n*{actor.get('character', '')}*")
+
 # --- DIALOG / POPUP FUNCTIONS ---
 @st.dialog("Episode Details")
 def show_episode_details(show_id, show_name, ep_code, ep_data, is_watched):
     if ep_data.get("still_path"):
-        st.image(f"https://image.tmdb.org/t/p/w500{ep_data['still_path']}", use_column_width=True)
+        st.image(f"https://image.tmdb.org/t/p/w500{ep_data['still_path']}", use_container_width=True)
     
     st.markdown(f"### {ep_data.get('name', 'Untitled Episode')}")
     st.caption(f"**{show_name}** • {ep_code} • Aired: {ep_data.get('air_date', 'N/A')} • ⭐ {ep_data.get('vote_average', 0.0)}/10")
     st.write(ep_data.get("overview", "No synopsis available for this episode yet."))
     
-    # NEW: Pull Guest Stars specific to this episode
-    guest_stars = ep_data.get("guest_stars", [])[:5]
+    # Show Regulars (Main Cast)
+    st.divider()
+    st.markdown("#### Series Regulars")
+    credits = fetch_api(f"https://api.themoviedb.org/3/tv/{show_id}/credits?api_key={TMDB_KEY}")
+    show_cast_grid(credits.get("cast", []), limit=6)
+    
+    # Show Guest Stars specifically for this episode
+    guest_stars = ep_data.get("guest_stars", [])
     if guest_stars:
-        st.markdown("**Guest Stars:**")
-        st.caption(" • ".join([f"{g['name']} ({g.get('character', '')})" for g in guest_stars]))
+        st.markdown("#### Guest Stars")
+        show_cast_grid(guest_stars, limit=6)
     
     st.divider()
-    
     btn_label = "❌ Unmark as Watched" if is_watched else "✅ Mark as Watched"
     if st.button(btn_label, use_container_width=True):
         for s in st.session_state.db["shows"]:
@@ -78,34 +104,30 @@ def show_episode_details(show_id, show_name, ep_code, ep_data, is_watched):
 @st.dialog("Show Info")
 def show_series_details(show_id, show_name, details):
     if details.get("poster_path"):
-        st.image(f"https://image.tmdb.org/t/p/w342{details['poster_path']}", use_column_width=True)
+        st.image(f"https://image.tmdb.org/t/p/w342{details['poster_path']}", use_container_width=True)
     st.markdown(f"### {show_name}")
     genres = ", ".join([g["name"] for g in details.get("genres", [])])
     st.caption(f"**Status:** {details.get('status')} • **Genres:** {genres} • ⭐ {details.get('vote_average', 0.0)}/10")
     st.write(details.get("overview", "No overview available."))
     
-    # NEW: Pull Top Cast for the Show
+    st.divider()
+    st.markdown("#### Top Cast")
     credits = fetch_api(f"https://api.themoviedb.org/3/tv/{show_id}/credits?api_key={TMDB_KEY}")
-    cast = credits.get("cast", [])[:6]
-    if cast:
-        st.markdown("**Top Cast:**")
-        st.caption(" • ".join([f"{c['name']} ({c.get('character', '')})" for c in cast]))
+    show_cast_grid(credits.get("cast", []), limit=6)
 
 @st.dialog("Movie Details")
 def show_movie_details(m_id, m_name, details, is_watched):
     if details.get("backdrop_path"):
-        st.image(f"https://image.tmdb.org/t/p/w500{details['backdrop_path']}", use_column_width=True)
+        st.image(f"https://image.tmdb.org/t/p/w500{details['backdrop_path']}", use_container_width=True)
     st.markdown(f"### {m_name}")
     genres = ", ".join([g["name"] for g in details.get("genres", [])])
     st.caption(f"**Released:** {details.get('release_date', 'N/A')} • **Runtime:** {details.get('runtime', 0)} mins • {genres}")
     st.write(details.get("overview", "No synopsis available."))
     
-    # NEW: Pull Top Cast for the Movie
+    st.divider()
+    st.markdown("#### Top Cast")
     credits = fetch_api(f"https://api.themoviedb.org/3/movie/{m_id}/credits?api_key={TMDB_KEY}")
-    cast = credits.get("cast", [])[:6]
-    if cast:
-        st.markdown("**Top Cast:**")
-        st.caption(" • ".join([f"{c['name']} ({c.get('character', '')})" for c in cast]))
+    show_cast_grid(credits.get("cast", []), limit=6)
     
     st.divider()
     btn_label = "❌ Unmark as Watched" if is_watched else "✅ Mark as Watched"
@@ -147,9 +169,9 @@ with t_next:
                     found_next = True
                     with st.container(border=True):
                         if ep.get("still_path"):
-                            st.image(f"https://image.tmdb.org/t/p/w500{ep['still_path']}", use_column_width=True)
+                            st.image(f"https://image.tmdb.org/t/p/w500{ep['still_path']}", use_container_width=True)
                         elif details.get("backdrop_path"):
-                            st.image(f"https://image.tmdb.org/t/p/w500{details['backdrop_path']}", use_column_width=True)
+                            st.image(f"https://image.tmdb.org/t/p/w500{details['backdrop_path']}", use_container_width=True)
                         
                         st.markdown(f"**{show['name']}** — {ep_code}")
                         st.caption(f"*{ep.get('name', 'Episode')}*")
@@ -232,7 +254,7 @@ with t_search:
                         title = item["name"] if search_type == "TV Shows" else item["title"]
                         
                         if item.get("poster_path"): 
-                            st.image(f"https://image.tmdb.org/t/p/w342{item['poster_path']}", use_column_width=True)
+                            st.image(f"https://image.tmdb.org/t/p/w342{item['poster_path']}", use_container_width=True)
                         
                         st.markdown(f"**{title}**")
                         st.caption(f"⭐ {item.get('vote_average', 0.0)}/10")
@@ -264,7 +286,7 @@ with t_tv:
         
         with st.expander(f"📺 {show['name']} ({w_eps}/{t_eps})"):
             if details.get("backdrop_path"):
-                st.image(f"https://image.tmdb.org/t/p/w500{details['backdrop_path']}", use_column_width=True)
+                st.image(f"https://image.tmdb.org/t/p/w500{details['backdrop_path']}", use_container_width=True)
             
             st.progress(min(w_eps / t_eps, 1.0) if t_eps > 0 else 0.0)
             
@@ -315,7 +337,7 @@ with t_movies:
         
         with st.expander(f"🎬 {m['name']}"):
             if details.get("backdrop_path"):
-                st.image(f"https://image.tmdb.org/t/p/w500{details['backdrop_path']}", use_column_width=True)
+                st.image(f"https://image.tmdb.org/t/p/w500{details['backdrop_path']}", use_container_width=True)
             
             c1, c2 = st.columns(2)
             with c1:
