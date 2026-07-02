@@ -19,7 +19,7 @@ st.markdown("""
         padding-bottom: 5rem !important;
     }
     
-    /* Round all images */
+    /* Round all images (overridden later for the movie wall) */
     img {
         border-radius: 8px !important;
     }
@@ -29,7 +29,7 @@ st.markdown("""
         background-color: #FFC107 !important;
     }
     
-    /* Floating App Cards */
+    /* Floating App Cards (For TV Tab and Search) */
     [data-testid="stVerticalBlockBorderWrapper"] {
         border-radius: 12px !important;
         border: 1px solid rgba(200, 200, 200, 0.2) !important;
@@ -59,7 +59,7 @@ st.markdown("""
         div[data-testid="stHorizontalBlock"]:has(> div[data-testid="column"]:nth-child(3):last-child) {
             flex-direction: row !important;
             flex-wrap: nowrap !important;
-            gap: 0.4rem !important;
+            gap: 2px !important; /* Extremely tight gap for the poster wall */
         }
         /* Lock those 3 children into 33% width so images don't stretch */
         div[data-testid="stHorizontalBlock"]:has(> div[data-testid="column"]:nth-child(3):last-child) > div[data-testid="column"] {
@@ -70,7 +70,7 @@ st.markdown("""
         }
     }
     
-    /* 3x3 Grid Text Formatting (To keep cards tiny and neat) */
+    /* 3x3 Grid Text Formatting (For TV Tab) */
     .grid-title {
         font-size: 0.65rem !important;
         font-weight: 700;
@@ -151,7 +151,6 @@ def quick_watch_episode(show_id, ep_code):
 def show_cast_grid(cast_list, limit=6):
     cast_list = cast_list[:limit]
     if not cast_list: return
-    # This generates exactly 3 columns, which the CSS will perfectly align on mobile
     for i in range(0, len(cast_list), 3):
         cols = st.columns(3)
         for j in range(3):
@@ -296,7 +295,6 @@ with t_next:
                         render_badges([ep_code, "Up Next"], is_gold=True)
                         st.markdown(f"*{ep.get('name', 'Episode')}*")
                         
-                        # Use 2 columns. Since this is 2, the mobile CSS ignore it and leaves it looking normal!
                         c1, c2 = st.columns(2)
                         with c1:
                             if st.button("ℹ️ Info", key=f"info_next_{show['id']}_{ep_code}", use_container_width=True):
@@ -340,7 +338,6 @@ with t_soon:
                     days_left = (datetime.strptime(air_date, '%Y-%m-%d') - datetime.today()).days
                     
                     with st.container(border=True):
-                        # Also 2 columns, so CSS leaves it safe
                         c1, c2 = st.columns([1, 3])
                         if details.get("poster_path"): c1.image(f"https://image.tmdb.org/t/p/w154{details['poster_path']}")
                         with c2:
@@ -395,7 +392,7 @@ with t_search:
                                 st.button("✔️ Added", key=f"dsbl_mov_{item_id}", disabled=True, use_container_width=True)
 
 # ==========================================
-# TAB 4: TV LIBRARY (MOBILE 3-COLUMN GRID)
+# TAB 4: TV LIBRARY 
 # ==========================================
 with t_tv:
     st.markdown("### My TV Collection")
@@ -404,7 +401,6 @@ with t_tv:
     if not shows:
         st.info("Your TV library is empty.")
     else:
-        # Generates exactly 3 columns -> The CSS triggers and locks them side-by-side!
         for i in range(0, len(shows), 3):
             cols = st.columns(3)
             for j in range(3):
@@ -417,7 +413,6 @@ with t_tv:
                         
                         with st.container(border=True):
                             if details.get("poster_path"):
-                                # Use w185 specifically to keep images crisp and small in the 3x3 layout
                                 st.image(f"https://image.tmdb.org/t/p/w185{details['poster_path']}", use_container_width=True)
                             
                             st.markdown(f'<div class="grid-title" title="{show["name"]}">{show["name"]}</div>', unsafe_allow_html=True)
@@ -427,16 +422,40 @@ with t_tv:
                                 manage_show_dialog(show['id'], show['name'], details)
 
 # ==========================================
-# TAB 5: MOVIE LIBRARY (MOBILE 3-COLUMN GRID)
+# TAB 5: MOVIE LIBRARY (EDGE-TO-EDGE POSTER WALL)
 # ==========================================
 with t_movies:
-    st.markdown("### My Movies")
+    # Custom HTML to mimic the 'WATCH LIST | UPCOMING' header in the image
+    st.markdown("""
+        <div style="display: flex; justify-content: space-around; border-bottom: 1px solid #333; padding-bottom: 10px; margin-bottom: 10px;">
+            <div style="font-weight: bold; color: white; border-bottom: 2px solid white; padding-bottom: 8px; font-size: 0.8rem; letter-spacing: 1px;">WATCH LIST</div>
+            <div style="font-weight: bold; color: #666; padding-bottom: 8px; font-size: 0.8rem; letter-spacing: 1px;">UPCOMING</div>
+        </div>
+        <style>
+            /* Make the invisible gear button blend into the wall */
+            .movie-wall-btn div.stButton > button {
+                border: none !important;
+                background-color: transparent !important;
+                color: #888 !important;
+                font-size: 0.8rem !important;
+                padding: 0 !important;
+                margin-top: -10px !important;
+                margin-bottom: 5px !important;
+            }
+            .movie-wall-btn div.stButton > button:active {
+                color: white !important;
+            }
+            /* Sharpen the movie posters specifically to match the image grid */
+            .movie-poster-sharp img {
+                border-radius: 0px !important;
+            }
+        </style>
+    """, unsafe_allow_html=True)
     
     movies = st.session_state.db.get("movies", [])
     if not movies:
         st.info("Your Movie library is empty.")
     else:
-        # Generates exactly 3 columns -> The CSS triggers and locks them side-by-side!
         for i in range(0, len(movies), 3):
             cols = st.columns(3)
             for j in range(3):
@@ -446,15 +465,16 @@ with t_movies:
                         details = fetch_api(f"https://api.themoviedb.org/3/movie/{m['id']}?api_key={TMDB_KEY}")
                         is_watched = m.get("watched", False)
                         
-                        with st.container(border=True):
-                            if details.get("poster_path"):
-                                # Use w185 specifically to keep images crisp and small in the 3x3 layout
-                                st.image(f"https://image.tmdb.org/t/p/w185{details['poster_path']}", use_container_width=True)
-                            
-                            st.markdown(f'<div class="grid-title" title="{m["name"]}">{m["name"]}</div>', unsafe_allow_html=True)
-                            
-                            if st.button("Info", key=f"m_mgr_{m['id']}", use_container_width=True):
-                                show_movie_details(m['id'], m['name'], details, is_watched)
+                        st.markdown('<div class="movie-poster-sharp">', unsafe_allow_html=True)
+                        if details.get("poster_path"):
+                            st.image(f"https://image.tmdb.org/t/p/w185{details['poster_path']}", use_container_width=True)
+                        st.markdown('</div>', unsafe_allow_html=True)
+                        
+                        # Tiny borderless gear icon to maintain your ability to open the movie details
+                        st.markdown('<div class="movie-wall-btn">', unsafe_allow_html=True)
+                        if st.button("⚙️", key=f"m_mgr_{m['id']}", use_container_width=True):
+                            show_movie_details(m['id'], m['name'], details, is_watched)
+                        st.markdown('</div>', unsafe_allow_html=True)
 
 # ==========================================
 # TAB 6: PROFILE STATS
