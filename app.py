@@ -5,7 +5,7 @@ from datetime import datetime
 # Mobile-friendly layout configuration
 st.set_page_config(page_title="My TV Time", layout="centered", initial_sidebar_state="collapsed")
 
-# --- CUSTOM CSS: NATIVE APP & MOBILE GRID ---
+# --- CUSTOM CSS: SMART MOBILE GRID & APP STYLING ---
 st.markdown("""
 <style>
     /* Hide Streamlit Header & Footer */
@@ -37,14 +37,13 @@ st.markdown("""
         padding: 0.5rem !important;
     }
     
-    /* Pill Buttons */
+    /* Pill Buttons (Restored to normal sizes) */
     div.stButton > button {
         border-radius: 20px;
         font-weight: 600;
         border: 1px solid #555;
         background-color: transparent;
-        padding: 2px 5px !important;
-        font-size: 0.75rem !important;
+        transition: all 0.2s;
     }
     div.stButton > button:active {
         transform: scale(0.95);
@@ -52,22 +51,26 @@ st.markdown("""
         color: #FFC107;
     }
     
-    /* FORCE 3-COLUMNS ON MOBILE PHONE SCREENS */
+    /* ========================================================
+       THE MAGIC FIX: ONLY FORCE 3-COLUMN GRIDS ON MOBILE 
+       ======================================================== */
     @media (max-width: 768px) {
-        [data-testid="stHorizontalBlock"] {
+        /* Only target horizontal blocks that contain EXACTLY 3 children */
+        div[data-testid="stHorizontalBlock"]:has(> div[data-testid="column"]:nth-child(3):last-child) {
             flex-direction: row !important;
             flex-wrap: nowrap !important;
-            gap: 0.3rem !important;
+            gap: 0.4rem !important;
         }
-        [data-testid="column"] {
+        /* Lock those 3 children into 33% width so images don't stretch */
+        div[data-testid="stHorizontalBlock"]:has(> div[data-testid="column"]:nth-child(3):last-child) > div[data-testid="column"] {
             width: 33.33% !important;
             flex: 1 1 0% !important;
             min-width: 0 !important;
-            padding: 0 2px !important;
+            padding: 0 !important;
         }
     }
     
-    /* 3x3 Grid Text Formatting */
+    /* 3x3 Grid Text Formatting (To keep cards tiny and neat) */
     .grid-title {
         font-size: 0.65rem !important;
         font-weight: 700;
@@ -75,14 +78,8 @@ st.markdown("""
         overflow: hidden;
         text-overflow: ellipsis;
         text-align: center;
-        margin-top: 4px;
+        margin-top: 6px;
         line-height: 1.2;
-    }
-    .grid-sub {
-        text-align: center;
-        font-size: 0.6rem;
-        color: gray;
-        margin-bottom: 2px;
     }
     
     /* Genre Badges */
@@ -153,8 +150,8 @@ def quick_watch_episode(show_id, ep_code):
 
 def show_cast_grid(cast_list, limit=6):
     cast_list = cast_list[:limit]
-    if not cast_list:
-        return
+    if not cast_list: return
+    # This generates exactly 3 columns, which the CSS will perfectly align on mobile
     for i in range(0, len(cast_list), 3):
         cols = st.columns(3)
         for j in range(3):
@@ -165,7 +162,7 @@ def show_cast_grid(cast_list, limit=6):
                         st.image(f"https://image.tmdb.org/t/p/w185{actor['profile_path']}", use_container_width=True)
                     else:
                         st.info("No Photo") 
-                    st.caption(f"**{actor['name']}** \n*{actor.get('character', '')}*")
+                    st.markdown(f'<div class="grid-title" title="{actor["name"]}">{actor["name"]}</div>', unsafe_allow_html=True)
 
 # --- DIALOG / POPUP FUNCTIONS ---
 @st.dialog("Episode Details")
@@ -299,6 +296,7 @@ with t_next:
                         render_badges([ep_code, "Up Next"], is_gold=True)
                         st.markdown(f"*{ep.get('name', 'Episode')}*")
                         
+                        # Use 2 columns. Since this is 2, the mobile CSS ignore it and leaves it looking normal!
                         c1, c2 = st.columns(2)
                         with c1:
                             if st.button("ℹ️ Info", key=f"info_next_{show['id']}_{ep_code}", use_container_width=True):
@@ -342,8 +340,9 @@ with t_soon:
                     days_left = (datetime.strptime(air_date, '%Y-%m-%d') - datetime.today()).days
                     
                     with st.container(border=True):
+                        # Also 2 columns, so CSS leaves it safe
                         c1, c2 = st.columns([1, 3])
-                        if details.get("poster_path"): c1.image(f"https://image.tmdb.org/t/p/w92{details['poster_path']}")
+                        if details.get("poster_path"): c1.image(f"https://image.tmdb.org/t/p/w154{details['poster_path']}")
                         with c2:
                             st.markdown(f"#### {show['name']}")
                             render_badges([ep_code, f"In {days_left} days"])
@@ -354,7 +353,7 @@ with t_soon:
         st.info("No upcoming episodes scheduled yet.")
 
 # ==========================================
-# TAB 3: GLOBAL SEARCH (2-COLUMN GRID)
+# TAB 3: GLOBAL SEARCH 
 # ==========================================
 with t_search:
     st.markdown("### Discover")
@@ -367,36 +366,36 @@ with t_search:
         results = res.get("results", [])
         
         if results:
-            for i in range(0, len(results), 2):
-                cols = st.columns(2)
-                for j in range(2):
-                    if i + j < len(results):
-                        item = results[i + j]
-                        with cols[j]:
-                            with st.container(border=True):
-                                item_id = item["id"]
-                                title = item["name"] if search_type == "TV Shows" else item["title"]
-                                
-                                if item.get("poster_path"): st.image(f"https://image.tmdb.org/t/p/w342{item['poster_path']}", use_container_width=True)
-                                st.markdown(f'<div class="grid-title" title="{title}">{title}</div>', unsafe_allow_html=True)
-                                
-                                if search_type == "TV Shows":
-                                    if not any(s["id"] == item_id for s in st.session_state.db["shows"]):
-                                        if st.button("Add", key=f"add_tv_{item_id}", use_container_width=True):
-                                            st.session_state.db["shows"].append({"id": item_id, "name": title, "watched_episodes": []})
-                                            save_db(); st.toast("Added!"); st.rerun()
-                                    else:
-                                        st.button("Added", key=f"dsbl_tv_{item_id}", disabled=True, use_container_width=True)
-                                else:
-                                    if not any(m["id"] == item_id for m in st.session_state.db["movies"]):
-                                        if st.button("Add", key=f"add_mov_{item_id}", use_container_width=True):
-                                            st.session_state.db["movies"].append({"id": item_id, "name": title, "watched": False})
-                                            save_db(); st.toast("Added!"); st.rerun()
-                                    else:
-                                        st.button("Added", key=f"dsbl_mov_{item_id}", disabled=True, use_container_width=True)
+            for item in results:
+                with st.container(border=True):
+                    c1, c2 = st.columns([1, 2])
+                    item_id = item["id"]
+                    title = item["name"] if search_type == "TV Shows" else item["title"]
+                    
+                    with c1:
+                        if item.get("poster_path"): st.image(f"https://image.tmdb.org/t/p/w154{item['poster_path']}", use_container_width=True)
+                    
+                    with c2:
+                        st.markdown(f"**{title}**")
+                        render_badges([f"⭐ {item.get('vote_average', 0.0)}"])
+                        
+                        if search_type == "TV Shows":
+                            if not any(s["id"] == item_id for s in st.session_state.db["shows"]):
+                                if st.button("➕ Add", key=f"add_tv_{item_id}", use_container_width=True):
+                                    st.session_state.db["shows"].append({"id": item_id, "name": title, "watched_episodes": []})
+                                    save_db(); st.toast("Added!"); st.rerun()
+                            else:
+                                st.button("✔️ Added", key=f"dsbl_tv_{item_id}", disabled=True, use_container_width=True)
+                        else:
+                            if not any(m["id"] == item_id for m in st.session_state.db["movies"]):
+                                if st.button("➕ Add", key=f"add_mov_{item_id}", use_container_width=True):
+                                    st.session_state.db["movies"].append({"id": item_id, "name": title, "watched": False})
+                                    save_db(); st.toast("Added!"); st.rerun()
+                            else:
+                                st.button("✔️ Added", key=f"dsbl_mov_{item_id}", disabled=True, use_container_width=True)
 
 # ==========================================
-# TAB 4: TV LIBRARY (MOBILE OPTIMIZED 3-COLUMN GRID)
+# TAB 4: TV LIBRARY (MOBILE 3-COLUMN GRID)
 # ==========================================
 with t_tv:
     st.markdown("### My TV Collection")
@@ -405,8 +404,9 @@ with t_tv:
     if not shows:
         st.info("Your TV library is empty.")
     else:
+        # Generates exactly 3 columns -> The CSS triggers and locks them side-by-side!
         for i in range(0, len(shows), 3):
-            cols = st.columns(3, gap="small")
+            cols = st.columns(3)
             for j in range(3):
                 if i + j < len(shows):
                     show = shows[i + j]
@@ -417,18 +417,17 @@ with t_tv:
                         
                         with st.container(border=True):
                             if details.get("poster_path"):
-                                # Use w185 specifically so posters shrink cleanly on phones
+                                # Use w185 specifically to keep images crisp and small in the 3x3 layout
                                 st.image(f"https://image.tmdb.org/t/p/w185{details['poster_path']}", use_container_width=True)
                             
                             st.markdown(f'<div class="grid-title" title="{show["name"]}">{show["name"]}</div>', unsafe_allow_html=True)
                             st.progress(min(w_eps / t_eps, 1.0) if t_eps > 0 else 0.0)
-                            st.markdown(f'<div class="grid-sub">{w_eps}/{t_eps}</div>', unsafe_allow_html=True)
                             
                             if st.button("Open", key=f"s_mgr_{show['id']}", use_container_width=True):
                                 manage_show_dialog(show['id'], show['name'], details)
 
 # ==========================================
-# TAB 5: MOVIE LIBRARY (MOBILE OPTIMIZED 3-COLUMN GRID)
+# TAB 5: MOVIE LIBRARY (MOBILE 3-COLUMN GRID)
 # ==========================================
 with t_movies:
     st.markdown("### My Movies")
@@ -437,8 +436,9 @@ with t_movies:
     if not movies:
         st.info("Your Movie library is empty.")
     else:
+        # Generates exactly 3 columns -> The CSS triggers and locks them side-by-side!
         for i in range(0, len(movies), 3):
-            cols = st.columns(3, gap="small")
+            cols = st.columns(3)
             for j in range(3):
                 if i + j < len(movies):
                     m = movies[i + j]
@@ -448,7 +448,7 @@ with t_movies:
                         
                         with st.container(border=True):
                             if details.get("poster_path"):
-                                # Use w185 specifically so posters shrink cleanly on phones
+                                # Use w185 specifically to keep images crisp and small in the 3x3 layout
                                 st.image(f"https://image.tmdb.org/t/p/w185{details['poster_path']}", use_container_width=True)
                             
                             st.markdown(f'<div class="grid-title" title="{m["name"]}">{m["name"]}</div>', unsafe_allow_html=True)
