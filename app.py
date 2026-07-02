@@ -15,7 +15,7 @@ BIN_URL = f"https://api.jsonbin.io/v3/b/{BIN_ID}"
 headers = {"X-Master-Key": BIN_KEY, "Content-Type": "application/json"}
 TODAY = datetime.today().strftime('%Y-%m-%d')
 
-# 2. Performance Caching (Makes the app lightning fast)
+# 2. Performance Caching
 @st.cache_data(ttl=3600)
 def fetch_api(url):
     return requests.get(url).json()
@@ -69,21 +69,18 @@ with t_next:
                 ep_code = f"S{s_info['season_number']}E{ep['episode_number']}"
                 air_date = ep.get("air_date", "")
                 
-                if ep_code not in watched_set:
-                    if air_date and air_date <= TODAY:
-                        up_next_count += 1
-                        found_next = True
-                        with st.container(border=True):
-                            c1, c2 = st.columns([1, 3])
-                            if ep.get("still_path"):
-                                c1.image(f"https://image.tmdb.org/t/p/w185{ep['still_path']}")
-                            elif details.get("poster_path"):
-                                c1.image(f"https://image.tmdb.org/t/p/w92{details['poster_path']}")
-                            
-                            with c2:
-                                st.markdown(f"**{show['name']}**")
-                                st.caption(f"{ep_code}: {ep.get('name', 'Episode')}")
-                                st.button("👁️ Mark Watched", key=f"btn_next_{show['id']}_{ep_code}", on_click=quick_watch_episode, args=(show['id'], ep_code))
+                if ep_code not in watched_set and air_date and air_date <= TODAY:
+                    up_next_count += 1
+                    found_next = True
+                    with st.container(border=True):
+                        if ep.get("still_path"):
+                            st.image(f"https://image.tmdb.org/t/p/w500{ep['still_path']}", use_column_width=True)
+                        elif details.get("backdrop_path"):
+                            st.image(f"https://image.tmdb.org/t/p/w500{details['backdrop_path']}", use_column_width=True)
+                        
+                        st.markdown(f"**{show['name']}** — {ep_code}")
+                        st.caption(f"*{ep.get('name', 'Episode')}*")
+                        st.button("👁️ Mark Watched", key=f"btn_next_{show['id']}_{ep_code}", on_click=quick_watch_episode, args=(show['id'], ep_code), use_container_width=True)
                     break
 
     if up_next_count == 0:
@@ -110,30 +107,28 @@ with t_soon:
                 ep_code = f"S{s_info['season_number']}E{ep['episode_number']}"
                 air_date = ep.get("air_date", "")
                 
-                if ep_code not in watched_set:
-                    if air_date and air_date > TODAY:
-                        upcoming_count += 1
-                        found_next = True
-                        
-                        # Calculate days until release
-                        air_date_obj = datetime.strptime(air_date, '%Y-%m-%d')
-                        days_left = (air_date_obj - datetime.today()).days
-                        
-                        with st.container(border=True):
-                            c1, c2 = st.columns([1, 3])
-                            if details.get("poster_path"):
-                                c1.image(f"https://image.tmdb.org/t/p/w92{details['poster_path']}")
-                            with c2:
-                                st.markdown(f"**{show['name']}**")
-                                st.markdown(f"*{ep_code} airs in **{days_left} days***")
-                                st.caption(f"Date: {air_date}")
+                if ep_code not in watched_set and air_date and air_date > TODAY:
+                    upcoming_count += 1
+                    found_next = True
+                    
+                    air_date_obj = datetime.strptime(air_date, '%Y-%m-%d')
+                    days_left = (air_date_obj - datetime.today()).days
+                    
+                    with st.container(border=True):
+                        c1, c2 = st.columns([1, 3])
+                        if details.get("poster_path"):
+                            c1.image(f"https://image.tmdb.org/t/p/w92{details['poster_path']}")
+                        with c2:
+                            st.markdown(f"**{show['name']}**")
+                            st.markdown(f"*{ep_code} airs in **{days_left} days***")
+                            st.caption(f"Date: {air_date}")
                     break
 
     if upcoming_count == 0:
         st.info("No upcoming episodes scheduled yet.")
 
 # ==========================================
-# TAB 3: GLOBAL SEARCH
+# TAB 3: GLOBAL SEARCH (GRID LAYOUT)
 # ==========================================
 with t_search:
     st.subheader("Discover")
@@ -146,28 +141,34 @@ with t_search:
         results = res.get("results", [])
         
         if results:
-            for item in results:
-                item_id = item["id"]
-                title = item["name"] if search_type == "TV Shows" else item["title"]
-                date_label = item.get("first_air_date", "N/A") if search_type == "TV Shows" else item.get("release_date", "N/A")
-                
-                with st.expander(f"{title} ({date_label[:4] if date_label else 'N/A'})"):
-                    c1, c2 = st.columns([1, 2])
-                    if item.get("poster_path"): c1.image(f"https://image.tmdb.org/t/p/w154{item['poster_path']}")
-                    with c2:
-                        st.markdown(f"**Rating:** ⭐ {item.get('vote_average', 0.0)}/10")
-                        st.caption(item.get("overview", ""))
+            # Create a 2-column grid for a mobile app feel
+            cols = st.columns(2)
+            for idx, item in enumerate(results):
+                with cols[idx % 2]:
+                    with st.container(border=True):
+                        item_id = item["id"]
+                        title = item["name"] if search_type == "TV Shows" else item["title"]
+                        
+                        if item.get("poster_path"): 
+                            st.image(f"https://image.tmdb.org/t/p/w342{item['poster_path']}", use_column_width=True)
+                        
+                        st.markdown(f"**{title}**")
+                        st.caption(f"⭐ {item.get('vote_average', 0.0)}/10")
                         
                         if search_type == "TV Shows":
                             if not any(s["id"] == item_id for s in st.session_state.db["shows"]):
-                                if st.button("➕ Add Series", key=f"add_tv_{item_id}"):
+                                if st.button("➕ Add", key=f"add_tv_{item_id}", use_container_width=True):
                                     st.session_state.db["shows"].append({"id": item_id, "name": title, "watched_episodes": []})
                                     save_db(); st.success("Added!"); st.rerun()
+                            else:
+                                st.button("✔️ Added", key=f"dsbl_tv_{item_id}", disabled=True, use_container_width=True)
                         else:
                             if not any(m["id"] == item_id for m in st.session_state.db["movies"]):
-                                if st.button("➕ Add Movie", key=f"add_mov_{item_id}"):
+                                if st.button("➕ Add", key=f"add_mov_{item_id}", use_container_width=True):
                                     st.session_state.db["movies"].append({"id": item_id, "name": title, "watched": False})
                                     save_db(); st.success("Added!"); st.rerun()
+                            else:
+                                st.button("✔️ Added", key=f"dsbl_mov_{item_id}", disabled=True, use_container_width=True)
 
 # ==========================================
 # TABS 4 & 5: TV & MOVIE LIBRARY
@@ -180,7 +181,19 @@ with t_tv:
         w_eps = len(show.get("watched_episodes", []))
         
         with st.expander(f"📺 {show['name']} ({w_eps}/{t_eps})"):
+            # Wide Banner Artwork
+            if details.get("backdrop_path"):
+                st.image(f"https://image.tmdb.org/t/p/w500{details['backdrop_path']}", use_column_width=True)
+            
             st.progress(min(w_eps / t_eps, 1.0) if t_eps > 0 else 0.0)
+            
+            # Where to Watch Integration (Queries local streams based on AE region code)
+            providers = fetch_api(f"https://api.themoviedb.org/3/tv/{show['id']}/watch/providers?api_key={TMDB_KEY}")
+            if "AE" in providers.get("results", {}):
+                streams = providers["results"]["AE"].get("flatrate", [])
+                if streams:
+                    p_names = ", ".join([p["provider_name"] for p in streams])
+                    st.caption(f"📱 **Streaming on:** {p_names}")
             
             s_nums = [s["season_number"] for s in details.get("seasons", []) if s["season_number"] > 0]
             if s_nums:
@@ -209,18 +222,18 @@ with t_movies:
     for m in st.session_state.db["movies"]:
         details = fetch_api(f"https://api.themoviedb.org/3/movie/{m['id']}?api_key={TMDB_KEY}")
         with st.expander(f"🎬 {m['name']}"):
-            c1, c2 = st.columns([1, 2])
-            if details.get("poster_path"): c1.image(f"https://image.tmdb.org/t/p/w92{details['poster_path']}")
+            if details.get("backdrop_path"):
+                st.image(f"https://image.tmdb.org/t/p/w500{details['backdrop_path']}", use_column_width=True)
             
             def on_mov_check(mid=m['id']):
                 st.session_state.db["movies"] = [mov | {"watched": st.session_state[f"mov_{mid}"]} if mov["id"] == mid else mov for mov in st.session_state.db["movies"]]
                 save_db()
             
-            c2.checkbox("✅ Watched", value=m.get("watched", False), key=f"mov_{m['id']}", on_change=on_mov_check)
-            c2.caption(f"{details.get('runtime', 0)} mins")
+            st.checkbox("✅ Watched", value=m.get("watched", False), key=f"mov_{m['id']}", on_change=on_mov_check)
+            st.caption(f"Runtime: {details.get('runtime', 0)} mins")
 
 # ==========================================
-# TAB 6: PROFILE STATS (Time Watched)
+# TAB 6: PROFILE STATS
 # ==========================================
 with t_profile:
     st.subheader("Profile Stats")
@@ -230,18 +243,15 @@ with t_profile:
     total_mov_mins = 0
     total_movies_watched = 0
     
-    # Calculate TV Time
     for show in st.session_state.db["shows"]:
         details = fetch_api(f"https://api.themoviedb.org/3/tv/{show['id']}?api_key={TMDB_KEY}")
         w_eps = len(show.get("watched_episodes", []))
         total_episodes_watched += w_eps
         
-        # Get average runtime per episode
         runtimes = details.get("episode_run_time", [])
-        avg_runtime = runtimes[0] if runtimes else 45 # Default to 45 mins if unknown
+        avg_runtime = runtimes[0] if runtimes else 45
         total_tv_mins += (w_eps * avg_runtime)
         
-    # Calculate Movie Time
     for m in st.session_state.db["movies"]:
         if m.get("watched", False):
             details = fetch_api(f"https://api.themoviedb.org/3/movie/{m['id']}?api_key={TMDB_KEY}")
@@ -249,13 +259,10 @@ with t_profile:
             total_movies_watched += 1
             
     total_mins = total_tv_mins + total_mov_mins
-    
-    # Math to convert minutes to Months, Days, Hours
     months = total_mins // 43800
     days = (total_mins % 43800) // 1440
     hours = (total_mins % 1440) // 60
     
-    # Display Visual Dashboard
     st.markdown("### Time Spent Watching")
     col1, col2, col3 = st.columns(3)
     col1.metric("Months", f"{months}")
