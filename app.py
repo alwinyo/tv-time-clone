@@ -4,6 +4,46 @@ from datetime import datetime
 
 # Mobile-friendly layout configuration
 st.set_page_config(page_title="My TV Time", layout="centered", initial_sidebar_state="collapsed")
+
+# --- CUSTOM CSS: NATIVE APP AESTHETIC ---
+st.markdown("""
+<style>
+    /* Hide Streamlit Header & Footer */
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    header {visibility: hidden;}
+    
+    /* Remove default top padding */
+    .block-container {
+        padding-top: 2rem !important;
+        padding-bottom: 5rem !important;
+    }
+    
+    /* Round all images for modern card look */
+    img {
+        border-radius: 12px;
+    }
+    
+    /* Style buttons to look like native mobile buttons (pill shape) */
+    div.stButton > button {
+        border-radius: 20px;
+        font-weight: 600;
+        border: 1px solid #4a4a4a;
+        transition: all 0.2s ease-in-out;
+    }
+    div.stButton > button:active {
+        transform: scale(0.95);
+    }
+    
+    /* Make the tab bar scrollable and visually balanced on mobile */
+    button[data-baseweb="tab"] {
+        font-size: 14px;
+        padding-left: 10px;
+        padding-right: 10px;
+    }
+</style>
+""", unsafe_allow_html=True)
+
 st.title("📺 My TV Time")
 
 # 1. Credentials
@@ -45,13 +85,12 @@ def quick_watch_episode(show_id, ep_code):
                 st.toast(f"Marked {ep_code} as watched! ✅")
                 st.rerun()
 
-# --- NEW: VISUAL CAST GRID HELPER ---
+# --- VISUAL CAST GRID HELPER ---
 def show_cast_grid(cast_list, limit=6):
     cast_list = cast_list[:limit]
     if not cast_list:
         return
     
-    # Creates rows of 3 columns for a clean mobile grid
     for i in range(0, len(cast_list), 3):
         cols = st.columns(3)
         for j in range(3):
@@ -61,9 +100,7 @@ def show_cast_grid(cast_list, limit=6):
                     if actor.get("profile_path"):
                         st.image(f"https://image.tmdb.org/t/p/w185{actor['profile_path']}", use_container_width=True)
                     else:
-                        # Fallback if the actor doesn't have a photo on file
                         st.info("No Photo") 
-                    
                     st.caption(f"**{actor['name']}**  \n*{actor.get('character', '')}*")
 
 # --- DIALOG / POPUP FUNCTIONS ---
@@ -76,13 +113,11 @@ def show_episode_details(show_id, show_name, ep_code, ep_data, is_watched):
     st.caption(f"**{show_name}** • {ep_code} • Aired: {ep_data.get('air_date', 'N/A')} • ⭐ {ep_data.get('vote_average', 0.0)}/10")
     st.write(ep_data.get("overview", "No synopsis available for this episode yet."))
     
-    # Show Regulars (Main Cast)
     st.divider()
     st.markdown("#### Series Regulars")
     credits = fetch_api(f"https://api.themoviedb.org/3/tv/{show_id}/credits?api_key={TMDB_KEY}")
     show_cast_grid(credits.get("cast", []), limit=6)
     
-    # Show Guest Stars specifically for this episode
     guest_stars = ep_data.get("guest_stars", [])
     if guest_stars:
         st.markdown("#### Guest Stars")
@@ -141,13 +176,13 @@ def show_movie_details(m_id, m_name, details, is_watched):
 
 
 # --- APP NAVIGATION BAR ---
-t_next, t_soon, t_search, t_tv, t_movies, t_profile = st.tabs(["🔥 Next", "📅 Soon", "🔍", "📺", "🎬", "👤"])
+t_next, t_soon, t_search, t_tv, t_movies, t_profile = st.tabs(["🔥 Next", "📅 Soon", "🔍 Search", "📺 TV", "🎬 Movies", "👤 Stats"])
 
 # ==========================================
 # TAB 1: UP NEXT DASHBOARD
 # ==========================================
 with t_next:
-    st.subheader("Up Next to Watch")
+    st.markdown("## Up Next to Watch")
     up_next_count = 0
     
     for show in st.session_state.db["shows"]:
@@ -173,7 +208,7 @@ with t_next:
                         elif details.get("backdrop_path"):
                             st.image(f"https://image.tmdb.org/t/p/w500{details['backdrop_path']}", use_container_width=True)
                         
-                        st.markdown(f"**{show['name']}** — {ep_code}")
+                        st.markdown(f"### {show['name']} — {ep_code}")
                         st.caption(f"*{ep.get('name', 'Episode')}*")
                         
                         c1, c2 = st.columns(2)
@@ -196,7 +231,7 @@ with t_next:
 # TAB 2: UPCOMING CALENDAR
 # ==========================================
 with t_soon:
-    st.subheader("Upcoming Episodes")
+    st.markdown("## Upcoming Episodes")
     upcoming_count = 0
     
     for show in st.session_state.db["shows"]:
@@ -236,9 +271,9 @@ with t_soon:
 # TAB 3: GLOBAL SEARCH (GRID LAYOUT)
 # ==========================================
 with t_search:
-    st.subheader("Discover")
+    st.markdown("## Discover")
     search_type = st.radio("Looking for:", ["TV Shows", "Movies"], horizontal=True)
-    search_query = st.text_input("Enter title:")
+    search_query = st.text_input("Enter title to search:")
 
     if search_query:
         endpoint = "tv" if search_type == "TV Shows" else "movie"
@@ -278,7 +313,7 @@ with t_search:
 # TABS 4 & 5: TV & MOVIE LIBRARY
 # ==========================================
 with t_tv:
-    st.subheader("My TV Collection")
+    st.markdown("## My TV Collection")
     for show in st.session_state.db["shows"]:
         details = fetch_api(f"https://api.themoviedb.org/3/tv/{show['id']}?api_key={TMDB_KEY}")
         t_eps = details.get("number_of_episodes", 0)
@@ -298,7 +333,7 @@ with t_tv:
                 streams = providers["results"]["AE"].get("flatrate", [])
                 if streams:
                     p_names = ", ".join([p["provider_name"] for p in streams])
-                    st.caption(f"📱 **Streaming on:** {p_names}")
+                    st.caption(f"📱 **Streaming locally:** {p_names}")
             
             s_nums = [s["season_number"] for s in details.get("seasons", []) if s["season_number"] > 0]
             if s_nums:
@@ -330,7 +365,7 @@ with t_tv:
                             show_episode_details(show['id'], show['name'], e_code, ep, is_watched)
 
 with t_movies:
-    st.subheader("My Movies")
+    st.markdown("## My Movies")
     for m in st.session_state.db["movies"]:
         details = fetch_api(f"https://api.themoviedb.org/3/movie/{m['id']}?api_key={TMDB_KEY}")
         is_watched = m.get("watched", False)
@@ -354,7 +389,7 @@ with t_movies:
 # TAB 6: PROFILE STATS
 # ==========================================
 with t_profile:
-    st.subheader("Profile Stats")
+    st.markdown("## Lifetime Stats")
     
     total_tv_mins = 0
     total_episodes_watched = 0
@@ -381,13 +416,15 @@ with t_profile:
     days = (total_mins % 43800) // 1440
     hours = (total_mins % 1440) // 60
     
-    st.markdown("### Time Spent Watching")
-    col1, col2, col3 = st.columns(3)
-    col1.metric("Months", f"{months}")
-    col2.metric("Days", f"{days}")
-    col3.metric("Hours", f"{hours}")
+    st.markdown("### Total Time Spent Watching")
+    with st.container(border=True):
+        col1, col2, col3 = st.columns(3)
+        col1.metric("Months", f"{months}")
+        col2.metric("Days", f"{days}")
+        col3.metric("Hours", f"{hours}")
     
-    st.divider()
-    c1, c2 = st.columns(2)
-    c1.metric("Episodes Watched", total_episodes_watched)
-    c2.metric("Movies Watched", total_movies_watched)
+    st.markdown("### Content Breakdown")
+    with st.container(border=True):
+        c1, c2 = st.columns(2)
+        c1.metric("Episodes", total_episodes_watched)
+        c2.metric("Movies", total_movies_watched)
