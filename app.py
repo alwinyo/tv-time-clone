@@ -4,6 +4,8 @@ import pandas as pd
 import json
 import time
 import re
+import zlib
+import base64
 from datetime import datetime, timedelta
 
 # Mobile-friendly layout configuration
@@ -91,7 +93,6 @@ def fetch_api(url):
     except: return {}
 
 def fetch_robust(url):
-    """Fetches TMDB with built-in retry logic for Rate Limits"""
     for _ in range(3):
         try:
             r = requests.get(url, timeout=5)
@@ -104,7 +105,7 @@ def fetch_robust(url):
         except: time.sleep(1)
     return {}
 
-# --- PURE ARRAY PACKING ---
+# --- DEEP COMPRESSION ENGINE ---
 def pack_db(db):
     """Aggressively converts lists of dicts into strict data arrays to bypass cloud limits."""
     packed = {"m": [], "s": [], "h": [], "a": {}}
@@ -124,7 +125,7 @@ def unpack_db(packed):
     for m in packed.get("m", []):
         db["movies"].append({"id": m[0], "name": m[1], "watched": bool(m[2]), "poster_path": m[3], "release_date": m[4], "runtime": m[5]})
     for s in packed.get("s", []):
-        db["shows"].append({"id": s[0], "name": s[1], "watched_episodes": s[2].split("|") if s[2] else [], "poster_path": s[3], "first_air_date": s[4], "total_episodes": s[5]})
+        db["shows"].append({"id": s[0], "name": s[1], "watched_episodes": str(s[2]).split("|") if s[2] else [], "poster_path": s[3], "first_air_date": s[4], "total_episodes": s[5]})
     for h in packed.get("h", []):
         db["history"].append({"t": "s" if h[0]==1 else "m", "i": h[1], "e": h[2], "d": h[3]})
     for k, v in packed.get("a", {}).items():
@@ -132,33 +133,57 @@ def unpack_db(packed):
     return db
 
 def load_db():
-    # Adding timestamp query to completely obliterate JSONBin edge caching
-    url = f"{BIN_URL}?meta=false&t={int(time.time())}"
+    url = f"{BIN_URL}?meta=false&t={int(time.time())}" # CDN Cache-Buster
     res = requests.get(url, headers=headers)
     if res.status_code == 200:
         data = res.json()
-        if "record" in data: data = data["record"] # Fallback if meta=false fails
-        if "m" in data and "s" in data:
+        if "record" in data: data = data["record"]
+        if "payload" in data:
+            try:
+                dec = base64.b64decode(data["payload"])
+                decomp = zlib.decompress(dec).decode('utf-8')
+                packed_data = json.loads(decomp)
+                return unpack_db(packed_data)
+            except Exception as e:
+                st.error(f"Error extracting compressed database: {e}")
+                return None
+        elif "m" in data and "s" in data:
             return unpack_db(data)
         
-        # Failsafe initial state
+        # New initialization format
         if "shows" not in data: data["shows"] = []
         if "movies" not in data: data["movies"] = []
         if "history" not in data: data["history"] = []
         if "analytics" not in data: data["analytics"] = {}
         return data
     else:
-        st.error(f"⚠️ Failed to load database. Code: {res.status_code}")
-    return {"shows": [], "movies": [], "history": [], "analytics": {}}
+        st.error(f"⚠️ Failed to connect to JSONBin. Code: {res.status_code} | Msg: {res.text}")
+        return None # Prevents app from wiping current data if cloud goes down
 
 def save_db():
-    packed = pack_db(st.session_state.db)
-    res = requests.put(BIN_URL, json=packed, headers=headers)
-    if res.status_code != 200:
-        st.error(f"⚠️ Cloud Save Failed! Code: {res.status_code}")
+    """Returns True if successful, False if blocked by JSONBin."""
+    try:
+        packed = pack_db(st.session_state.db)
+        raw_str = json.dumps(packed, separators=(',', ':'))
+        comp = zlib.compress(raw_str.encode('utf-8'))
+        b64 = base64.b64encode(comp).decode('utf-8')
+        payload = {"payload": b64}
+        
+        res = requests.put(BIN_URL, json=payload, headers=headers)
+        if res.status_code != 200:
+            st.error(f"⚠️ Cloud Save Blocked! Code: {res.status_code} | Reason: {res.text}")
+            return False
+        return True
+    except Exception as e:
+        st.error(f"Compression Engine Error: {e}")
+        return False
 
+# Application Startup Gate
 if "db" not in st.session_state:
-    st.session_state.db = load_db()
+    db_data = load_db()
+    if db_data is None:
+        st.stop() # Freeze the app so we don't wipe data
+    st.session_state.db = db_data
 
 # --- CENTRALIZED HISTORY LOGGER ---
 def log_watch(item_type, item_id, detail=""):
@@ -176,14 +201,14 @@ def log_watch(item_type, item_id, detail=""):
     tv_h = [h for h in db["history"] if h.get("t") == "s"][:100]
     mov_h = [h for h in db["history"] if h.get("t") == "m"][:100]
     db["history"] = tv_h + mov_h
-    save_db()
+    if save_db(): st.toast("Watched! ✅")
 
 def remove_watch(item_type, item_id, detail=""):
     db = st.session_state.db
     t_flag = "s" if item_type == "tv" else "m"
     
     for idx, h in enumerate(db.get("history", [])):
-        if h.get("t") == t_flag and h.get("i") == item_id and h.get("e", "") == detail:
+        if h.get("t") == t_flag and str(h.get("i")) == str(item_id) and str(h.get("e", "")) == str(detail):
             removed = db["history"].pop(idx)
             try:
                 m_key = datetime.strptime(removed["d"], "%Y-%m-%d %H:%M:%S").strftime("%Y-%m")
@@ -248,7 +273,7 @@ def show_episode_details(show_id, show_name, ep_code, ep_data, is_watched):
     btn_label = "❌ Unmark as Watched" if is_watched else "✅ Mark as Watched"
     if st.button(btn_label, use_container_width=True, key=f"dlg_btn_tv_{show_id}_{ep_code}"):
         for s in st.session_state.db["shows"]:
-            if s["id"] == show_id:
+            if str(s["id"]) == str(show_id):
                 if is_watched and ep_code in s["watched_episodes"]: 
                     s["watched_episodes"].remove(ep_code)
                     remove_watch("tv", show_id, ep_code)
@@ -279,7 +304,7 @@ def manage_show_dialog(show_id, show_name, details):
     if s_nums:
         sel_s = st.selectbox("Select Season", s_nums, key=f"dlg_s_{show_id}")
         s_data = fetch_api(f"https://api.themoviedb.org/3/tv/{show_id}/season/{sel_s}?api_key={TMDB_KEY}")
-        current_show = next((s for s in st.session_state.db["shows"] if s["id"] == show_id), None)
+        current_show = next((s for s in st.session_state.db["shows"] if str(s["id"]) == str(show_id)), None)
         watched_list = current_show.get("watched_episodes", []) if current_show else []
         for ep in s_data.get("episodes", []):
             e_code = f"S{sel_s}E{ep['episode_number']}"
@@ -288,7 +313,7 @@ def manage_show_dialog(show_id, show_name, details):
             def on_check(sid=show_id, sname=show_name, ecode=e_code):
                 chkd = st.session_state[f"chk_dlg_{sid}_{ecode}"]
                 for s in st.session_state.db["shows"]:
-                    if s["id"] == sid:
+                    if str(s["id"]) == str(sid):
                         if chkd and ecode not in s["watched_episodes"]: 
                             s["watched_episodes"].append(ecode)
                             log_watch("tv", sid, ecode)
@@ -330,7 +355,7 @@ def show_movie_details(m_id, m_name, details, is_watched):
     btn_label = "❌ Unmark as Watched" if is_watched else "✅ Mark as Watched"
     if st.button(btn_label, use_container_width=True, key=f"dlg_btn_mov_{m_id}"):
         for m in st.session_state.db["movies"]:
-            if m["id"] == m_id:
+            if str(m["id"]) == str(m_id):
                 m["watched"] = not is_watched
                 if m["watched"]: log_watch("movie", m_id)
                 else: remove_watch("movie", m_id)
@@ -359,7 +384,7 @@ with t_next:
     for h in st.session_state.db.get("history", []):
         try:
             dt = datetime.strptime(h.get("d", "2000-01-01 12:00:00"), '%Y-%m-%d %H:%M:%S')
-            if dt >= fifteen_days_ago: recent_active_ids.add((h.get("t"), h.get("i")))
+            if dt >= fifteen_days_ago: recent_active_ids.add((h.get("t"), str(h.get("i"))))
         except: pass
     
     if next_filter == "📺 Series":
@@ -381,7 +406,7 @@ with t_next:
                     ep_code = f"S{s_info['season_number']}E{ep['episode_number']}"
                     air_date = ep.get("air_date", "")
                     if ep_code not in watched_set and air_date and air_date <= TODAY:
-                        is_rec = ("s", show["id"]) in recent_active_ids
+                        is_rec = ("s", str(show["id"])) in recent_active_ids
                         up_next_tv.append({"item": show, "details": details, "ep": ep, "code": ep_code, "date": air_date, "is_rec": is_rec})
                         found_next = True; break
 
@@ -406,10 +431,10 @@ with t_next:
                     with c2:
                         def f_w_tv(sid=show['id'], sname=show['name'], ecode=ep_code):
                             for s in st.session_state.db["shows"]:
-                                if s["id"] == sid:
+                                if str(s["id"]) == str(sid):
                                     s["watched_episodes"].append(ecode)
                                     log_watch("tv", sid, ecode)
-                                    st.toast("Watched! ✅"); break
+                                    break
                         st.button("✔️ Watched", key=f"next_w_tv_{show['id']}_{ep_code}", on_click=f_w_tv, use_container_width=True)
 
     else:
@@ -418,7 +443,7 @@ with t_next:
             if not m.get("watched"):
                 r_date = m.get("release_date", "")
                 if r_date and r_date <= TODAY:
-                    is_rec = ("m", m["id"]) in recent_active_ids
+                    is_rec = ("m", str(m["id"])) in recent_active_ids
                     up_next_mov.append({"item": m, "date": r_date, "is_rec": is_rec})
 
         if next_sort == "Alphabetical": up_next_mov.sort(key=lambda x: x["item"]["name"].lower())
@@ -442,10 +467,10 @@ with t_next:
                     with c2:
                         def f_w_mov(mid=m['id']):
                             for mv in st.session_state.db["movies"]:
-                                if mv["id"] == mid:
+                                if str(mv["id"]) == str(mid):
                                     mv["watched"] = True
                                     log_watch("movie", mid)
-                                    st.toast("Watched! ✅"); break
+                                    break
                         st.button("✔️ Watched", key=f"next_w_mov_{m['id']}", on_click=f_w_mov, use_container_width=True)
 
 # ==========================================
@@ -503,10 +528,10 @@ with t_soon:
                     with c2:
                         def f_w_s_tv(sid=show['id'], sname=show['name'], ecode=ep_code):
                             for s in st.session_state.db["shows"]:
-                                if s["id"] == sid:
+                                if str(s["id"]) == str(sid):
                                     s["watched_episodes"].append(ecode)
                                     log_watch("tv", sid, ecode)
-                                    st.toast("Watched! ✅"); break
+                                    break
                         st.button("✔️ Watched", key=f"soon_w_tv_{show['id']}_{ep_code}", on_click=f_w_s_tv, use_container_width=True)
 
     else:
@@ -538,10 +563,10 @@ with t_soon:
                     with c2:
                         def f_w_s_mov(mid=m['id']):
                             for mv in st.session_state.db["movies"]:
-                                if mv["id"] == mid:
+                                if str(mv["id"]) == str(mid):
                                     mv["watched"] = True
                                     log_watch("movie", mid)
-                                    st.toast("Watched! ✅"); break
+                                    break
                         st.button("✔️ Watched", key=f"soon_w_mov_{m['id']}", on_click=f_w_s_mov, use_container_width=True)
 
 # ==========================================
@@ -576,7 +601,7 @@ with t_search:
                                         "poster_path": details.get("poster_path", ""), "first_air_date": details.get("first_air_date", ""),
                                         "total_episodes": details.get("number_of_episodes", 1)
                                     })
-                                    save_db(); st.toast("Added!"); st.rerun()
+                                    if save_db(): st.toast("Added!"); st.rerun()
                             else: st.button("✔️ Added", key=f"dsbl_tv_{item_id}", disabled=True, use_container_width=True)
                         else:
                             if not any(str(m["id"]) == str(item_id) for m in st.session_state.db["movies"]):
@@ -587,7 +612,7 @@ with t_search:
                                         "poster_path": details.get("poster_path", ""), "release_date": details.get("release_date", ""),
                                         "runtime": details.get("runtime", 0)
                                     })
-                                    save_db(); st.toast("Added!"); st.rerun()
+                                    if save_db(): st.toast("Added!"); st.rerun()
                             else: st.button("✔️ Added", key=f"dsbl_mov_{item_id}", disabled=True, use_container_width=True)
 
 # ==========================================
@@ -865,7 +890,6 @@ with t_profile:
                     "history": [] if wipe_db else st.session_state.db.get("history", [])
                 }
                 
-                # Process Movies
                 if m_file:
                     stat_txt.text("Processing Movies... fetching data safely.")
                     try:
@@ -892,7 +916,7 @@ with t_profile:
                                     release_date = match.get("release_date", "")
                                     is_watched = m.get("is_watched", False)
                                     
-                                    if not any(movie["id"] == tmdb_id for movie in new_db["movies"]):
+                                    if not any(str(movie["id"]) == str(tmdb_id) for movie in new_db["movies"]):
                                         new_db["movies"].append({
                                             "id": tmdb_id, "name": title, "watched": is_watched,
                                             "poster_path": poster if poster else "",
@@ -912,7 +936,6 @@ with t_profile:
                 
                 if m_file and t_file: prog.progress(0)
                 
-                # Process Shows
                 if t_file:
                     stat_txt.text("Processing Series... fetching data safely.")
                     try:
@@ -939,7 +962,7 @@ with t_profile:
                                     first_air_date = match.get("first_air_date", "")
                                     watched_eps = []
                                     
-                                    is_new_show = not any(show["id"] == tmdb_id for show in new_db["shows"])
+                                    is_new_show = not any(str(show["id"]) == str(tmdb_id) for show in new_db["shows"])
                                     if is_new_show:
                                         full_s = fetch_robust(f"https://api.themoviedb.org/3/tv/{tmdb_id}?api_key={TMDB_KEY}")
                                         t_eps = full_s.get("number_of_episodes", 1) if full_s else 1
@@ -968,22 +991,24 @@ with t_profile:
                                         })
                                     else:
                                         for show in new_db["shows"]:
-                                            if show["id"] == tmdb_id:
+                                            if str(show["id"]) == str(tmdb_id):
                                                 show["watched_episodes"] = list(set(show["watched_episodes"] + watched_eps))
                                                 break
                             except Exception as item_error: continue
                     except Exception as e: st.error(f"Error processing series: {e}")
                 
-                # Sort history, then strictly cap to 100 for each to guarantee saving.
                 new_db["history"].sort(key=lambda x: x.get("d", "2000-01-01 12:00:00"), reverse=True)
                 tv_h = [h for h in new_db["history"] if h.get("t") == "s"][:100]
                 mov_h = [h for h in new_db["history"] if h.get("t") == "m"][:100]
                 new_db["history"] = tv_h + mov_h
                 
                 st.session_state.db = new_db
-                save_db()
-                stat_txt.text("✅ Mass Import & Cloud Sync Complete!")
-                st.toast("Library successfully imported.")
-                st.rerun()
+                if save_db():
+                    stat_txt.text("✅ Mass Import & Cloud Sync Complete!")
+                    st.toast("Library successfully imported.")
+                    time.sleep(1.5)
+                    st.rerun()
+                else:
+                    stat_txt.text("🛑 Import failed to save to the cloud. See error above.")
             else:
                 st.error("Please upload at least one JSON file first.")
