@@ -31,9 +31,9 @@ st.markdown("""
     
     /* Floating App Cards (Drop Shadows on Containers) */
     [data-testid="stVerticalBlockBorderWrapper"] {
-        border-radius: 16px !important;
+        border-radius: 12px !important;
         border: 1px solid rgba(200, 200, 200, 0.2) !important;
-        box-shadow: 0px 4px 15px rgba(0, 0, 0, 0.1) !important;
+        box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1) !important;
         transition: transform 0.2s;
     }
     
@@ -43,6 +43,7 @@ st.markdown("""
         font-weight: 600;
         border: 1px solid #555;
         background-color: transparent;
+        padding: 2px 8px;
     }
     div.stButton > button:active {
         transform: scale(0.95);
@@ -65,6 +66,16 @@ st.markdown("""
     .badge-gold {
         background-color: #FFC107;
         color: #000000;
+    }
+    
+    /* Truncate long titles in the grid */
+    .grid-title {
+        font-size: 0.9rem;
+        font-weight: 700;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        margin-bottom: 0.2rem;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -175,7 +186,6 @@ def manage_show_dialog(show_id, show_name, details):
     
     st.markdown(f"### {show_name}")
     
-    # Display Status and Genres as Pills
     genres = [g["name"] for g in details.get("genres", [])]
     render_badges([details.get('status')] + genres)
     
@@ -386,71 +396,73 @@ with t_search:
                                 st.button("✔️ Added", key=f"dsbl_mov_{item_id}", disabled=True, use_container_width=True)
 
 # ==========================================
-# TAB 4: TV LIBRARY (CARD LAYOUT)
+# TAB 4: TV LIBRARY (3-COLUMN POSTER GRID)
 # ==========================================
 with t_tv:
     st.markdown("### My TV Collection")
     
     if not st.session_state.db["shows"]:
         st.info("Your TV library is empty.")
-    
-    for show in st.session_state.db["shows"]:
-        details = fetch_api(f"https://api.themoviedb.org/3/tv/{show['id']}?api_key={TMDB_KEY}")
-        t_eps = details.get("number_of_episodes", 1) 
-        w_eps = len(show.get("watched_episodes", []))
+    else:
+        # Create a 3-column grid layout for TV Shows
+        cols = st.columns(3)
         
-        with st.container(border=True):
-            c1, c2 = st.columns([1, 2])
-            with c1:
-                if details.get("poster_path"):
-                    st.image(f"https://image.tmdb.org/t/p/w342{details['poster_path']}", use_container_width=True)
-            with c2:
-                st.markdown(f"#### {show['name']}")
-                
-                # Dynamic Badges
-                status_badge = details.get("status", "Unknown")
-                render_badges([status_badge])
-                
-                # Trimmed description
-                st.caption(details.get("overview", "")[:75] + "...")
-                
-                st.progress(min(w_eps / t_eps, 1.0) if t_eps > 0 else 0.0)
-                st.caption(f"{w_eps} of {t_eps} episodes watched")
-                
-                if st.button("Manage Series", key=f"s_mgr_{show['id']}", use_container_width=True):
-                    manage_show_dialog(show['id'], show['name'], details)
+        for idx, show in enumerate(st.session_state.db["shows"]):
+            details = fetch_api(f"https://api.themoviedb.org/3/tv/{show['id']}?api_key={TMDB_KEY}")
+            t_eps = details.get("number_of_episodes", 1) 
+            w_eps = len(show.get("watched_episodes", []))
+            
+            with cols[idx % 3]:
+                with st.container(border=True):
+                    # Show Poster
+                    if details.get("poster_path"):
+                        st.image(f"https://image.tmdb.org/t/p/w342{details['poster_path']}", use_container_width=True)
+                    
+                    # Truncated title for small grid
+                    st.markdown(f'<div class="grid-title" title="{show["name"]}">{show["name"]}</div>', unsafe_allow_html=True)
+                    
+                    # Progress Bar & Episode Count
+                    st.progress(min(w_eps / t_eps, 1.0) if t_eps > 0 else 0.0)
+                    st.caption(f"{w_eps}/{t_eps}")
+                    
+                    # Manage Button
+                    if st.button("Open", key=f"s_mgr_{show['id']}", use_container_width=True):
+                        manage_show_dialog(show['id'], show['name'], details)
 
 # ==========================================
-# TAB 5: MOVIE LIBRARY (CARD LAYOUT)
+# TAB 5: MOVIE LIBRARY (3-COLUMN POSTER GRID)
 # ==========================================
 with t_movies:
     st.markdown("### My Movies")
     
     if not st.session_state.db["movies"]:
         st.info("Your Movie library is empty.")
+    else:
+        # Create a 3-column grid layout for Movies
+        cols = st.columns(3)
         
-    for m in st.session_state.db["movies"]:
-        details = fetch_api(f"https://api.themoviedb.org/3/movie/{m['id']}?api_key={TMDB_KEY}")
-        is_watched = m.get("watched", False)
-        
-        with st.container(border=True):
-            c1, c2 = st.columns([1, 2])
-            with c1:
-                if details.get("poster_path"):
-                    st.image(f"https://image.tmdb.org/t/p/w342{details['poster_path']}", use_container_width=True)
-            with c2:
-                st.markdown(f"#### {m['name']}")
-                
-                render_badges([f"{details.get('runtime', 0)} mins", f"⭐ {details.get('vote_average', 0.0)}"])
-                
-                def on_mov_check(mid=m['id']):
-                    st.session_state.db["movies"] = [mov | {"watched": st.session_state[f"mov_{mid}"]} if mov["id"] == mid else mov for mov in st.session_state.db["movies"]]
-                    save_db()
-                
-                st.checkbox("✅ Watched", value=is_watched, key=f"mov_{m['id']}", on_change=on_mov_check)
-                
-                if st.button("Movie Info", key=f"m_mgr_{m['id']}", use_container_width=True):
-                    show_movie_details(m['id'], m['name'], details, is_watched)
+        for idx, m in enumerate(st.session_state.db["movies"]):
+            details = fetch_api(f"https://api.themoviedb.org/3/movie/{m['id']}?api_key={TMDB_KEY}")
+            is_watched = m.get("watched", False)
+            
+            with cols[idx % 3]:
+                with st.container(border=True):
+                    # Movie Poster
+                    if details.get("poster_path"):
+                        st.image(f"https://image.tmdb.org/t/p/w342{details['poster_path']}", use_container_width=True)
+                    
+                    # Truncated title for small grid
+                    st.markdown(f'<div class="grid-title" title="{m["name"]}">{m["name"]}</div>', unsafe_allow_html=True)
+                    
+                    # Action Buttons
+                    def on_mov_check(mid=m['id']):
+                        st.session_state.db["movies"] = [mov | {"watched": st.session_state[f"mov_{mid}"]} if mov["id"] == mid else mov for mov in st.session_state.db["movies"]]
+                        save_db()
+                    
+                    st.checkbox("Watched", value=is_watched, key=f"mov_{m['id']}", on_change=on_mov_check)
+                    
+                    if st.button("Info", key=f"m_mgr_{m['id']}", use_container_width=True):
+                        show_movie_details(m['id'], m['name'], details, is_watched)
 
 # ==========================================
 # TAB 6: PROFILE STATS
