@@ -4,8 +4,6 @@ import pandas as pd
 import json
 import time
 import re
-import zlib
-import base64
 from datetime import datetime, timedelta
 
 # Mobile-friendly layout configuration
@@ -78,8 +76,6 @@ TMDB_KEY = st.secrets["TMDB_KEY"]
 BIN_KEY = st.secrets["JSONBIN_KEY"]
 BIN_ID = st.secrets["JSONBIN_ID"]
 BIN_URL = f"https://api.jsonbin.io/v3/b/{BIN_ID}"
-
-# THE MAGIC FIX: Turning off versioning to prevent 403 lockouts
 headers = {
     "X-Master-Key": BIN_KEY, 
     "Content-Type": "application/json",
@@ -95,11 +91,12 @@ def fetch_api(url):
     except: return {}
 
 def fetch_robust(url):
+    """Fetches TMDB with built-in retry logic for Rate Limits"""
     for _ in range(3):
         try:
             r = requests.get(url, timeout=5)
             if r.status_code == 429:
-                time.sleep(1.5)
+                time.sleep(1)
                 continue
             if r.status_code == 200:
                 return r.json()
@@ -107,37 +104,58 @@ def fetch_robust(url):
         except: time.sleep(1)
     return {}
 
+# --- PURE ARRAY PACKING ---
+def pack_db(db):
+    """Aggressively converts lists of dicts into strict data arrays to bypass cloud limits."""
+    packed = {"m": [], "s": [], "h": [], "a": {}}
+    for m in db.get("movies", []):
+        packed["m"].append([m["id"], m["name"], 1 if m["watched"] else 0, m.get("poster_path", ""), m.get("release_date", ""), m.get("runtime", 0)])
+    for s in db.get("shows", []):
+        packed["s"].append([s["id"], s["name"], "|".join(s.get("watched_episodes", [])), s.get("poster_path", ""), s.get("first_air_date", ""), s.get("total_episodes", 1)])
+    for h in db.get("history", []):
+        packed["h"].append([1 if h.get("t") == "s" else 0, h.get("i"), h.get("e", ""), h.get("d")])
+    for k, v in db.get("analytics", {}).items():
+        packed["a"][k] = [v.get("tv", 0), v.get("movie", 0)]
+    return packed
+
+def unpack_db(packed):
+    """Rebuilds the database natively for app operations."""
+    db = {"movies": [], "shows": [], "history": [], "analytics": {}}
+    for m in packed.get("m", []):
+        db["movies"].append({"id": m[0], "name": m[1], "watched": bool(m[2]), "poster_path": m[3], "release_date": m[4], "runtime": m[5]})
+    for s in packed.get("s", []):
+        db["shows"].append({"id": s[0], "name": s[1], "watched_episodes": s[2].split("|") if s[2] else [], "poster_path": s[3], "first_air_date": s[4], "total_episodes": s[5]})
+    for h in packed.get("h", []):
+        db["history"].append({"t": "s" if h[0]==1 else "m", "i": h[1], "e": h[2], "d": h[3]})
+    for k, v in packed.get("a", {}).items():
+        db["analytics"][k] = {"tv": v[0], "movie": v[1]}
+    return db
+
 def load_db():
-    res = requests.get(BIN_URL, headers=headers)
+    # Adding timestamp query to completely obliterate JSONBin edge caching
+    url = f"{BIN_URL}?meta=false&t={int(time.time())}"
+    res = requests.get(url, headers=headers)
     if res.status_code == 200:
-        data = res.json().get("record", {})
-        if "payload" in data:
-            try:
-                dec = base64.b64decode(data["payload"])
-                decomp = zlib.decompress(dec).decode('utf-8')
-                data = json.loads(decomp)
-            except Exception as e:
-                st.error("Error reading compressed database.")
-                data = {}
+        data = res.json()
+        if "record" in data: data = data["record"] # Fallback if meta=false fails
+        if "m" in data and "s" in data:
+            return unpack_db(data)
         
+        # Failsafe initial state
         if "shows" not in data: data["shows"] = []
         if "movies" not in data: data["movies"] = []
         if "history" not in data: data["history"] = []
         if "analytics" not in data: data["analytics"] = {}
         return data
+    else:
+        st.error(f"⚠️ Failed to load database. Code: {res.status_code}")
     return {"shows": [], "movies": [], "history": [], "analytics": {}}
 
 def save_db():
-    try:
-        raw_str = json.dumps(st.session_state.db)
-        comp = zlib.compress(raw_str.encode('utf-8'))
-        b64 = base64.b64encode(comp).decode('utf-8')
-        payload = {"payload": b64}
-        res = requests.put(BIN_URL, json=payload, headers=headers)
-        if res.status_code != 200:
-            st.error(f"⚠️ Cloud Save Failed! Code: {res.status_code}")
-    except Exception as e:
-        st.error(f"Compression Engine Error: {e}")
+    packed = pack_db(st.session_state.db)
+    res = requests.put(BIN_URL, json=packed, headers=headers)
+    if res.status_code != 200:
+        st.error(f"⚠️ Cloud Save Failed! Code: {res.status_code}")
 
 if "db" not in st.session_state:
     st.session_state.db = load_db()
@@ -393,6 +411,7 @@ with t_next:
                                     log_watch("tv", sid, ecode)
                                     st.toast("Watched! ✅"); break
                         st.button("✔️ Watched", key=f"next_w_tv_{show['id']}_{ep_code}", on_click=f_w_tv, use_container_width=True)
+
     else:
         up_next_mov = []
         for m in st.session_state.db["movies"]:
@@ -586,7 +605,7 @@ with t_tv:
     if c3.button("Watched", type="primary" if st.session_state.tv_tab == "WATCHED" else "secondary", use_container_width=True, key="tv_wd"):
         st.session_state.tv_tab = "WATCHED"; st.rerun()
         
-    tv_sort = st.selectbox("Sort Library by:", ["Release Date", "Recently Added", "Alphabetical"], key="sort_tv_lib")
+    tv_sort = st.selectbox("Sort Library by:", ["Release Date", "Alphabetical", "Recently Added"], key="sort_tv_lib")
     st.divider()
     
     shows = st.session_state.db.get("shows", [])
@@ -639,7 +658,7 @@ with t_movies:
     if c3.button("Watched", type="primary" if st.session_state.mov_tab == "WATCHED" else "secondary", use_container_width=True, key="m_wd"):
         st.session_state.mov_tab = "WATCHED"; st.rerun()
         
-    mov_sort = st.selectbox("Sort Library by:", ["Release Date", "Recently Added", "Alphabetical"], key="sort_mov_lib")
+    mov_sort = st.selectbox("Sort Library by:", ["Release Date", "Alphabetical", "Recently Added"], key="sort_mov_lib")
     st.divider()
     
     movies = st.session_state.db.get("movies", [])
@@ -725,7 +744,7 @@ with t_profile:
             
     analytics_12m = {m_str: analytics.get(m_str, {"tv": 0, "movie": 0}) for m_str in last_12_months}
     df = pd.DataFrame.from_dict(analytics_12m, orient='index')
-    df.index = pd.to_datetime(df.index).strftime('%b %Y')
+    df.index = pd.to_datetime(df.index, format='%Y-%m').strftime('%b %Y')
     
     with chart_tab1:
         st.bar_chart(df[["tv"]], color="#FFC107")
@@ -887,7 +906,7 @@ with t_profile:
                                             
                                             new_db["analytics"].setdefault(m_key, {"tv": 0, "movie": 0})
                                             new_db["analytics"][m_key]["movie"] += 1
-                                            new_db["history"].append({"t": "m", "i": tmdb_id, "d": w_dt})
+                                            new_db["history"].append({"t": "m", "i": tmdb_id, "e": "", "d": w_dt})
                             except Exception as item_error: continue 
                     except Exception as e: st.error(f"Error processing movies: {e}")
                 
@@ -955,6 +974,7 @@ with t_profile:
                             except Exception as item_error: continue
                     except Exception as e: st.error(f"Error processing series: {e}")
                 
+                # Sort history, then strictly cap to 100 for each to guarantee saving.
                 new_db["history"].sort(key=lambda x: x.get("d", "2000-01-01 12:00:00"), reverse=True)
                 tv_h = [h for h in new_db["history"] if h.get("t") == "s"][:100]
                 mov_h = [h for h in new_db["history"] if h.get("t") == "m"][:100]
@@ -962,7 +982,7 @@ with t_profile:
                 
                 st.session_state.db = new_db
                 save_db()
-                stat_txt.text("✅ Mass Import & Compression Complete!")
+                stat_txt.text("✅ Mass Import & Cloud Sync Complete!")
                 st.toast("Library successfully imported.")
                 st.rerun()
             else:
