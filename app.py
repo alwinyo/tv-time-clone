@@ -6,7 +6,7 @@ import time
 import re
 import zlib
 import base64
-from datetime import datetime
+from datetime import datetime, timedelta
 
 # Mobile-friendly layout configuration
 st.set_page_config(page_title="My TV Time", layout="centered", initial_sidebar_state="collapsed")
@@ -197,7 +197,6 @@ def show_cast_grid(cast_list, limit=6):
                     st.markdown(html, unsafe_allow_html=True)
 
 def parse_tvtime_date(d_str):
-    """Securely intercepts and normalizes both TV Series format and ISO Movie format"""
     if not d_str: return "2000-01-01 12:00:00"
     try:
         clean_str = str(d_str).replace("Z", "").replace("T", " ").split(".")[0]
@@ -223,7 +222,7 @@ def show_episode_details(show_id, show_name, ep_code, ep_data, is_watched):
         show_cast_grid(guest_stars, limit=6)
     st.divider()
     btn_label = "❌ Unmark as Watched" if is_watched else "✅ Mark as Watched"
-    if st.button(btn_label, use_container_width=True):
+    if st.button(btn_label, use_container_width=True, key=f"dlg_btn_tv_{show_id}_{ep_code}"):
         for s in st.session_state.db["shows"]:
             if s["id"] == show_id:
                 if is_watched and ep_code in s["watched_episodes"]: 
@@ -305,7 +304,7 @@ def show_movie_details(m_id, m_name, details, is_watched):
     show_cast_grid(credits.get("cast", []), limit=6)
     st.divider()
     btn_label = "❌ Unmark as Watched" if is_watched else "✅ Mark as Watched"
-    if st.button(btn_label, use_container_width=True):
+    if st.button(btn_label, use_container_width=True, key=f"dlg_btn_mov_{m_id}"):
         for m in st.session_state.db["movies"]:
             if m["id"] == m_id:
                 m["watched"] = not is_watched
@@ -322,14 +321,13 @@ t_next, t_soon, t_search, t_tv, t_movies, t_profile = st.tabs(["🔥 Next", "�
 # ==========================================
 with t_next:
     st.markdown("### Up Next")
-    
     col1, col2 = st.columns([1, 1])
     with col1:
-        next_filter = st.radio("Category", ["📺 Series", "🎬 Movies"], horizontal=True, label_visibility="collapsed")
+        next_filter = st.radio("Category", ["📺 Series", "🎬 Movies"], horizontal=True, label_visibility="collapsed", key="next_filter_radio")
     with col2:
-        next_sort = st.selectbox("Sort", ["Smart Priority", "Release Date", "Alphabetical"], label_visibility="collapsed")
+        next_sort = st.selectbox("Sort", ["Smart Priority", "Release Date", "Alphabetical"], label_visibility="collapsed", key="next_sort_box")
+    st.divider()
     
-    # Track Last 15 Days Priority
     try: fifteen_days_ago = datetime.now() - pd.DateOffset(days=15)
     except: fifteen_days_ago = datetime.today() - timedelta(days=15)
     
@@ -389,7 +387,6 @@ with t_next:
                                     log_watch("tv", sid, ecode)
                                     st.toast("Watched! ✅"); break
                         st.button("✔️ Watched", key=f"next_w_tv_{show['id']}_{ep_code}", on_click=f_w_tv, use_container_width=True)
-
     else:
         up_next_mov = []
         for m in st.session_state.db["movies"]:
@@ -431,7 +428,11 @@ with t_next:
 # ==========================================
 with t_soon:
     st.markdown("### Upcoming Releases")
-    soon_filter = st.radio("Category", ["📺 Series", "🎬 Movies"], horizontal=True, label_visibility="collapsed")
+    col1, col2 = st.columns([1, 1])
+    with col1:
+        soon_filter = st.radio("Category", ["📺 Series", "🎬 Movies"], horizontal=True, label_visibility="collapsed", key="soon_filter_radio")
+    with col2:
+        soon_sort = st.selectbox("Sort", ["Release Date", "Alphabetical"], label_visibility="collapsed", key="soon_sort_box")
     st.divider()
     
     if soon_filter == "📺 Series":
@@ -455,7 +456,8 @@ with t_soon:
                         soon_tv.append({"item": show, "details": details, "ep": ep, "code": ep_code, "date": air_date})
                         found_next = True; break
 
-        soon_tv.sort(key=lambda x: x["date"] or "2099-01-01")
+        if soon_sort == "Alphabetical": soon_tv.sort(key=lambda x: x["item"]["name"].lower())
+        else: soon_tv.sort(key=lambda x: x["date"] or "2099-01-01")
 
         if not soon_tv: st.info("No upcoming episodes scheduled yet.")
         else:
@@ -490,7 +492,8 @@ with t_soon:
                 if r_date and r_date > TODAY:
                     soon_mov.append({"item": m, "date": r_date})
 
-        soon_mov.sort(key=lambda x: x["date"] or "2099-01-01")
+        if soon_sort == "Alphabetical": soon_mov.sort(key=lambda x: x["item"]["name"].lower())
+        else: soon_mov.sort(key=lambda x: x["date"] or "2099-01-01")
 
         if not soon_mov: st.info("No upcoming movies scheduled yet.")
         else:
@@ -521,8 +524,8 @@ with t_soon:
 # ==========================================
 with t_search:
     st.markdown("### Discover")
-    search_type = st.radio("Category:", ["TV Shows", "Movies"], horizontal=True)
-    search_query = st.text_input("Enter title to search:")
+    search_type = st.radio("Category:", ["TV Shows", "Movies"], horizontal=True, key="search_filter_radio")
+    search_query = st.text_input("Enter title to search:", key="search_query_input")
 
     if search_query:
         endpoint = "tv" if search_type == "TV Shows" else "movie"
@@ -577,7 +580,7 @@ with t_tv:
     if c3.button("Watched", type="primary" if st.session_state.tv_tab == "WATCHED" else "secondary", use_container_width=True, key="tv_wd"):
         st.session_state.tv_tab = "WATCHED"; st.rerun()
         
-    tv_sort = st.selectbox("Sort Library by:", ["Release Date", "Alphabetical", "Recently Added"], key="sort_tv")
+    tv_sort = st.selectbox("Sort Library by:", ["Release Date", "Recently Added", "Alphabetical"], key="sort_tv")
     st.divider()
     
     shows = st.session_state.db.get("shows", [])
@@ -630,7 +633,7 @@ with t_movies:
     if c3.button("Watched", type="primary" if st.session_state.mov_tab == "WATCHED" else "secondary", use_container_width=True, key="m_wd"):
         st.session_state.mov_tab = "WATCHED"; st.rerun()
         
-    mov_sort = st.selectbox("Sort Library by:", ["Release Date", "Alphabetical", "Recently Added"], key="sort_mov")
+    mov_sort = st.selectbox("Sort Library by:", ["Release Date", "Recently Added", "Alphabetical"], key="sort_mov")
     st.divider()
     
     movies = st.session_state.db.get("movies", [])
@@ -706,7 +709,6 @@ with t_profile:
     chart_tab1, chart_tab2 = st.tabs(["📺 Series Activity", "🎬 Movie Activity"])
     analytics = st.session_state.db.get("analytics", {})
     
-    # Generate Rolling 12 Months
     last_12_months = []
     try:
         for i in range(11, -1, -1):
@@ -821,12 +823,12 @@ with t_profile:
     
     # --- TV TIME ZLIB COMPRESSED IMPORTER ---
     with st.expander("⚙️ Import TV Time Data"):
-        st.warning("Ensure you keep the app open until the progress bar reaches 100%. TMDB limits requests so this will process carefully.")
-        wipe_db = st.checkbox("Wipe current library before importing", value=True)
-        m_file = st.file_uploader("Upload Movies JSON", type="json")
-        t_file = st.file_uploader("Upload Series JSON", type="json")
+        st.warning("Ensure you keep the app open until the progress bar reaches 100%.")
+        wipe_db = st.checkbox("Wipe current library before importing", value=True, key="wipe_chk")
+        m_file = st.file_uploader("Upload Movies JSON", type="json", key="import_movies")
+        t_file = st.file_uploader("Upload Series JSON", type="json", key="import_shows")
         
-        if st.button("Start Safe Import"):
+        if st.button("Start Safe Import", key="start_import_btn"):
             if m_file or t_file:
                 prog = st.progress(0)
                 stat_txt = st.empty()
@@ -838,7 +840,6 @@ with t_profile:
                     "history": [] if wipe_db else st.session_state.db.get("history", [])
                 }
                 
-                # Process Movies
                 if m_file:
                     stat_txt.text("Processing Movies... fetching data safely.")
                     try:
@@ -884,7 +885,6 @@ with t_profile:
                 
                 if m_file and t_file: prog.progress(0)
                 
-                # Process Shows
                 if t_file:
                     stat_txt.text("Processing Series... fetching data safely.")
                     try:
@@ -945,7 +945,6 @@ with t_profile:
                                             break
                     except Exception as e: st.error(f"Error processing series: {e}")
                 
-                # Sort history, then strictly cap to 100 for each to guarantee saving.
                 new_db["history"].sort(key=lambda x: x.get("d", "2000-01-01 12:00:00"), reverse=True)
                 tv_h = [h for h in new_db["history"] if h.get("t") == "s"][:100]
                 mov_h = [h for h in new_db["history"] if h.get("t") == "m"][:100]
