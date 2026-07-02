@@ -2,8 +2,9 @@ import streamlit as st
 import requests
 import pandas as pd
 import json
-from datetime import datetime, timedelta
 import time
+import re
+from datetime import datetime, timedelta
 
 # Mobile-friendly layout configuration
 st.set_page_config(page_title="My TV Time", layout="centered", initial_sidebar_state="collapsed")
@@ -19,35 +20,25 @@ st.markdown("""
     [data-testid="stProgressBar"] > div > div { background-color: #FFC107 !important; }
     
     [data-testid="stVerticalBlockBorderWrapper"] {
-        border-radius: 12px !important;
-        border: 1px solid rgba(200, 200, 200, 0.2) !important;
-        box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1) !important;
-        padding: 0.5rem !important;
+        border-radius: 12px !important; border: 1px solid rgba(200, 200, 200, 0.2) !important;
+        box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1) !important; padding: 0.5rem !important;
     }
     
     div.stButton > button {
-        border-radius: 20px;
-        font-weight: 600;
-        transition: all 0.2s;
-        padding: 2px 5px !important;
-        font-size: 0.75rem !important;
+        border-radius: 20px; font-weight: 600; transition: all 0.2s;
+        padding: 2px 5px !important; font-size: 0.75rem !important;
     }
     div.stButton > button:active { transform: scale(0.95); }
     
     button[kind="primary"] { background-color: #FFC107 !important; color: #000 !important; border: none !important; }
     button[kind="secondary"] { background-color: #222 !important; color: #ccc !important; border: 1px solid #444 !important; }
     
-    .ep-toggle-btn div.stButton > button {
-        background: transparent !important; border: none !important; color: #888 !important;
-        font-size: 0.9rem !important; padding: 0 !important; margin-top: 6px !important; box-shadow: none !important;
+    .ep-toggle-btn div.stButton > button, .hist-toggle-btn div.stButton > button {
+        background: transparent !important; border: none !important; color: #888 !important; box-shadow: none !important;
     }
-    .ep-toggle-btn div.stButton > button:active { color: #FFC107 !important; transform: none !important; }
-    
-    .hist-toggle-btn div.stButton > button {
-        background: transparent !important; border: none !important; color: #888 !important;
-        font-size: 1.1rem !important; padding: 0 !important; margin-top: 15px !important; box-shadow: none !important;
-    }
-    .hist-toggle-btn div.stButton > button:active { color: #FFC107 !important; transform: none !important; }
+    .ep-toggle-btn div.stButton > button { font-size: 0.9rem !important; padding: 0 !important; margin-top: 6px !important; }
+    .hist-toggle-btn div.stButton > button { font-size: 1.1rem !important; padding: 0 !important; margin-top: 15px !important; }
+    .ep-toggle-btn div.stButton > button:active, .hist-toggle-btn div.stButton > button:active { color: #FFC107 !important; transform: none !important; }
     
     @media (max-width: 768px) {
         div[data-testid="stHorizontalBlock"]:has(> div[data-testid="column"]:nth-child(3):last-child) {
@@ -83,7 +74,20 @@ TODAY = datetime.today().strftime('%Y-%m-%d')
 
 @st.cache_data(ttl=3600)
 def fetch_api(url):
-    return requests.get(url).json()
+    try:
+        return requests.get(url, timeout=5).json()
+    except: return {}
+
+def fetch_robust(url):
+    for _ in range(3):
+        try:
+            r = requests.get(url, timeout=5).json()
+            if r.get("status_code") in [25, 9]:
+                time.sleep(1)
+                continue
+            return r
+        except: time.sleep(1)
+    return {}
 
 def load_db():
     res = requests.get(BIN_URL, headers=headers)
@@ -119,12 +123,7 @@ def show_cast_grid(cast_list, limit=6):
                     encoded_name = actor['name'].replace(" ", "+")
                     imdb_url = f"https://www.imdb.com/find/?q={encoded_name}"
                     img_url = f"https://image.tmdb.org/t/p/w185{actor['profile_path']}" if actor.get("profile_path") else "https://via.placeholder.com/185x278/222222/888888?text=No+Photo"
-                    html = f"""
-                    <a href="{imdb_url}" target="_blank" style="text-decoration:none; color:inherit;">
-                        <img src="{img_url}" style="width:100%; border-radius:8px; display:block;">
-                        <div class="grid-title">{actor['name']}</div>
-                    </a>
-                    """
+                    html = f'<a href="{imdb_url}" target="_blank" style="text-decoration:none; color:inherit;"><img src="{img_url}" style="width:100%; border-radius:8px; display:block;"><div class="grid-title">{actor["name"]}</div></a>'
                     st.markdown(html, unsafe_allow_html=True)
 
 def parse_tvtime_date(d_str):
@@ -136,8 +135,7 @@ def parse_tvtime_date(d_str):
         try:
             dt = datetime.strptime(d_str, "%Y-%m-%d %H:%M:%S")
             return dt.strftime("%Y-%m-%d %H:%M:%S")
-        except:
-            return "2000-01-01 12:00:00"
+        except: return "2000-01-01 12:00:00"
 
 # --- DIALOGS ---
 @st.dialog("Episode Details")
@@ -176,6 +174,14 @@ def manage_show_dialog(show_id, show_name, details):
     genres = [g["name"] for g in details.get("genres", [])]
     render_badges([details.get('status')] + genres)
     st.write(details.get("overview", "No overview available."))
+    
+    providers = fetch_api(f"https://api.themoviedb.org/3/tv/{show_id}/watch/providers?api_key={TMDB_KEY}")
+    if "AE" in providers.get("results", {}):
+        streams = providers["results"]["AE"].get("flatrate", [])
+        if streams:
+            p_names = ", ".join([p["provider_name"] for p in streams])
+            st.info(f"📱 **Streaming locally:** {p_names}")
+            
     st.divider()
     st.markdown("#### Episodes")
     s_nums = [s["season_number"] for s in details.get("seasons", []) if s["season_number"] > 0]
@@ -250,13 +256,19 @@ t_next, t_soon, t_search, t_tv, t_movies, t_profile = st.tabs(["🔥 Next", "�
 # ==========================================
 with t_next:
     st.markdown("### Up Next to Watch")
-    next_sort = st.selectbox("Sort by:", ["Release Date", "Alphabetical", "Recently Added"], key="sort_next")
+    next_sort = st.selectbox("Sort by:", ["Release Date", "Alphabetical"], key="sort_next")
     up_next_items = []
+    
     for show in st.session_state.db["shows"]:
+        w_eps = len(show.get("watched_episodes", []))
+        t_eps = show.get("total_episodes", 1)
+        if w_eps >= t_eps: continue # Skip fully watched shows to save API calls
+        
         details = fetch_api(f"https://api.themoviedb.org/3/tv/{show['id']}?api_key={TMDB_KEY}")
         found_next = False
         watched_set = set(show.get("watched_episodes", []))
         seasons = [s for s in details.get("seasons", []) if s["season_number"] > 0]
+        
         for s_info in seasons:
             if found_next: break
             s_data = fetch_api(f"https://api.themoviedb.org/3/tv/{show['id']}/season/{s_info['season_number']}?api_key={TMDB_KEY}")
@@ -300,6 +312,10 @@ with t_soon:
     st.markdown("### Upcoming Episodes")
     upcoming_count = 0
     for show in st.session_state.db["shows"]:
+        w_eps = len(show.get("watched_episodes", []))
+        t_eps = show.get("total_episodes", 1)
+        if w_eps >= t_eps: continue
+        
         details = fetch_api(f"https://api.themoviedb.org/3/tv/{show['id']}?api_key={TMDB_KEY}")
         found_next = False
         watched_set = set(show.get("watched_episodes", []))
@@ -362,18 +378,28 @@ with t_search:
                         if search_type == "TV Shows":
                             if not any(s["id"] == item_id for s in st.session_state.db["shows"]):
                                 if st.button("➕ Add", key=f"add_tv_{item_id}", use_container_width=True):
-                                    st.session_state.db["shows"].append({"id": item_id, "name": title, "watched_episodes": []})
+                                    details = fetch_api(f"https://api.themoviedb.org/3/tv/{item_id}?api_key={TMDB_KEY}")
+                                    st.session_state.db["shows"].append({
+                                        "id": item_id, "name": title, "watched_episodes": [],
+                                        "poster_path": details.get("poster_path", ""), "first_air_date": details.get("first_air_date", ""),
+                                        "total_episodes": details.get("number_of_episodes", 1)
+                                    })
                                     save_db(); st.toast("Added!"); st.rerun()
                             else: st.button("✔️ Added", key=f"dsbl_tv_{item_id}", disabled=True, use_container_width=True)
                         else:
                             if not any(m["id"] == item_id for m in st.session_state.db["movies"]):
                                 if st.button("➕ Add", key=f"add_mov_{item_id}", use_container_width=True):
-                                    st.session_state.db["movies"].append({"id": item_id, "name": title, "watched": False})
+                                    details = fetch_api(f"https://api.themoviedb.org/3/movie/{item_id}?api_key={TMDB_KEY}")
+                                    st.session_state.db["movies"].append({
+                                        "id": item_id, "name": title, "watched": False,
+                                        "poster_path": details.get("poster_path", ""), "release_date": details.get("release_date", ""),
+                                        "runtime": details.get("runtime", 0)
+                                    })
                                     save_db(); st.toast("Added!"); st.rerun()
                             else: st.button("✔️ Added", key=f"dsbl_mov_{item_id}", disabled=True, use_container_width=True)
 
 # ==========================================
-# TAB 4: TV LIBRARY
+# TAB 4: TV LIBRARY (CACHED FROM DB)
 # ==========================================
 with t_tv:
     st.markdown("### My TV Collection")
@@ -395,20 +421,19 @@ with t_tv:
     else:
         display_shows = []
         for show in shows:
-            details = fetch_api(f"https://api.themoviedb.org/3/tv/{show['id']}?api_key={TMDB_KEY}")
-            air_date = details.get("first_air_date", "")
-            t_eps = details.get("number_of_episodes", 1) 
+            air_date = show.get("first_air_date", "")
+            t_eps = show.get("total_episodes", 1) 
             w_eps = len(show.get("watched_episodes", []))
             
             is_upcoming = bool(air_date and air_date > TODAY)
             is_completed = (w_eps >= t_eps and t_eps > 0)
             
-            if st.session_state.tv_tab == "WATCHED" and is_completed: display_shows.append((show, details, t_eps, w_eps))
-            elif st.session_state.tv_tab == "UPCOMING" and is_upcoming and not is_completed: display_shows.append((show, details, t_eps, w_eps))
-            elif st.session_state.tv_tab == "WATCHLIST" and not is_upcoming and not is_completed: display_shows.append((show, details, t_eps, w_eps))
+            if st.session_state.tv_tab == "WATCHED" and is_completed: display_shows.append((show, t_eps, w_eps))
+            elif st.session_state.tv_tab == "UPCOMING" and is_upcoming and not is_completed: display_shows.append((show, t_eps, w_eps))
+            elif st.session_state.tv_tab == "WATCHLIST" and not is_upcoming and not is_completed: display_shows.append((show, t_eps, w_eps))
                 
         if tv_sort == "Alphabetical": display_shows.sort(key=lambda x: x[0]['name'].lower())
-        elif tv_sort == "Release Date": display_shows.sort(key=lambda x: x[1].get('first_air_date', '1900-01-01') or '1900-01-01', reverse=True)
+        elif tv_sort == "Release Date": display_shows.sort(key=lambda x: x[0].get('first_air_date', '1900-01-01') or '1900-01-01', reverse=True)
                 
         if not display_shows: st.info(f"Your {st.session_state.tv_tab.lower()} is currently empty.")
         else:
@@ -416,17 +441,18 @@ with t_tv:
                 cols = st.columns(3)
                 for j in range(3):
                     if i + j < len(display_shows):
-                        show, details, t_eps, w_eps = display_shows[i + j]
+                        show, t_eps, w_eps = display_shows[i + j]
                         with cols[j]:
                             with st.container(border=True):
-                                if details.get("poster_path"): st.image(f"https://image.tmdb.org/t/p/w185{details['poster_path']}", use_container_width=True)
+                                if show.get("poster_path"): st.image(f"https://image.tmdb.org/t/p/w185{show['poster_path']}", use_container_width=True)
                                 st.markdown(f'<div class="grid-title" title="{show["name"]}">{show["name"]}</div>', unsafe_allow_html=True)
                                 st.progress(min(w_eps / t_eps, 1.0) if t_eps > 0 else 0.0)
                                 if st.button("DETAILS", key=f"s_mgr_{show['id']}", use_container_width=True):
+                                    details = fetch_api(f"https://api.themoviedb.org/3/tv/{show['id']}?api_key={TMDB_KEY}")
                                     manage_show_dialog(show['id'], show['name'], details)
 
 # ==========================================
-# TAB 5: MOVIE LIBRARY
+# TAB 5: MOVIE LIBRARY (CACHED FROM DB)
 # ==========================================
 with t_movies:
     st.markdown("""
@@ -459,17 +485,16 @@ with t_movies:
     else:
         display_movies = []
         for m in movies:
-            details = fetch_api(f"https://api.themoviedb.org/3/movie/{m['id']}?api_key={TMDB_KEY}")
-            r_date = details.get("release_date", "")
+            r_date = m.get("release_date", "")
             is_watched = m.get("watched", False)
             is_upcoming = bool(r_date and r_date > TODAY)
             
-            if st.session_state.mov_tab == "WATCHED" and is_watched: display_movies.append((m, details, is_watched))
-            elif st.session_state.mov_tab == "UPCOMING" and is_upcoming and not is_watched: display_movies.append((m, details, is_watched))
-            elif st.session_state.mov_tab == "WATCHLIST" and not is_upcoming and not is_watched: display_movies.append((m, details, is_watched))
+            if st.session_state.mov_tab == "WATCHED" and is_watched: display_movies.append((m, is_watched))
+            elif st.session_state.mov_tab == "UPCOMING" and is_upcoming and not is_watched: display_movies.append((m, is_watched))
+            elif st.session_state.mov_tab == "WATCHLIST" and not is_upcoming and not is_watched: display_movies.append((m, is_watched))
                 
         if mov_sort == "Alphabetical": display_movies.sort(key=lambda x: x[0]['name'].lower())
-        elif mov_sort == "Release Date": display_movies.sort(key=lambda x: x[1].get('release_date', '1900-01-01') or '1900-01-01', reverse=True)
+        elif mov_sort == "Release Date": display_movies.sort(key=lambda x: x[0].get('release_date', '1900-01-01') or '1900-01-01', reverse=True)
                 
         if not display_movies: st.info(f"Your {st.session_state.mov_tab.lower()} is currently empty.")
         else:
@@ -477,18 +502,19 @@ with t_movies:
                 cols = st.columns(3)
                 for j in range(3):
                     if i + j < len(display_movies):
-                        m, details, is_watched = display_movies[i + j]
+                        m, is_watched = display_movies[i + j]
                         st.markdown('<div class="movie-poster-sharp">', unsafe_allow_html=True)
-                        if details.get("poster_path"): st.image(f"https://image.tmdb.org/t/p/w185{details['poster_path']}", use_container_width=True)
+                        if m.get("poster_path"): st.image(f"https://image.tmdb.org/t/p/w185{m['poster_path']}", use_container_width=True)
                         st.markdown('</div>', unsafe_allow_html=True)
                         
                         st.markdown('<div class="movie-wall-btn">', unsafe_allow_html=True)
                         if st.button("DETAILS", key=f"m_mgr_{m['id']}", use_container_width=True):
+                            details = fetch_api(f"https://api.themoviedb.org/3/movie/{m['id']}?api_key={TMDB_KEY}")
                             show_movie_details(m['id'], m['name'], details, is_watched)
                         st.markdown('</div>', unsafe_allow_html=True)
 
 # ==========================================
-# TAB 6: PROFILE STATS & HISTORY
+# TAB 6: PROFILE STATS, GRAPHS & IMPORT
 # ==========================================
 with t_profile:
     st.markdown("### Lifetime Stats")
@@ -497,16 +523,13 @@ with t_profile:
     total_mov_mins = 0; total_movies_watched = 0
     
     for show in st.session_state.db["shows"]:
-        details = fetch_api(f"https://api.themoviedb.org/3/tv/{show['id']}?api_key={TMDB_KEY}")
         w_eps = len(show.get("watched_episodes", []))
         total_episodes_watched += w_eps
-        avg_runtime = details.get("episode_run_time", [45])
-        total_tv_mins += (w_eps * (avg_runtime[0] if avg_runtime else 45))
+        total_tv_mins += (w_eps * 45) # Average estimation
         
     for m in st.session_state.db["movies"]:
         if m.get("watched", False):
-            details = fetch_api(f"https://api.themoviedb.org/3/movie/{m['id']}?api_key={TMDB_KEY}")
-            total_mov_mins += details.get("runtime", 0)
+            total_mov_mins += m.get("runtime", 120) # Average estimation
             total_movies_watched += 1
             
     total_mins = total_tv_mins + total_mov_mins
@@ -531,19 +554,19 @@ with t_profile:
     if history:
         monthly_tv = {}; monthly_mov = {}
         for h in history:
-            dt = datetime.strptime(h["watched_at"], '%Y-%m-%d %H:%M:%S')
-            m_key = dt.strftime('%Y-%m')
-            if h["type"] == "tv": monthly_tv[m_key] = monthly_tv.get(m_key, 0) + 1
-            else: monthly_mov[m_key] = monthly_mov.get(m_key, 0) + 1
+            try:
+                dt = datetime.strptime(h["watched_at"], '%Y-%m-%d %H:%M:%S')
+                m_key = dt.strftime('%Y-%m')
+                if h["type"] == "tv": monthly_tv[m_key] = monthly_tv.get(m_key, 0) + 1
+                else: monthly_mov[m_key] = monthly_mov.get(m_key, 0) + 1
+            except: pass
         
-        # Plot Series
         if monthly_tv:
             df_tv = pd.DataFrame(list(monthly_tv.items()), columns=['Month', 'Episodes Watched']).set_index('Month').sort_index()
             df_tv.index = pd.to_datetime(df_tv.index).strftime('%b %Y')
             st.markdown("#### Series Watched per Month")
             st.bar_chart(df_tv, color="#FFC107")
         
-        # Plot Movies
         if monthly_mov:
             df_mov = pd.DataFrame(list(monthly_mov.items()), columns=['Month', 'Movies Watched']).set_index('Month').sort_index()
             df_mov.index = pd.to_datetime(df_mov.index).strftime('%b %Y')
@@ -564,8 +587,10 @@ with t_profile:
         else:
             grouped_tv = {}
             for item in tv_hist:
-                dt = datetime.strptime(item["watched_at"], '%Y-%m-%d %H:%M:%S')
-                grouped_tv.setdefault(dt.strftime('%B %Y'), []).append((item, dt))
+                try:
+                    dt = datetime.strptime(item["watched_at"], '%Y-%m-%d %H:%M:%S')
+                    grouped_tv.setdefault(dt.strftime('%B %Y'), []).append((item, dt))
+                except: pass
             
             for month_str, items in grouped_tv.items():
                 st.markdown(f"#### {month_str}")
@@ -596,8 +621,10 @@ with t_profile:
         else:
             grouped_mov = {}
             for item in mov_hist:
-                dt = datetime.strptime(item["watched_at"], '%Y-%m-%d %H:%M:%S')
-                grouped_mov.setdefault(dt.strftime('%B %Y'), []).append((item, dt))
+                try:
+                    dt = datetime.strptime(item["watched_at"], '%Y-%m-%d %H:%M:%S')
+                    grouped_mov.setdefault(dt.strftime('%B %Y'), []).append((item, dt))
+                except: pass
                 
             for month_str, items in grouped_mov.items():
                 st.markdown(f"#### {month_str}")
@@ -621,64 +648,106 @@ with t_profile:
 
     st.divider()
     
-    # --- TV TIME DATA IMPORTER (Wipes Existing Data) ---
+    # --- TV TIME DATA IMPORTER (Smart Merging) ---
     with st.expander("⚙️ Import TV Time Data"):
-        st.warning("Running this tool will completely wipe your current library and replace it with your uploaded TV Time history files.")
+        st.warning("Ensure you keep the app open until the progress bar reaches 100%. TMDB limits requests so this will process carefully.")
+        wipe_db = st.checkbox("Wipe current test library before importing", value=True)
         m_file = st.file_uploader("Upload Movies JSON", type="json")
         t_file = st.file_uploader("Upload Series JSON", type="json")
         
-        if st.button("Start Import"):
+        if st.button("Start Safe Import"):
             if m_file or t_file:
                 prog = st.progress(0)
                 stat_txt = st.empty()
-                new_db = {"movies": [], "shows": [], "history": []}
+                
+                new_db = {
+                    "movies": [] if wipe_db else st.session_state.db.get("movies", []),
+                    "shows": [] if wipe_db else st.session_state.db.get("shows", []),
+                    "history": [] if wipe_db else st.session_state.db.get("history", [])
+                }
                 
                 # Process Movies
                 if m_file:
-                    stat_txt.text("Processing Movies...")
-                    m_data = json.load(m_file)
-                    for idx, m in enumerate(m_data):
-                        prog.progress((idx + 1) / len(m_data))
-                        if m.get("is_watched"):
+                    stat_txt.text("Processing Movies... fetching data.")
+                    try:
+                        m_data = json.load(m_file)
+                        for idx, m in enumerate(m_data):
+                            prog.progress((idx + 1) / len(m_data))
+                            
                             imdb_id = m.get("id", {}).get("imdb")
-                            if not imdb_id: continue
-                            res = fetch_api(f"https://api.themoviedb.org/3/find/{imdb_id}?api_key={TMDB_KEY}&external_source=imdb_id")
+                            res = {}
+                            if imdb_id:
+                                res = fetch_robust(f"https://api.themoviedb.org/3/find/{imdb_id}?api_key={TMDB_KEY}&external_source=imdb_id")
+                                
+                            if not res.get("movie_results"):
+                                title_query = m.get("title", "").replace(" ", "+")
+                                res = fetch_robust(f"https://api.themoviedb.org/3/search/movie?api_key={TMDB_KEY}&query={title_query}&year={m.get('year', '')}")
+                                if res.get("results"): res["movie_results"] = [res["results"][0]]
+                                
                             if res.get("movie_results"):
                                 tmdb_id = res["movie_results"][0]["id"]
                                 title = res["movie_results"][0]["title"]
+                                is_watched = m.get("is_watched", False)
+                                
                                 if not any(movie["id"] == tmdb_id for movie in new_db["movies"]):
-                                    new_db["movies"].append({"id": tmdb_id, "name": title, "watched": True})
-                                    w_dt = parse_tvtime_date(m.get("watched_at"))
-                                    new_db["history"].append({"type": "movie", "id": tmdb_id, "title": title, "detail": "", "watched_at": w_dt})
+                                    full_m = fetch_robust(f"https://api.themoviedb.org/3/movie/{tmdb_id}?api_key={TMDB_KEY}")
+                                    new_db["movies"].append({
+                                        "id": tmdb_id, "name": title, "watched": is_watched,
+                                        "poster_path": full_m.get("poster_path", ""), "release_date": full_m.get("release_date", ""),
+                                        "runtime": full_m.get("runtime", 0)
+                                    })
+                                    if is_watched:
+                                        w_dt = parse_tvtime_date(m.get("watched_at"))
+                                        new_db["history"].append({"type": "movie", "id": tmdb_id, "title": title, "detail": "", "watched_at": w_dt})
+                    except Exception as e: st.error(f"Error processing movies: {e}")
+                
+                prog.progress(0)
                 
                 # Process Shows
                 if t_file:
-                    stat_txt.text("Processing Series... (This may take a moment to fetch TMDB IDs)")
-                    t_data = json.load(t_file)
-                    for idx, s in enumerate(t_data):
-                        prog.progress((idx + 1) / len(t_data))
-                        tvdb_id = s.get("id", {}).get("tvdb")
-                        if not tvdb_id: continue
-                        res = fetch_api(f"https://api.themoviedb.org/3/find/{tvdb_id}?api_key={TMDB_KEY}&external_source=tvdb_id")
-                        if res.get("tv_results"):
-                            tmdb_id = res["tv_results"][0]["id"]
-                            title = res["tv_results"][0]["name"]
-                            watched_eps = []
-                            for season in s.get("seasons", []):
-                                s_num = season.get("number")
-                                for ep in season.get("episodes", []):
-                                    if ep.get("is_watched"):
-                                        e_num = ep.get("number")
-                                        e_code = f"S{s_num}E{e_num}"
-                                        watched_eps.append(e_code)
-                                        w_dt = parse_tvtime_date(ep.get("watched_at"))
-                                        new_db["history"].append({"type": "tv", "id": tmdb_id, "title": title, "detail": e_code, "watched_at": w_dt})
-                            if not any(show["id"] == tmdb_id for show in new_db["shows"]):
-                                new_db["shows"].append({"id": tmdb_id, "name": title, "watched_episodes": watched_eps})
+                    stat_txt.text("Processing Series... fetching data.")
+                    try:
+                        t_data = json.load(t_file)
+                        for idx, s in enumerate(t_data):
+                            prog.progress((idx + 1) / len(t_data))
+                            
+                            tvdb_id = s.get("id", {}).get("tvdb")
+                            res = {}
+                            if tvdb_id:
+                                res = fetch_robust(f"https://api.themoviedb.org/3/find/{tvdb_id}?api_key={TMDB_KEY}&external_source=tvdb_id")
+                            
+                            if not res.get("tv_results"):
+                                title_query = re.sub(r'\(\d{4}\)', '', s.get("title", "")).strip().replace(" ", "+")
+                                res = fetch_robust(f"https://api.themoviedb.org/3/search/tv?api_key={TMDB_KEY}&query={title_query}")
+                                if res.get("results"): res["tv_results"] = [res["results"][0]]
+                                
+                            if res.get("tv_results"):
+                                tmdb_id = res["tv_results"][0]["id"]
+                                title = res["tv_results"][0]["name"]
+                                watched_eps = []
+                                
+                                for season in s.get("seasons", []):
+                                    s_num = season.get("number")
+                                    for ep in season.get("episodes", []):
+                                        if ep.get("is_watched"):
+                                            e_num = ep.get("number")
+                                            e_code = f"S{s_num}E{e_num}"
+                                            watched_eps.append(e_code)
+                                            w_dt = parse_tvtime_date(ep.get("watched_at"))
+                                            new_db["history"].append({"type": "tv", "id": tmdb_id, "title": title, "detail": e_code, "watched_at": w_dt})
+                                            
+                                if not any(show["id"] == tmdb_id for show in new_db["shows"]):
+                                    full_s = fetch_robust(f"https://api.themoviedb.org/3/tv/{tmdb_id}?api_key={TMDB_KEY}")
+                                    new_db["shows"].append({
+                                        "id": tmdb_id, "name": title, "watched_episodes": watched_eps,
+                                        "poster_path": full_s.get("poster_path", ""), "first_air_date": full_s.get("first_air_date", ""),
+                                        "total_episodes": full_s.get("number_of_episodes", 1)
+                                    })
+                    except Exception as e: st.error(f"Error processing series: {e}")
                 
                 st.session_state.db = new_db
                 save_db()
-                stat_txt.text("✅ Import Complete!")
+                stat_txt.text("✅ Safe Import Complete!")
                 st.toast("Library successfully imported.")
                 st.rerun()
             else:
