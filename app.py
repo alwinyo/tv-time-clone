@@ -1,6 +1,6 @@
 import streamlit as st
 import requests
-from datetime import datetime
+from datetime import datetime, timedelta
 
 # Mobile-friendly layout configuration
 st.set_page_config(page_title="My TV Time", layout="centered", initial_sidebar_state="collapsed")
@@ -29,7 +29,7 @@ st.markdown("""
         background-color: #FFC107 !important;
     }
     
-    /* Floating App Cards (For TV Tab and Search) */
+    /* Floating App Cards */
     [data-testid="stVerticalBlockBorderWrapper"] {
         border-radius: 12px !important;
         border: 1px solid rgba(200, 200, 200, 0.2) !important;
@@ -126,15 +126,34 @@ TODAY = datetime.today().strftime('%Y-%m-%d')
 def fetch_api(url):
     return requests.get(url).json()
 
-# 3. Database Core Operations
+# 3. Database Core Operations & Migration
 def load_db():
     res = requests.get(BIN_URL, headers=headers)
     if res.status_code == 200:
         data = res.json().get("record", {})
         if "shows" not in data: data["shows"] = []
         if "movies" not in data: data["movies"] = []
+        
+        # --- DATABASE MIGRATION: ADD HISTORY LEDGER ---
+        if "history" not in data:
+            data["history"] = []
+            yesterday = (datetime.now() - timedelta(days=1)).strftime('%Y-%m-%d 12:00:00')
+            
+            # Backfill existing movies
+            for m in data["movies"]:
+                if m.get("watched"):
+                    data["history"].append({"type": "movie", "id": m["id"], "title": m["name"], "detail": "", "watched_at": yesterday})
+            
+            # Backfill existing tv shows
+            for s in data["shows"]:
+                for ep in s.get("watched_episodes", []):
+                    data["history"].append({"type": "tv", "id": s["id"], "title": s["name"], "detail": ep, "watched_at": yesterday})
+            
+            # Immediately save the migration so we don't duplicate it later
+            requests.put(BIN_URL, json=data, headers=headers)
+            
         return data
-    return {"shows": [], "movies": []}
+    return {"shows": [], "movies": [], "history": []}
 
 def save_db():
     requests.put(BIN_URL, json=st.session_state.db, headers=headers)
@@ -147,15 +166,6 @@ def render_badges(items, is_gold=False):
     css_class = "badge badge-gold" if is_gold else "badge"
     html = "".join([f'<span class="{css_class}">{item}</span>' for item in items])
     st.markdown(html, unsafe_allow_html=True)
-
-def quick_watch_episode(show_id, ep_code):
-    for s in st.session_state.db["shows"]:
-        if s["id"] == show_id:
-            if ep_code not in s["watched_episodes"]:
-                s["watched_episodes"].append(ep_code)
-                save_db()
-                st.toast(f"Marked {ep_code} as watched! ✅")
-                st.rerun()
 
 def show_cast_grid(cast_list, limit=6):
     cast_list = cast_list[:limit]
@@ -196,8 +206,14 @@ def show_episode_details(show_id, show_name, ep_code, ep_data, is_watched):
     if st.button(btn_label, use_container_width=True):
         for s in st.session_state.db["shows"]:
             if s["id"] == show_id:
-                if is_watched and ep_code in s["watched_episodes"]: s["watched_episodes"].remove(ep_code)
-                elif not is_watched and ep_code not in s["watched_episodes"]: s["watched_episodes"].append(ep_code)
+                if is_watched and ep_code in s["watched_episodes"]: 
+                    s["watched_episodes"].remove(ep_code)
+                    # Remove from history
+                    st.session_state.db["history"] = [h for h in st.session_state.db.get("history", []) if not (h["type"]=="tv" and h["id"]==show_id and h["detail"]==ep_code)]
+                elif not is_watched and ep_code not in s["watched_episodes"]: 
+                    s["watched_episodes"].append(ep_code)
+                    # Add to history
+                    st.session_state.db.setdefault("history", []).append({"type": "tv", "id": show_id, "title": show_name, "detail": ep_code, "watched_at": datetime.now().strftime('%Y-%m-%d %H:%M:%S')})
                 save_db(); break
         st.rerun()
 
@@ -231,12 +247,16 @@ def manage_show_dialog(show_id, show_name, details):
             e_code = f"S{sel_s}E{ep['episode_number']}"
             is_watched = e_code in watched_list
             
-            def on_check(sid=show_id, ecode=e_code):
+            def on_check(sid=show_id, sname=show_name, ecode=e_code):
                 chkd = st.session_state[f"chk_dlg_{sid}_{ecode}"]
                 for s in st.session_state.db["shows"]:
                     if s["id"] == sid:
-                        if chkd and ecode not in s["watched_episodes"]: s["watched_episodes"].append(ecode)
-                        elif not chkd and ecode in s["watched_episodes"]: s["watched_episodes"].remove(ecode)
+                        if chkd and ecode not in s["watched_episodes"]: 
+                            s["watched_episodes"].append(ecode)
+                            st.session_state.db.setdefault("history", []).append({"type": "tv", "id": sid, "title": sname, "detail": ecode, "watched_at": datetime.now().strftime('%Y-%m-%d %H:%M:%S')})
+                        elif not chkd and ecode in s["watched_episodes"]: 
+                            s["watched_episodes"].remove(ecode)
+                            st.session_state.db["history"] = [h for h in st.session_state.db.get("history", []) if not (h["type"]=="tv" and h["id"]==sid and h["detail"]==ecode)]
                         save_db(); break
             
             st.checkbox(f"**E{ep['episode_number']}.** {ep.get('name', 'Episode')}", value=is_watched, key=f"chk_dlg_{show_id}_{e_code}", on_change=on_check)
@@ -266,11 +286,15 @@ def show_movie_details(m_id, m_name, details, is_watched):
         for m in st.session_state.db["movies"]:
             if m["id"] == m_id:
                 m["watched"] = not is_watched
+                if m["watched"]:
+                    st.session_state.db.setdefault("history", []).append({"type": "movie", "id": m_id, "title": m_name, "detail": "", "watched_at": datetime.now().strftime('%Y-%m-%d %H:%M:%S')})
+                else:
+                    st.session_state.db["history"] = [h for h in st.session_state.db.get("history", []) if not (h["type"]=="movie" and h["id"]==m_id)]
                 save_db(); break
         st.rerun()
 
 # --- APP NAVIGATION BAR ---
-t_next, t_soon, t_search, t_tv, t_movies, t_profile = st.tabs(["🔥 Next", "📅 Soon", "🔍 Search", "📺 TV", "🎬 Movies", "👤 Stats"])
+t_next, t_soon, t_search, t_tv, t_movies, t_profile = st.tabs(["🔥 Next", "📅 Soon", "🔍 Search", "📺 TV", "🎬 Movies", "👤 Profile"])
 
 # ==========================================
 # TAB 1: UP NEXT DASHBOARD
@@ -309,10 +333,11 @@ with t_next:
                             if st.button("ℹ️ Info", key=f"info_next_{show['id']}_{ep_code}", use_container_width=True):
                                 show_episode_details(show['id'], show['name'], ep_code, ep, is_watched=False)
                         with c2:
-                            def fast_watch(sid=show['id'], ecode=ep_code):
+                            def fast_watch(sid=show['id'], sname=show['name'], ecode=ep_code):
                                 for s in st.session_state.db["shows"]:
                                     if s["id"] == sid:
                                         s["watched_episodes"].append(ecode)
+                                        st.session_state.db.setdefault("history", []).append({"type": "tv", "id": sid, "title": sname, "detail": ecode, "watched_at": datetime.now().strftime('%Y-%m-%d %H:%M:%S')})
                                         save_db(); st.toast("Watched! ✅"); break
                             st.button("✔️ Watched", key=f"btn_next_{show['id']}_{ep_code}", on_click=fast_watch, use_container_width=True)
                     break
@@ -347,7 +372,6 @@ with t_soon:
                     days_left = (datetime.strptime(air_date, '%Y-%m-%d') - datetime.today()).days
                     
                     with st.container(border=True):
-                        # Matching the exact visual layout of the "Up Next" tab
                         if ep.get("still_path"): st.image(f"https://image.tmdb.org/t/p/w500{ep['still_path']}", use_container_width=True)
                         elif details.get("backdrop_path"): st.image(f"https://image.tmdb.org/t/p/w500{details['backdrop_path']}", use_container_width=True)
                         
@@ -361,10 +385,11 @@ with t_soon:
                             if st.button("ℹ️ Info", key=f"info_soon_{show['id']}_{ep_code}", use_container_width=True):
                                 show_episode_details(show['id'], show['name'], ep_code, ep, is_watched=False)
                         with c2:
-                            def fast_watch_soon(sid=show['id'], ecode=ep_code):
+                            def fast_watch_soon(sid=show['id'], sname=show['name'], ecode=ep_code):
                                 for s in st.session_state.db["shows"]:
                                     if s["id"] == sid:
                                         s["watched_episodes"].append(ecode)
+                                        st.session_state.db.setdefault("history", []).append({"type": "tv", "id": sid, "title": sname, "detail": ecode, "watched_at": datetime.now().strftime('%Y-%m-%d %H:%M:%S')})
                                         save_db(); st.toast("Watched! ✅"); break
                             st.button("✔️ Watched", key=f"btn_soon_{show['id']}_{ep_code}", on_click=fast_watch_soon, use_container_width=True)
                     break
@@ -415,16 +440,13 @@ with t_search:
                                 st.button("✔️ Added", key=f"dsbl_mov_{item_id}", disabled=True, use_container_width=True)
 
 # ==========================================
-# TAB 4: TV LIBRARY (NATIVE TAB BUTTONS)
+# TAB 4: TV LIBRARY 
 # ==========================================
 with t_tv:
     st.markdown("### My TV Collection")
     
-    # Initialize session state for TV tabs
-    if "tv_tab" not in st.session_state:
-        st.session_state.tv_tab = "WATCHLIST"
+    if "tv_tab" not in st.session_state: st.session_state.tv_tab = "WATCHLIST"
         
-    # Render Custom Tab Buttons (Forced 3-column via CSS)
     c1, c2, c3 = st.columns(3)
     if c1.button("Watchlist", type="primary" if st.session_state.tv_tab == "WATCHLIST" else "secondary", use_container_width=True, key="tv_wl"):
         st.session_state.tv_tab = "WATCHLIST"; st.rerun()
@@ -478,7 +500,7 @@ with t_tv:
                                     manage_show_dialog(show['id'], show['name'], details)
 
 # ==========================================
-# TAB 5: MOVIE LIBRARY (EDGE-TO-EDGE POSTER WALL)
+# TAB 5: MOVIE LIBRARY 
 # ==========================================
 with t_movies:
     st.markdown("""
@@ -505,11 +527,8 @@ with t_movies:
     
     st.markdown("### My Movies")
     
-    # Initialize session state for Movie tabs
-    if "mov_tab" not in st.session_state:
-        st.session_state.mov_tab = "WATCHLIST"
+    if "mov_tab" not in st.session_state: st.session_state.mov_tab = "WATCHLIST"
         
-    # Render Custom Tab Buttons (Forced 3-column via CSS)
     c1, c2, c3 = st.columns(3)
     if c1.button("Watchlist", type="primary" if st.session_state.mov_tab == "WATCHLIST" else "secondary", use_container_width=True, key="m_wl"):
         st.session_state.mov_tab = "WATCHLIST"; st.rerun()
@@ -532,7 +551,6 @@ with t_movies:
             
             is_upcoming = bool(r_date and r_date > TODAY)
             
-            # Prioritize 'Watched' first, so early-viewings don't get stuck in Upcoming
             if st.session_state.mov_tab == "WATCHED" and is_watched:
                 display_movies.append((m, details, is_watched))
             elif st.session_state.mov_tab == "UPCOMING" and is_upcoming and not is_watched:
@@ -560,7 +578,7 @@ with t_movies:
                         st.markdown('</div>', unsafe_allow_html=True)
 
 # ==========================================
-# TAB 6: PROFILE STATS
+# TAB 6: PROFILE & HISTORY STATS
 # ==========================================
 with t_profile:
     st.markdown("### Lifetime Stats")
@@ -590,15 +608,31 @@ with t_profile:
     days = (total_mins % 43800) // 1440
     hours = (total_mins % 1440) // 60
     
-    st.markdown("#### Total Time Spent Watching")
     with st.container(border=True):
         col1, col2, col3 = st.columns(3)
         col1.metric("Months", f"{months}")
         col2.metric("Days", f"{days}")
         col3.metric("Hours", f"{hours}")
     
-    st.markdown("#### Content Breakdown")
     with st.container(border=True):
         c1, c2 = st.columns(2)
         c1.metric("Episodes", total_episodes_watched)
         c2.metric("Movies", total_movies_watched)
+        
+    st.divider()
+    
+    # --- NEW: HISTORY FEED ---
+    st.markdown("### 📜 Watch History")
+    history = sorted(st.session_state.db.get("history", []), key=lambda x: x["watched_at"], reverse=True)
+    
+    if not history:
+        st.info("No watch history recorded yet.")
+    else:
+        for item in history:
+            dt = datetime.strptime(item["watched_at"], '%Y-%m-%d %H:%M:%S')
+            date_str = dt.strftime('%b %d, %Y • %I:%M %p')
+            icon = "🎬" if item["type"] == "movie" else "📺"
+            
+            with st.container(border=True):
+                st.markdown(f"{icon} **{item['title']}** {item['detail']}")
+                st.caption(date_str)
