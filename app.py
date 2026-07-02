@@ -36,6 +36,15 @@ def save_db():
 if "db" not in st.session_state:
     st.session_state.db = load_db()
 
+def quick_watch_episode(show_id, ep_code):
+    for s in st.session_state.db["shows"]:
+        if s["id"] == show_id:
+            if ep_code not in s["watched_episodes"]:
+                s["watched_episodes"].append(ep_code)
+                save_db()
+                st.toast(f"Marked {ep_code} as watched! ✅")
+                st.rerun()
+
 # --- DIALOG / POPUP FUNCTIONS ---
 @st.dialog("Episode Details")
 def show_episode_details(show_id, show_name, ep_code, ep_data, is_watched):
@@ -46,9 +55,14 @@ def show_episode_details(show_id, show_name, ep_code, ep_data, is_watched):
     st.caption(f"**{show_name}** • {ep_code} • Aired: {ep_data.get('air_date', 'N/A')} • ⭐ {ep_data.get('vote_average', 0.0)}/10")
     st.write(ep_data.get("overview", "No synopsis available for this episode yet."))
     
+    # NEW: Pull Guest Stars specific to this episode
+    guest_stars = ep_data.get("guest_stars", [])[:5]
+    if guest_stars:
+        st.markdown("**Guest Stars:**")
+        st.caption(" • ".join([f"{g['name']} ({g.get('character', '')})" for g in guest_stars]))
+    
     st.divider()
     
-    # Big toggle button inside the popup
     btn_label = "❌ Unmark as Watched" if is_watched else "✅ Mark as Watched"
     if st.button(btn_label, use_container_width=True):
         for s in st.session_state.db["shows"]:
@@ -62,13 +76,20 @@ def show_episode_details(show_id, show_name, ep_code, ep_data, is_watched):
         st.rerun()
 
 @st.dialog("Show Info")
-def show_series_details(show_name, details):
+def show_series_details(show_id, show_name, details):
     if details.get("poster_path"):
         st.image(f"https://image.tmdb.org/t/p/w342{details['poster_path']}", use_column_width=True)
     st.markdown(f"### {show_name}")
     genres = ", ".join([g["name"] for g in details.get("genres", [])])
     st.caption(f"**Status:** {details.get('status')} • **Genres:** {genres} • ⭐ {details.get('vote_average', 0.0)}/10")
     st.write(details.get("overview", "No overview available."))
+    
+    # NEW: Pull Top Cast for the Show
+    credits = fetch_api(f"https://api.themoviedb.org/3/tv/{show_id}/credits?api_key={TMDB_KEY}")
+    cast = credits.get("cast", [])[:6]
+    if cast:
+        st.markdown("**Top Cast:**")
+        st.caption(" • ".join([f"{c['name']} ({c.get('character', '')})" for c in cast]))
 
 @st.dialog("Movie Details")
 def show_movie_details(m_id, m_name, details, is_watched):
@@ -78,6 +99,13 @@ def show_movie_details(m_id, m_name, details, is_watched):
     genres = ", ".join([g["name"] for g in details.get("genres", [])])
     st.caption(f"**Released:** {details.get('release_date', 'N/A')} • **Runtime:** {details.get('runtime', 0)} mins • {genres}")
     st.write(details.get("overview", "No synopsis available."))
+    
+    # NEW: Pull Top Cast for the Movie
+    credits = fetch_api(f"https://api.themoviedb.org/3/movie/{m_id}/credits?api_key={TMDB_KEY}")
+    cast = credits.get("cast", [])[:6]
+    if cast:
+        st.markdown("**Top Cast:**")
+        st.caption(" • ".join([f"{c['name']} ({c.get('character', '')})" for c in cast]))
     
     st.divider()
     btn_label = "❌ Unmark as Watched" if is_watched else "✅ Mark as Watched"
@@ -240,9 +268,8 @@ with t_tv:
             
             st.progress(min(w_eps / t_eps, 1.0) if t_eps > 0 else 0.0)
             
-            # Show Info Button
             if st.button("ℹ️ About this Show", key=f"s_info_{show['id']}", use_container_width=True):
-                show_series_details(show['name'], details)
+                show_series_details(show['id'], show['name'], details)
             
             providers = fetch_api(f"https://api.themoviedb.org/3/tv/{show['id']}/watch/providers?api_key={TMDB_KEY}")
             if "AE" in providers.get("results", {}):
@@ -260,7 +287,6 @@ with t_tv:
                     e_code = f"S{sel_s}E{ep['episode_number']}"
                     is_watched = e_code in show.get("watched_episodes", [])
                     
-                    # Split into Checkbox and Info button
                     col1, col2 = st.columns([4, 1])
                     with col1:
                         def on_check(sid=show['id'], ecode=e_code):
