@@ -36,14 +36,59 @@ def save_db():
 if "db" not in st.session_state:
     st.session_state.db = load_db()
 
-def quick_watch_episode(show_id, ep_code):
-    for s in st.session_state.db["shows"]:
-        if s["id"] == show_id:
-            if ep_code not in s["watched_episodes"]:
-                s["watched_episodes"].append(ep_code)
+# --- DIALOG / POPUP FUNCTIONS ---
+@st.dialog("Episode Details")
+def show_episode_details(show_id, show_name, ep_code, ep_data, is_watched):
+    if ep_data.get("still_path"):
+        st.image(f"https://image.tmdb.org/t/p/w500{ep_data['still_path']}", use_column_width=True)
+    
+    st.markdown(f"### {ep_data.get('name', 'Untitled Episode')}")
+    st.caption(f"**{show_name}** • {ep_code} • Aired: {ep_data.get('air_date', 'N/A')} • ⭐ {ep_data.get('vote_average', 0.0)}/10")
+    st.write(ep_data.get("overview", "No synopsis available for this episode yet."))
+    
+    st.divider()
+    
+    # Big toggle button inside the popup
+    btn_label = "❌ Unmark as Watched" if is_watched else "✅ Mark as Watched"
+    if st.button(btn_label, use_container_width=True):
+        for s in st.session_state.db["shows"]:
+            if s["id"] == show_id:
+                if is_watched and ep_code in s["watched_episodes"]:
+                    s["watched_episodes"].remove(ep_code)
+                elif not is_watched and ep_code not in s["watched_episodes"]:
+                    s["watched_episodes"].append(ep_code)
                 save_db()
-                st.toast(f"Marked {ep_code} as watched! ✅")
-                st.rerun()
+                break
+        st.rerun()
+
+@st.dialog("Show Info")
+def show_series_details(show_name, details):
+    if details.get("poster_path"):
+        st.image(f"https://image.tmdb.org/t/p/w342{details['poster_path']}", use_column_width=True)
+    st.markdown(f"### {show_name}")
+    genres = ", ".join([g["name"] for g in details.get("genres", [])])
+    st.caption(f"**Status:** {details.get('status')} • **Genres:** {genres} • ⭐ {details.get('vote_average', 0.0)}/10")
+    st.write(details.get("overview", "No overview available."))
+
+@st.dialog("Movie Details")
+def show_movie_details(m_id, m_name, details, is_watched):
+    if details.get("backdrop_path"):
+        st.image(f"https://image.tmdb.org/t/p/w500{details['backdrop_path']}", use_column_width=True)
+    st.markdown(f"### {m_name}")
+    genres = ", ".join([g["name"] for g in details.get("genres", [])])
+    st.caption(f"**Released:** {details.get('release_date', 'N/A')} • **Runtime:** {details.get('runtime', 0)} mins • {genres}")
+    st.write(details.get("overview", "No synopsis available."))
+    
+    st.divider()
+    btn_label = "❌ Unmark as Watched" if is_watched else "✅ Mark as Watched"
+    if st.button(btn_label, use_container_width=True):
+        for m in st.session_state.db["movies"]:
+            if m["id"] == m_id:
+                m["watched"] = not is_watched
+                save_db()
+                break
+        st.rerun()
+
 
 # --- APP NAVIGATION BAR ---
 t_next, t_soon, t_search, t_tv, t_movies, t_profile = st.tabs(["🔥 Next", "📅 Soon", "🔍", "📺", "🎬", "👤"])
@@ -80,7 +125,18 @@ with t_next:
                         
                         st.markdown(f"**{show['name']}** — {ep_code}")
                         st.caption(f"*{ep.get('name', 'Episode')}*")
-                        st.button("👁️ Mark Watched", key=f"btn_next_{show['id']}_{ep_code}", on_click=quick_watch_episode, args=(show['id'], ep_code), use_container_width=True)
+                        
+                        c1, c2 = st.columns(2)
+                        with c1:
+                            if st.button("ℹ️ Info", key=f"info_next_{show['id']}_{ep_code}", use_container_width=True):
+                                show_episode_details(show['id'], show['name'], ep_code, ep, is_watched=False)
+                        with c2:
+                            def fast_watch(sid=show['id'], ecode=ep_code):
+                                for s in st.session_state.db["shows"]:
+                                    if s["id"] == sid:
+                                        s["watched_episodes"].append(ecode)
+                                        save_db(); st.toast("Watched! ✅"); break
+                            st.button("✔️ Watched", key=f"btn_next_{show['id']}_{ep_code}", on_click=fast_watch, use_container_width=True)
                     break
 
     if up_next_count == 0:
@@ -110,7 +166,6 @@ with t_soon:
                 if ep_code not in watched_set and air_date and air_date > TODAY:
                     upcoming_count += 1
                     found_next = True
-                    
                     air_date_obj = datetime.strptime(air_date, '%Y-%m-%d')
                     days_left = (air_date_obj - datetime.today()).days
                     
@@ -141,7 +196,6 @@ with t_search:
         results = res.get("results", [])
         
         if results:
-            # Create a 2-column grid for a mobile app feel
             cols = st.columns(2)
             for idx, item in enumerate(results):
                 with cols[idx % 2]:
@@ -181,13 +235,15 @@ with t_tv:
         w_eps = len(show.get("watched_episodes", []))
         
         with st.expander(f"📺 {show['name']} ({w_eps}/{t_eps})"):
-            # Wide Banner Artwork
             if details.get("backdrop_path"):
                 st.image(f"https://image.tmdb.org/t/p/w500{details['backdrop_path']}", use_column_width=True)
             
             st.progress(min(w_eps / t_eps, 1.0) if t_eps > 0 else 0.0)
             
-            # Where to Watch Integration (Queries local streams based on AE region code)
+            # Show Info Button
+            if st.button("ℹ️ About this Show", key=f"s_info_{show['id']}", use_container_width=True):
+                show_series_details(show['name'], details)
+            
             providers = fetch_api(f"https://api.themoviedb.org/3/tv/{show['id']}/watch/providers?api_key={TMDB_KEY}")
             if "AE" in providers.get("results", {}):
                 streams = providers["results"]["AE"].get("flatrate", [])
@@ -202,35 +258,49 @@ with t_tv:
                 
                 for ep in s_data.get("episodes", []):
                     e_code = f"S{sel_s}E{ep['episode_number']}"
-                    def on_check(sid=show['id'], ecode=e_code):
-                        chkd = st.session_state[f"chk_{sid}_{ecode}"]
-                        for s in st.session_state.db["shows"]:
-                            if s["id"] == sid:
-                                if chkd and ecode not in s["watched_episodes"]: s["watched_episodes"].append(ecode)
-                                elif not chkd and ecode in s["watched_episodes"]: s["watched_episodes"].remove(ecode)
-                                save_db(); break
+                    is_watched = e_code in show.get("watched_episodes", [])
                     
-                    st.checkbox(
-                        f"{ep['episode_number']}. {ep.get('name', 'Episode')}",
-                        value=(e_code in show.get("watched_episodes", [])),
-                        key=f"chk_{show['id']}_{e_code}",
-                        on_change=on_check
-                    )
+                    # Split into Checkbox and Info button
+                    col1, col2 = st.columns([4, 1])
+                    with col1:
+                        def on_check(sid=show['id'], ecode=e_code):
+                            chkd = st.session_state[f"chk_{sid}_{ecode}"]
+                            for s in st.session_state.db["shows"]:
+                                if s["id"] == sid:
+                                    if chkd and ecode not in s["watched_episodes"]: s["watched_episodes"].append(ecode)
+                                    elif not chkd and ecode in s["watched_episodes"]: s["watched_episodes"].remove(ecode)
+                                    save_db(); break
+                        
+                        st.checkbox(
+                            f"E{ep['episode_number']}. {ep.get('name', 'Episode')}",
+                            value=is_watched,
+                            key=f"chk_{show['id']}_{e_code}",
+                            on_change=on_check
+                        )
+                    with col2:
+                        if st.button("ℹ️", key=f"info_{show['id']}_{e_code}"):
+                            show_episode_details(show['id'], show['name'], e_code, ep, is_watched)
 
 with t_movies:
     st.subheader("My Movies")
     for m in st.session_state.db["movies"]:
         details = fetch_api(f"https://api.themoviedb.org/3/movie/{m['id']}?api_key={TMDB_KEY}")
+        is_watched = m.get("watched", False)
+        
         with st.expander(f"🎬 {m['name']}"):
             if details.get("backdrop_path"):
                 st.image(f"https://image.tmdb.org/t/p/w500{details['backdrop_path']}", use_column_width=True)
             
-            def on_mov_check(mid=m['id']):
-                st.session_state.db["movies"] = [mov | {"watched": st.session_state[f"mov_{mid}"]} if mov["id"] == mid else mov for mov in st.session_state.db["movies"]]
-                save_db()
-            
-            st.checkbox("✅ Watched", value=m.get("watched", False), key=f"mov_{m['id']}", on_change=on_mov_check)
-            st.caption(f"Runtime: {details.get('runtime', 0)} mins")
+            c1, c2 = st.columns(2)
+            with c1:
+                if st.button("ℹ️ Movie Info", key=f"m_info_{m['id']}", use_container_width=True):
+                    show_movie_details(m['id'], m['name'], details, is_watched)
+            with c2:
+                def on_mov_check(mid=m['id']):
+                    st.session_state.db["movies"] = [mov | {"watched": st.session_state[f"mov_{mid}"]} if mov["id"] == mid else mov for mov in st.session_state.db["movies"]]
+                    save_db()
+                
+                st.checkbox("✅ Watched", value=is_watched, key=f"mov_{m['id']}", on_change=on_mov_check)
 
 # ==========================================
 # TAB 6: PROFILE STATS
