@@ -347,12 +347,26 @@ with t_soon:
                     days_left = (datetime.strptime(air_date, '%Y-%m-%d') - datetime.today()).days
                     
                     with st.container(border=True):
-                        c1, c2 = st.columns([1, 3])
-                        if details.get("poster_path"): c1.image(f"https://image.tmdb.org/t/p/w154{details['poster_path']}")
+                        # Matching the exact visual layout of the "Up Next" tab
+                        if ep.get("still_path"): st.image(f"https://image.tmdb.org/t/p/w500{ep['still_path']}", use_container_width=True)
+                        elif details.get("backdrop_path"): st.image(f"https://image.tmdb.org/t/p/w500{details['backdrop_path']}", use_container_width=True)
+                        
+                        st.markdown(f"#### {show['name']}")
+                        render_badges([ep_code, f"In {days_left} days"], is_gold=False)
+                        st.markdown(f"*{ep.get('name', 'Episode')}*")
+                        st.caption(f"Air Date: {air_date}")
+                        
+                        c1, c2 = st.columns(2)
+                        with c1:
+                            if st.button("ℹ️ Info", key=f"info_soon_{show['id']}_{ep_code}", use_container_width=True):
+                                show_episode_details(show['id'], show['name'], ep_code, ep, is_watched=False)
                         with c2:
-                            st.markdown(f"#### {show['name']}")
-                            render_badges([ep_code, f"In {days_left} days"])
-                            st.caption(f"Air Date: {air_date}")
+                            def fast_watch_soon(sid=show['id'], ecode=ep_code):
+                                for s in st.session_state.db["shows"]:
+                                    if s["id"] == sid:
+                                        s["watched_episodes"].append(ecode)
+                                        save_db(); st.toast("Watched! ✅"); break
+                            st.button("✔️ Watched", key=f"btn_soon_{show['id']}_{ep_code}", on_click=fast_watch_soon, use_container_width=True)
                     break
 
     if upcoming_count == 0:
@@ -464,7 +478,7 @@ with t_tv:
                                     manage_show_dialog(show['id'], show['name'], details)
 
 # ==========================================
-# TAB 5: MOVIE LIBRARY (NATIVE TAB BUTTONS)
+# TAB 5: MOVIE LIBRARY (EDGE-TO-EDGE POSTER WALL)
 # ==========================================
 with t_movies:
     st.markdown("""
@@ -472,11 +486,13 @@ with t_movies:
             .movie-wall-btn div.stButton > button {
                 border: none !important;
                 background-color: transparent !important;
-                color: #888 !important;
-                font-size: 0.8rem !important;
+                color: #aaa !important;
+                font-size: 0.7rem !important;
                 padding: 0 !important;
-                margin-top: -10px !important;
+                margin-top: 2px !important;
                 margin-bottom: 5px !important;
+                text-transform: uppercase;
+                letter-spacing: 1px;
             }
             .movie-wall-btn div.stButton > button:active {
                 color: white !important;
@@ -539,7 +555,7 @@ with t_movies:
                         st.markdown('</div>', unsafe_allow_html=True)
                         
                         st.markdown('<div class="movie-wall-btn">', unsafe_allow_html=True)
-                        if st.button("⚙️", key=f"m_mgr_{m['id']}", use_container_width=True):
+                        if st.button("DETAILS", key=f"m_mgr_{m['id']}", use_container_width=True):
                             show_movie_details(m['id'], m['name'], details, is_watched)
                         st.markdown('</div>', unsafe_allow_html=True)
 
