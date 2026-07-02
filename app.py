@@ -634,20 +634,27 @@ with t_profile:
                             st.write(details.get("overview", "Synced successfully from export ledger."))
 
     # ==========================================
-    # ULTRA-PREMIUM DATA IMPORT UTILITY PANEL
+    # DATA IMPORT UTILITY PANEL (DEBUG VERSION)
     # ==========================================
     st.divider()
     with st.expander("📥 TV Time Data Migrator", expanded=False):
-        st.caption("Upload your official TV Time backup files here to sync your lifetime history.")
+        st.caption("Upload your official TV Time backup files.")
         m_file = st.file_uploader("Upload tvtime-movies JSON", type=["json"])
         s_file = st.file_uploader("Upload tvtime-series JSON", type=["json"])
         
+        # A status container to see what's happening
+        status_log = st.empty()
+        
         if m_file and s_file:
             if st.button("🚀 WIPE DATABASE AND IMPORT NOW", type="primary", use_container_width=True):
-                with st.spinner("Translating logs and building your ledger..."):
+                try:
+                    status_log.info("Reading files...")
                     imported_db = {"shows": [], "movies": [], "history": []}
                     movies_raw = json.load(m_file)
                     series_raw = json.load(s_file)
+                    
+                    status_log.info(f"Processing {len(movies_raw)} movies and {len(series_raw)} series...")
+                    
                     fallback_date = (datetime.now() - timedelta(days=1)).strftime('%Y-%m-%d 12:00:00')
                     
                     # 1. Process Movie Array
@@ -686,8 +693,16 @@ with t_profile:
                                             imported_db["history"].append({"type": "tv", "id": tid, "title": show.get("title", "Show"), "detail": ecode, "watched_at": w_at[:19]})
                                 imported_db["shows"].append({"id": tid, "name": show.get("title"), "watched_episodes": w_eps})
                     
-                    # Push directly to JSONBin and update local layout state
-                    requests.put(BIN_URL, json=imported_db, headers=headers)
-                    st.session_state.db = imported_db
-                    st.success("✅ Success! Your TV Time data has fully replaced your old database.")
-                    st.rerun()
+                    status_log.info("Uploading to Cloud...")
+                    response = requests.put(BIN_URL, json=imported_db, headers=headers)
+                    
+                    if response.status_code == 200:
+                        st.session_state.db = imported_db
+                        st.success("✅ Success! Database synced.")
+                        st.balloons()
+                    else:
+                        st.error(f"Upload failed: {response.status_code} - {response.text}")
+                        
+                except Exception as e:
+                    st.error(f"An error occurred: {e}")
+                    st.write(e)
