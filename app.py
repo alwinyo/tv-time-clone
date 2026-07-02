@@ -149,7 +149,7 @@ def load_db():
                 for ep in s.get("watched_episodes", []):
                     data["history"].append({"type": "tv", "id": s["id"], "title": s["name"], "detail": ep, "watched_at": yesterday})
             
-            # Immediately save the migration so we don't duplicate it later
+            # Immediately save the migration
             requests.put(BIN_URL, json=data, headers=headers)
             
         return data
@@ -259,7 +259,14 @@ def manage_show_dialog(show_id, show_name, details):
                             st.session_state.db["history"] = [h for h in st.session_state.db.get("history", []) if not (h["type"]=="tv" and h["id"]==sid and h["detail"]==ecode)]
                         save_db(); break
             
-            st.checkbox(f"**E{ep['episode_number']}.** {ep.get('name', 'Episode')}", value=is_watched, key=f"chk_dlg_{show_id}_{e_code}", on_change=on_check)
+            # Create a side-by-side layout for the Checkbox and the Info button
+            ep_col1, ep_col2 = st.columns([5, 1])
+            with ep_col1:
+                st.checkbox(f"**E{ep['episode_number']}.** {ep.get('name', 'Episode')}", value=is_watched, key=f"chk_dlg_{show_id}_{e_code}", on_change=on_check)
+            with ep_col2:
+                # Clicking this launches the stacked dialog so you can view details without leaving the show menu!
+                if st.button("ℹ️", key=f"info_btn_{show_id}_{e_code}"):
+                    show_episode_details(show_id, show_name, e_code, ep, is_watched)
 
     st.divider()
     st.markdown("#### Top Cast")
@@ -496,7 +503,8 @@ with t_tv:
                                 st.markdown(f'<div class="grid-title" title="{show["name"]}">{show["name"]}</div>', unsafe_allow_html=True)
                                 st.progress(min(w_eps / t_eps, 1.0) if t_eps > 0 else 0.0)
                                 
-                                if st.button("Open", key=f"s_mgr_{show['id']}", use_container_width=True):
+                                # Updated text from "Open" to "DETAILS"
+                                if st.button("DETAILS", key=f"s_mgr_{show['id']}", use_container_width=True):
                                     manage_show_dialog(show['id'], show['name'], details)
 
 # ==========================================
@@ -578,7 +586,7 @@ with t_movies:
                         st.markdown('</div>', unsafe_allow_html=True)
 
 # ==========================================
-# TAB 6: PROFILE & HISTORY STATS
+# TAB 6: PROFILE STATS & HISTORY
 # ==========================================
 with t_profile:
     st.markdown("### Lifetime Stats")
@@ -621,18 +629,32 @@ with t_profile:
         
     st.divider()
     
-    # --- NEW: HISTORY FEED ---
+    # --- SEPARATED HISTORY VIEWS ---
     st.markdown("### 📜 Watch History")
+    h_tv, h_mov = st.tabs(["📺 Series", "🎬 Movies"])
+    
     history = sorted(st.session_state.db.get("history", []), key=lambda x: x["watched_at"], reverse=True)
     
-    if not history:
-        st.info("No watch history recorded yet.")
-    else:
-        for item in history:
-            dt = datetime.strptime(item["watched_at"], '%Y-%m-%d %H:%M:%S')
-            date_str = dt.strftime('%b %d, %Y • %I:%M %p')
-            icon = "🎬" if item["type"] == "movie" else "📺"
-            
-            with st.container(border=True):
-                st.markdown(f"{icon} **{item['title']}** {item['detail']}")
-                st.caption(date_str)
+    with h_tv:
+        tv_hist = [h for h in history if h["type"] == "tv"]
+        if not tv_hist:
+            st.info("No series history recorded yet.")
+        else:
+            for item in tv_hist:
+                dt = datetime.strptime(item["watched_at"], '%Y-%m-%d %H:%M:%S')
+                date_str = dt.strftime('%b %d, %Y • %I:%M %p')
+                with st.container(border=True):
+                    st.markdown(f"**{item['title']}** — {item['detail']}")
+                    st.caption(date_str)
+                    
+    with h_mov:
+        mov_hist = [h for h in history if h["type"] == "movie"]
+        if not mov_hist:
+            st.info("No movie history recorded yet.")
+        else:
+            for item in mov_hist:
+                dt = datetime.strptime(item["watched_at"], '%Y-%m-%d %H:%M:%S')
+                date_str = dt.strftime('%b %d, %Y • %I:%M %p')
+                with st.container(border=True):
+                    st.markdown(f"**{item['title']}**")
+                    st.caption(date_str)
