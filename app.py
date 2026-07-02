@@ -139,17 +139,14 @@ def load_db():
             data["history"] = []
             yesterday = (datetime.now() - timedelta(days=1)).strftime('%Y-%m-%d 12:00:00')
             
-            # Backfill existing movies
             for m in data["movies"]:
                 if m.get("watched"):
                     data["history"].append({"type": "movie", "id": m["id"], "title": m["name"], "detail": "", "watched_at": yesterday})
             
-            # Backfill existing tv shows
             for s in data["shows"]:
                 for ep in s.get("watched_episodes", []):
                     data["history"].append({"type": "tv", "id": s["id"], "title": s["name"], "detail": ep, "watched_at": yesterday})
             
-            # Immediately save the migration
             requests.put(BIN_URL, json=data, headers=headers)
             
         return data
@@ -208,11 +205,9 @@ def show_episode_details(show_id, show_name, ep_code, ep_data, is_watched):
             if s["id"] == show_id:
                 if is_watched and ep_code in s["watched_episodes"]: 
                     s["watched_episodes"].remove(ep_code)
-                    # Remove from history
                     st.session_state.db["history"] = [h for h in st.session_state.db.get("history", []) if not (h["type"]=="tv" and h["id"]==show_id and h["detail"]==ep_code)]
                 elif not is_watched and ep_code not in s["watched_episodes"]: 
                     s["watched_episodes"].append(ep_code)
-                    # Add to history
                     st.session_state.db.setdefault("history", []).append({"type": "tv", "id": show_id, "title": show_name, "detail": ep_code, "watched_at": datetime.now().strftime('%Y-%m-%d %H:%M:%S')})
                 save_db(); break
         st.rerun()
@@ -246,6 +241,7 @@ def manage_show_dialog(show_id, show_name, details):
         for ep in s_data.get("episodes", []):
             e_code = f"S{sel_s}E{ep['episode_number']}"
             is_watched = e_code in watched_list
+            info_key = f"view_info_{show_id}_{e_code}"
             
             def on_check(sid=show_id, sname=show_name, ecode=e_code):
                 chkd = st.session_state[f"chk_dlg_{sid}_{ecode}"]
@@ -259,14 +255,26 @@ def manage_show_dialog(show_id, show_name, details):
                             st.session_state.db["history"] = [h for h in st.session_state.db.get("history", []) if not (h["type"]=="tv" and h["id"]==sid and h["detail"]==ecode)]
                         save_db(); break
             
-            # Create a side-by-side layout for the Checkbox and the Info button
             ep_col1, ep_col2 = st.columns([5, 1])
             with ep_col1:
                 st.checkbox(f"**E{ep['episode_number']}.** {ep.get('name', 'Episode')}", value=is_watched, key=f"chk_dlg_{show_id}_{e_code}", on_change=on_check)
             with ep_col2:
-                # Clicking this launches the stacked dialog so you can view details without leaving the show menu!
-                if st.button("ℹ️", key=f"info_btn_{show_id}_{e_code}"):
-                    show_episode_details(show_id, show_name, e_code, ep, is_watched)
+                # Toggle function for inline viewing to avoid nested dialogs
+                def toggle_info(k=info_key):
+                    st.session_state[k] = not st.session_state.get(k, False)
+                st.button("ℹ️", key=f"btn_i_{show_id}_{e_code}", on_click=toggle_info)
+
+            # If toggled ON, smoothly display the episode details inline right below the checkbox
+            if st.session_state.get(info_key, False):
+                with st.container(border=True):
+                    if ep.get("still_path"): 
+                        st.image(f"https://image.tmdb.org/t/p/w500{ep['still_path']}", use_container_width=True)
+                    st.caption(f"⭐ {ep.get('vote_average', 0.0)} | **Aired:** {ep.get('air_date', 'N/A')}")
+                    st.write(ep.get("overview", "No synopsis available."))
+                    guest_stars = ep.get("guest_stars", [])
+                    if guest_stars:
+                        st.markdown("**Guest Stars:**")
+                        show_cast_grid(guest_stars, limit=3)
 
     st.divider()
     st.markdown("#### Top Cast")
@@ -503,7 +511,6 @@ with t_tv:
                                 st.markdown(f'<div class="grid-title" title="{show["name"]}">{show["name"]}</div>', unsafe_allow_html=True)
                                 st.progress(min(w_eps / t_eps, 1.0) if t_eps > 0 else 0.0)
                                 
-                                # Updated text from "Open" to "DETAILS"
                                 if st.button("DETAILS", key=f"s_mgr_{show['id']}", use_container_width=True):
                                     manage_show_dialog(show['id'], show['name'], details)
 
