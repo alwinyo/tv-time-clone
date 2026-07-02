@@ -51,7 +51,7 @@ st.markdown("""
         color: #FFC107;
     }
     
-    /* Style the Movie toggle radio to look like tabs */
+    /* Style the toggle radios to look like native header tabs */
     div.row-widget.stRadio > div {
         justify-content: space-around;
         margin-bottom: 15px;
@@ -396,37 +396,55 @@ with t_search:
                                 st.button("✔️ Added", key=f"dsbl_mov_{item_id}", disabled=True, use_container_width=True)
 
 # ==========================================
-# TAB 4: TV LIBRARY 
+# TAB 4: TV LIBRARY (DYNAMIC WATCHLIST VS UPCOMING FILTER)
 # ==========================================
 with t_tv:
     st.markdown("### My TV Collection")
+    
+    # Functional native toggle for the TV Tab
+    tv_view = st.radio("TV View", ["WATCH LIST", "UPCOMING"], horizontal=True, label_visibility="collapsed")
     
     shows = st.session_state.db.get("shows", [])
     if not shows:
         st.info("Your TV library is empty.")
     else:
-        for i in range(0, len(shows), 3):
-            cols = st.columns(3)
-            for j in range(3):
-                if i + j < len(shows):
-                    show = shows[i + j]
-                    with cols[j]:
-                        details = fetch_api(f"https://api.themoviedb.org/3/tv/{show['id']}?api_key={TMDB_KEY}")
+        # Pre-sort active vs unreleased shows based on first_air_date
+        display_shows = []
+        for show in shows:
+            details = fetch_api(f"https://api.themoviedb.org/3/tv/{show['id']}?api_key={TMDB_KEY}")
+            air_date = details.get("first_air_date", "")
+            
+            is_upcoming = bool(air_date and air_date > TODAY)
+            
+            if tv_view == "WATCH LIST" and not is_upcoming:
+                display_shows.append((show, details))
+            elif tv_view == "UPCOMING" and is_upcoming:
+                display_shows.append((show, details))
+                
+        if not display_shows:
+            st.info(f"Your TV {tv_view.lower()} is currently empty.")
+        else:
+            for i in range(0, len(display_shows), 3):
+                cols = st.columns(3)
+                for j in range(3):
+                    if i + j < len(display_shows):
+                        show, details = display_shows[i + j]
                         t_eps = details.get("number_of_episodes", 1) 
                         w_eps = len(show.get("watched_episodes", []))
                         
-                        with st.container(border=True):
-                            if details.get("poster_path"):
-                                st.image(f"https://image.tmdb.org/t/p/w185{details['poster_path']}", use_container_width=True)
-                            
-                            st.markdown(f'<div class="grid-title" title="{show["name"]}">{show["name"]}</div>', unsafe_allow_html=True)
-                            st.progress(min(w_eps / t_eps, 1.0) if t_eps > 0 else 0.0)
-                            
-                            if st.button("Open", key=f"s_mgr_{show['id']}", use_container_width=True):
-                                manage_show_dialog(show['id'], show['name'], details)
+                        with cols[j]:
+                            with st.container(border=True):
+                                if details.get("poster_path"):
+                                    st.image(f"https://image.tmdb.org/t/p/w185{details['poster_path']}", use_container_width=True)
+                                
+                                st.markdown(f'<div class="grid-title" title="{show["name"]}">{show["name"]}</div>', unsafe_allow_html=True)
+                                st.progress(min(w_eps / t_eps, 1.0) if t_eps > 0 else 0.0)
+                                
+                                if st.button("Open", key=f"s_mgr_{show['id']}", use_container_width=True):
+                                    manage_show_dialog(show['id'], show['name'], details)
 
 # ==========================================
-# TAB 5: MOVIE LIBRARY (EDGE-TO-EDGE POSTER WALL + DYNAMIC TABS)
+# TAB 5: MOVIE LIBRARY (EDGE-TO-EDGE POSTER WALL)
 # ==========================================
 with t_movies:
     st.markdown("""
@@ -449,23 +467,17 @@ with t_movies:
         </style>
     """, unsafe_allow_html=True)
     
-    # ----------------------------------------------------
-    # NEW FUNCTIONAL TOGGLE FOR WATCHLIST VS UPCOMING
-    # ----------------------------------------------------
     movie_view = st.radio("Movie View", ["WATCH LIST", "UPCOMING"], horizontal=True, label_visibility="collapsed")
     
     movies = st.session_state.db.get("movies", [])
-    
     if not movies:
         st.info("Your Movie library is empty.")
     else:
-        # Pre-sort the movies based on release date
         display_movies = []
         for m in movies:
             details = fetch_api(f"https://api.themoviedb.org/3/movie/{m['id']}?api_key={TMDB_KEY}")
             r_date = details.get("release_date", "")
             
-            # If the release date is after today, it is Upcoming
             is_upcoming = bool(r_date and r_date > TODAY)
             
             if movie_view == "WATCH LIST" and not is_upcoming:
@@ -474,7 +486,7 @@ with t_movies:
                 display_movies.append((m, details))
                 
         if not display_movies:
-            st.info(f"Your {movie_view} is currently empty.")
+            st.info(f"Your Movie {movie_view.lower()} is currently empty.")
         else:
             for i in range(0, len(display_movies), 3):
                 cols = st.columns(3)
