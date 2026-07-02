@@ -7,6 +7,11 @@ from datetime import datetime, timedelta
 # Mobile-friendly layout configuration
 st.set_page_config(page_title="My TV Time", layout="centered", initial_sidebar_state="collapsed")
 
+# Force clear session memory
+if st.button("🔄 Refresh Data from Cloud"):
+    del st.session_state.db
+    st.rerun()
+
 # --- CUSTOM CSS: SMART MOBILE GRID & APP STYLING ---
 st.markdown("""
 <style>
