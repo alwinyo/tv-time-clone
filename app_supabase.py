@@ -3,6 +3,8 @@ import requests
 import pandas as pd
 import json
 import time
+import re
+import zlib
 import base64
 from datetime import datetime, timedelta
 
@@ -114,7 +116,8 @@ if "hist_mov_limit" not in st.session_state: st.session_state.hist_mov_limit = 2
 
 # --- SUPABASE DATABASE PIPELINE ---
 TMDB_KEY = st.secrets["TMDB_KEY"]
-SUPABASE_URL = st.secrets["SUPABASE_URL"]
+# The .rstrip("/") ensures trailing slashes don't break the connection link!
+SUPABASE_URL = st.secrets["SUPABASE_URL"].rstrip("/") 
 SUPABASE_KEY = st.secrets["SUPABASE_KEY"]
 DB_ENDPOINT = f"{SUPABASE_URL}/rest/v1/tv_time_data?id=eq.1"
 
@@ -880,7 +883,7 @@ with t_profile:
     data_mov = []
     for dt in last_12_months:
         m_key = dt.strftime('%Y-%m') 
-        label = dt.strftime('%b %y') # Format as "Jan 26"
+        label = dt.strftime('%b %y')
         stats = analytics.get(m_key, {"tv": 0, "movie": 0})
         data_tv.append({"Month": label, "Episodes": stats["tv"]})
         data_mov.append({"Month": label, "Movies": stats["movie"]})
