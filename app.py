@@ -119,15 +119,22 @@ st.markdown("""
     }
     .movie-wall-btn div.stButton > button:active { color: #FFC107 !important; }
     
-    /* --- NEW: Sleek Native App Feed Styling --- */
-    .feed-title { font-size: 1.1rem !important; font-weight: 700; margin-bottom: 4px; line-height: 1.2;}
-    .feed-date { font-size: 0.8rem !important; color: #aaa; margin-top: 6px; font-weight: 500;}
+    /* --- SLEEK NATIVE APP FEED FOR JOURNAL --- */
+    .feed-title { font-size: 1rem !important; font-weight: 700; margin-bottom: 4px; line-height: 1.2; color: #fff;}
+    .feed-date { font-size: 0.75rem !important; color: #999; margin-top: 4px; font-weight: 500;}
     .hist-detail-btn div.stButton > button {
         background-color: transparent !important; border: 1px solid rgba(255, 193, 7, 0.4) !important;
-        color: #FFC107 !important; font-size: 0.7rem !important; padding: 2px 12px !important;
-        min-height: 1.8rem !important; margin-top: 8px; width: auto !important; border-radius: 6px;
+        color: #FFC107 !important; font-size: 0.7rem !important; padding: 2px 10px !important;
+        min-height: 1.6rem !important; margin-top: 4px; width: auto !important; border-radius: 6px;
     }
     .hist-detail-btn div.stButton > button:active { background-color: rgba(255, 193, 7, 0.1) !important; }
+    
+    /* Hide scrollbar for horizontal lists */
+    .horizontal-scroll {
+        display: flex; overflow-x: auto; gap: 12px; padding-bottom: 10px;
+        scrollbar-width: none; -ms-overflow-style: none;
+    }
+    .horizontal-scroll::-webkit-scrollbar { display: none; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -136,8 +143,8 @@ if "next_tv_limit" not in st.session_state: st.session_state.next_tv_limit = 30
 if "next_mov_limit" not in st.session_state: st.session_state.next_mov_limit = 30
 if "soon_tv_limit" not in st.session_state: st.session_state.soon_tv_limit = 30
 if "soon_mov_limit" not in st.session_state: st.session_state.soon_mov_limit = 30
-if "hist_tv_limit" not in st.session_state: st.session_state.hist_tv_limit = 10
-if "hist_mov_limit" not in st.session_state: st.session_state.hist_mov_limit = 10
+if "hist_tv_limit" not in st.session_state: st.session_state.hist_tv_limit = 15
+if "hist_mov_limit" not in st.session_state: st.session_state.hist_mov_limit = 15
 
 # --- CREDENTIALS & DB ---
 TMDB_KEY = st.secrets["TMDB_KEY"]
@@ -326,20 +333,24 @@ def display_poster(path, width=185):
     else:
         st.markdown(f'<div style="background-color:#222; border-radius:8px; width:100%; aspect-ratio: 2/3; display:flex; align-items:center; justify-content:center; color:#555; font-size:0.8rem; text-align:center; margin-bottom:5px;">No Image</div>', unsafe_allow_html=True)
 
-def show_cast_grid(cast_list, limit=6):
-    cast_list = cast_list[:limit]
+def show_cast_horizontal(cast_list, limit=12):
+    """Sleek horizontal scrolling feed for actors!"""
     if not cast_list: return
-    for i in range(0, len(cast_list), 3):
-        cols = st.columns(3)
-        for j in range(3):
-            if i + j < len(cast_list):
-                actor = cast_list[i + j]
-                with cols[j]:
-                    encoded_name = actor['name'].replace(" ", "+")
-                    imdb_url = f"https://www.imdb.com/find/?q={encoded_name}"
-                    img_url = f"https://image.tmdb.org/t/p/w185{actor['profile_path']}" if actor.get("profile_path") else "https://via.placeholder.com/185x278/222222/888888?text=No+Photo"
-                    html = f'<a href="{imdb_url}" target="_blank" style="text-decoration:none; color:inherit;"><img src="{img_url}" style="width:100%; border-radius:8px; display:block;"><div class="grid-title">{actor["name"]}</div></a>'
-                    st.markdown(html, unsafe_allow_html=True)
+    html = '<div class="horizontal-scroll">'
+    for actor in cast_list[:limit]:
+        encoded_name = actor['name'].replace(" ", "+")
+        imdb_url = f"https://www.imdb.com/find/?q={encoded_name}"
+        img_url = f"https://image.tmdb.org/t/p/w185{actor['profile_path']}" if actor.get("profile_path") else "https://via.placeholder.com/185x278/222222/888888?text=No+Photo"
+        html += f'''
+        <div style="min-width: 85px; max-width: 85px; flex-shrink: 0;">
+            <a href="{imdb_url}" target="_blank" style="text-decoration:none; color:inherit;">
+                <img src="{img_url}" style="width: 100%; border-radius: 8px; display: block; object-fit: cover; aspect-ratio: 2/3;">
+                <div style="font-size: 0.65rem; font-weight: 600; text-align: center; margin-top: 6px; white-space: normal; line-height: 1.2; color: #eee;">{actor["name"]}</div>
+            </a>
+        </div>
+        '''
+    html += '</div>'
+    st.markdown(html, unsafe_allow_html=True)
 
 def parse_tvtime_date(d_str):
     if not d_str: return "2000-01-01 12:00:00"
@@ -349,7 +360,7 @@ def parse_tvtime_date(d_str):
         return dt.strftime("%Y-%m-%d %H:%M:%S")
     except: return "2000-01-01 12:00:00"
 
-# --- DIALOGS ---
+# --- DIALOGS (Lazy Loaded for Speed) ---
 @st.dialog("Episode Details")
 def show_episode_details(show_id, show_name, ep_code, ep_data=None, is_watched=False):
     if not ep_data:
@@ -365,13 +376,10 @@ def show_episode_details(show_id, show_name, ep_code, ep_data=None, is_watched=F
     st.caption(f"**Aired:** {ep_data.get('air_date', 'N/A')}")
     st.write(ep_data.get("overview", "No synopsis available for this episode yet."))
     st.divider()
-    st.markdown("#### Series Regulars")
+    st.markdown("#### Cast & Guest Stars")
     credits = fetch_api(f"https://api.themoviedb.org/3/tv/{show_id}/credits?api_key={TMDB_KEY}")
-    show_cast_grid(credits.get("cast", []), limit=6)
-    guest_stars = ep_data.get("guest_stars", [])
-    if guest_stars:
-        st.markdown("#### Guest Stars")
-        show_cast_grid(guest_stars, limit=6)
+    combined_cast = credits.get("cast", []) + ep_data.get("guest_stars", [])
+    show_cast_horizontal(combined_cast, limit=12)
     st.divider()
     btn_label = "❌ Unmark as Watched" if is_watched else "✅ Mark as Watched"
     if st.button(btn_label, use_container_width=True, key=f"dlg_btn_tv_{show_id}_{ep_code}"):
@@ -441,7 +449,7 @@ def manage_show_dialog(show_id, show_name, details):
     st.divider()
     st.markdown("#### Top Cast")
     credits = fetch_api(f"https://api.themoviedb.org/3/tv/{show_id}/credits?api_key={TMDB_KEY}")
-    show_cast_grid(credits.get("cast", []), limit=6)
+    show_cast_horizontal(credits.get("cast", []), limit=12)
 
 @st.dialog("Movie Details")
 def show_movie_details(m_id, m_name, details=None, is_watched=False):
@@ -456,7 +464,7 @@ def show_movie_details(m_id, m_name, details=None, is_watched=False):
     st.divider()
     st.markdown("#### Top Cast")
     credits = fetch_api(f"https://api.themoviedb.org/3/movie/{m_id}/credits?api_key={TMDB_KEY}")
-    show_cast_grid(credits.get("cast", []), limit=6)
+    show_cast_horizontal(credits.get("cast", []), limit=12)
     st.divider()
     btn_label = "❌ Unmark as Watched" if is_watched else "✅ Mark as Watched"
     if st.button(btn_label, use_container_width=True, key=f"dlg_btn_mov_{m_id}"):
@@ -472,7 +480,7 @@ def show_movie_details(m_id, m_name, details=None, is_watched=False):
 t_next, t_soon, t_search, t_tv, t_movies, t_profile = st.tabs(["🔥 Next", "📅 Soon", "🔍 Search", "📺 TV", "🎬 Movies", "👤 Profile"])
 
 # ==========================================
-# TAB 1: UP NEXT DASHBOARD (NOW 3x3 GRID)
+# TAB 1: UP NEXT DASHBOARD
 # ==========================================
 with t_next:
     st.markdown("### Up Next")
@@ -604,7 +612,7 @@ with t_next:
                     st.rerun()
 
 # ==========================================
-# TAB 2: UPCOMING CALENDAR (NOW 3x3 GRID)
+# TAB 2: UPCOMING CALENDAR
 # ==========================================
 with t_soon:
     st.markdown("### Upcoming Releases")
@@ -775,7 +783,7 @@ with t_search:
                             else: st.button("✔️ Added", key=f"dsbl_mov_{item_id}", disabled=True, use_container_width=True)
 
 # ==========================================
-# TAB 4: TV LIBRARY (3x3 GRID)
+# TAB 4: TV LIBRARY
 # ==========================================
 with t_tv:
     st.markdown("### My TV Collection")
@@ -831,7 +839,7 @@ with t_tv:
                                 st.markdown('</div>', unsafe_allow_html=True)
 
 # ==========================================
-# TAB 5: MOVIE LIBRARY (3x3 GRID)
+# TAB 5: MOVIE LIBRARY
 # ==========================================
 with t_movies:
     st.markdown("### My Movies")
@@ -932,8 +940,8 @@ with t_profile:
     analytics_12m = {m_str: analytics.get(m_str, {"tv": 0, "movie": 0}) for m_str in last_12_months}
     df = pd.DataFrame.from_dict(analytics_12m, orient='index')
     
-    # Passing true Datetime to Streamlit ensures PERFECT chronological order!
-    df.index = pd.to_datetime(df.index)
+    # Passing true Datetime directly to Streamlit ensures PERFECT chronological order!
+    df.index = pd.to_datetime(df.index).date
     
     with chart_tab1:
         st.bar_chart(df[["tv"]], color="#FFC107")
@@ -968,8 +976,10 @@ with t_profile:
                     ep_code = h.get('e', '')
                     poster = show.get("poster_path", "") if show else ""
                     
-                    c1, c2 = st.columns([1, 3], gap="small")
-                    with c1: display_poster(poster, width=154)
+                    c1, c2 = st.columns([1.5, 4], gap="small")
+                    with c1: 
+                        if poster: st.markdown(f'<img src="https://image.tmdb.org/t/p/w92{poster}" style="width: 100%; max-width: 80px; border-radius: 6px;">', unsafe_allow_html=True)
+                        else: st.markdown(f'<div style="background-color:#222; border-radius:6px; width: 100%; max-width: 80px; aspect-ratio: 2/3; display:flex; align-items:center; justify-content:center; color:#555; font-size:0.6rem;">No Img</div>', unsafe_allow_html=True)
                     with c2:
                         st.markdown(f'<div class="feed-title">{s_name}</div>', unsafe_allow_html=True)
                         if ep_code: render_badges([ep_code], is_gold=False)
@@ -1003,8 +1013,10 @@ with t_profile:
                     m_name = mov["name"] if mov else "Unknown Movie"
                     poster = mov.get("poster_path", "") if mov else ""
                     
-                    c1, c2 = st.columns([1, 3], gap="small")
-                    with c1: display_poster(poster, width=154)
+                    c1, c2 = st.columns([1.5, 4], gap="small")
+                    with c1: 
+                        if poster: st.markdown(f'<img src="https://image.tmdb.org/t/p/w92{poster}" style="width: 100%; max-width: 80px; border-radius: 6px;">', unsafe_allow_html=True)
+                        else: st.markdown(f'<div style="background-color:#222; border-radius:6px; width: 100%; max-width: 80px; aspect-ratio: 2/3; display:flex; align-items:center; justify-content:center; color:#555; font-size:0.6rem;">No Img</div>', unsafe_allow_html=True)
                     with c2:
                         st.markdown(f'<div class="feed-title">{m_name}</div>', unsafe_allow_html=True)
                         render_badges(["Movie"], is_gold=False)
