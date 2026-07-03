@@ -11,46 +11,86 @@ from datetime import datetime, timedelta
 # Mobile-friendly layout configuration
 st.set_page_config(page_title="My TV Time", layout="centered", initial_sidebar_state="collapsed")
 
-# --- CUSTOM CSS: SMART MOBILE GRID & APP STYLING ---
+# --- MOBILE-FIRST CSS OVERHAUL ---
 st.markdown("""
 <style>
+    /* Hide Default Streamlit Clutter */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
     header {visibility: hidden;}
-    .block-container { padding-top: 1rem !important; padding-bottom: 5rem !important; }
+    
+    /* True Mobile Edge-to-Edge Layout */
+    .block-container { 
+        padding: 1rem 0.5rem 5rem 0.5rem !important; 
+        max-width: 100vw !important;
+        overflow-x: hidden !important;
+    }
+    
     img { border-radius: 8px !important; }
     [data-testid="stProgressBar"] > div > div { background-color: #FFC107 !important; }
     
+    /* Sleek Native-App Cards */
     [data-testid="stVerticalBlockBorderWrapper"] {
-        border-radius: 12px !important; border: 1px solid rgba(200, 200, 200, 0.2) !important;
-        box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1) !important; padding: 0.5rem !important;
+        border-radius: 12px !important; 
+        border: 1px solid rgba(200, 200, 200, 0.2) !important;
+        box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.05) !important; 
+        padding: 0.5rem !important;
     }
     
+    /* Touch-Friendly Button Targets */
     div.stButton > button {
         border-radius: 20px; font-weight: 600; transition: all 0.2s;
-        padding: 2px 5px !important; font-size: 0.75rem !important;
+        padding: 4px 8px !important; font-size: 0.75rem !important;
+        min-height: 2.2rem; /* Better thumb target */
     }
     div.stButton > button:active { transform: scale(0.95); }
     
     button[kind="primary"] { background-color: #FFC107 !important; color: #000 !important; border: none !important; }
     button[kind="secondary"] { background-color: #222 !important; color: #ccc !important; border: 1px solid #444 !important; }
     
+    /* Transparent Toggles */
     .ep-toggle-btn div.stButton > button, .hist-toggle-btn div.stButton > button {
         background: transparent !important; border: none !important; color: #888 !important; box-shadow: none !important;
+        min-height: unset !important; height: auto !important;
     }
     .ep-toggle-btn div.stButton > button { font-size: 0.9rem !important; padding: 0 !important; margin-top: 6px !important; }
     .hist-toggle-btn div.stButton > button { font-size: 1.1rem !important; padding: 0 !important; margin-top: 15px !important; }
     .ep-toggle-btn div.stButton > button:active, .hist-toggle-btn div.stButton > button:active { color: #FFC107 !important; transform: none !important; }
     
+    /* --- RESPONSIVE MOBILE MAGIC --- */
     @media (max-width: 768px) {
+        /* 1. Swipeable Top Navigation Tabs */
+        div[data-testid="stTabs"] > div[role="tablist"] {
+            display: flex !important;
+            overflow-x: auto !important;
+            scrollbar-width: none; 
+            -ms-overflow-style: none;
+        }
+        div[data-testid="stTabs"] > div[role="tablist"]::-webkit-scrollbar { display: none; }
+        div[data-testid="stTabs"] > div[role="tablist"] > button {
+            flex: 1 0 auto !important;
+            padding-left: 0.75rem !important;
+            padding-right: 0.75rem !important;
+        }
+        
+        /* 2. Force Exact 3-Column Lock for Poster Grids */
         div[data-testid="stHorizontalBlock"]:has(> div[data-testid="column"]:nth-child(3):last-child) {
-            flex-direction: row !important; flex-wrap: nowrap !important; gap: 4px !important; 
+            flex-direction: row !important; flex-wrap: nowrap !important; gap: 0.25rem !important; 
         }
         div[data-testid="stHorizontalBlock"]:has(> div[data-testid="column"]:nth-child(3):last-child) > div[data-testid="column"] {
             width: 33.33% !important; flex: 1 1 0% !important; min-width: 0 !important; padding: 0 !important;
         }
+        
+        /* 3. Widescreen Pop-up Dialogs */
+        div[role="dialog"] {
+            width: 95vw !important;
+            max-width: 95vw !important;
+            margin: 0 auto !important;
+            padding: 1rem !important;
+        }
     }
     
+    /* Text formatting for tight mobile grids */
     .grid-title {
         font-size: 0.65rem !important; font-weight: 700; white-space: nowrap; overflow: hidden;
         text-overflow: ellipsis; text-align: center; margin-top: 6px; line-height: 1.2;
@@ -62,16 +102,16 @@ st.markdown("""
     }
     .badge-gold { background-color: #FFC107; color: #000000; }
     
-    .movie-poster-sharp img { border-radius: 0px !important; }
+    /* Edge-to-Edge Poster Magic */
+    .movie-poster-sharp img { border-radius: 6px !important; aspect-ratio: 2/3; object-fit: cover; }
     .movie-wall-btn div.stButton > button {
         border: none !important; background-color: transparent !important; color: #aaa !important;
-        font-size: 0.7rem !important; padding: 0 !important; margin-top: 2px !important; margin-bottom: 5px !important; text-transform: uppercase; letter-spacing: 1px;
+        font-size: 0.7rem !important; padding: 0 !important; margin-top: 2px !important; margin-bottom: 5px !important; 
+        text-transform: uppercase; letter-spacing: 1px; min-height: 1.5rem !important;
     }
     .movie-wall-btn div.stButton > button:active { color: white !important; }
 </style>
 """, unsafe_allow_html=True)
-
-st.title("📺 My TV Time")
 
 # --- PAGINATION STATES ---
 if "next_tv_limit" not in st.session_state: st.session_state.next_tv_limit = 50
@@ -954,7 +994,6 @@ with t_profile:
                     "history": [] if wipe_db else st.session_state.db.get("history", [])
                 }
                 
-                # Process Movies
                 if m_file:
                     stat_txt.text("Processing Movies... fetching data safely.")
                     try:
@@ -1001,7 +1040,6 @@ with t_profile:
                 
                 if m_file and t_file: prog.progress(0)
                 
-                # Process Shows
                 if t_file:
                     stat_txt.text("Processing Series... fetching data safely.")
                     try:
