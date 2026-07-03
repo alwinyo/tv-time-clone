@@ -73,6 +73,12 @@ st.markdown("""
 
 st.title("📺 My TV Time")
 
+# --- PAGINATION STATES ---
+if "next_tv_limit" not in st.session_state: st.session_state.next_tv_limit = 50
+if "next_mov_limit" not in st.session_state: st.session_state.next_mov_limit = 50
+if "soon_tv_limit" not in st.session_state: st.session_state.soon_tv_limit = 50
+if "soon_mov_limit" not in st.session_state: st.session_state.soon_mov_limit = 50
+
 # --- CREDENTIALS & DB ---
 TMDB_KEY = st.secrets["TMDB_KEY"]
 BIN_KEY = st.secrets["JSONBIN_KEY"]
@@ -107,7 +113,6 @@ def fetch_robust(url):
 
 # --- MATHEMATICAL RANGE ENCODER ---
 def encode_eps(eps):
-    """Compresses ['S1E1', 'S1E2', 'S1E3'] into '1:1-3'"""
     seasons = {}
     for ep in eps:
         try:
@@ -129,7 +134,6 @@ def encode_eps(eps):
     return "|".join(res)
 
 def decode_eps(ep_str):
-    """Decompresses '1:1-3' back to ['S1E1', 'S1E2', 'S1E3']"""
     if not ep_str: return []
     eps = []
     for s_part in str(ep_str).split('|'):
@@ -199,7 +203,7 @@ def save_db():
     try:
         packed = pack_db(st.session_state.db)
         raw_str = json.dumps(packed, separators=(',', ':'))
-        comp = zlib.compress(raw_str.encode('utf-8'), level=9) # Max compression level
+        comp = zlib.compress(raw_str.encode('utf-8'), level=9)
         b64 = base64.b64encode(comp).decode('utf-8')
         payload = {"payload": b64}
         
@@ -446,9 +450,10 @@ with t_next:
         elif next_sort == "Release Date": up_next_tv.sort(key=lambda x: x["date"] or "1900-01-01", reverse=True)
         elif next_sort == "Smart Priority": up_next_tv.sort(key=lambda x: (x["is_rec"], x["date"] or "1900-01-01"), reverse=True)
 
-        if not up_next_tv: st.info("You are completely caught up on series! 🎉")
+        if not up_next_tv: 
+            st.info("You are completely caught up on series! 🎉")
         else:
-            for item in up_next_tv:
+            for item in up_next_tv[:st.session_state.next_tv_limit]:
                 show, details, ep, ep_code = item["item"], item["details"], item["ep"], item["code"]
                 with st.container(border=True):
                     if ep.get("still_path"): display_poster(ep['still_path'], width=500)
@@ -468,6 +473,11 @@ with t_next:
                                     log_watch("tv", sid, ecode)
                                     break
                         st.button("✔️ Watched", key=f"next_w_tv_{show['id']}_{ep_code}", on_click=f_w_tv, use_container_width=True)
+                        
+            if len(up_next_tv) > st.session_state.next_tv_limit:
+                if st.button("Load More Series", use_container_width=True, key="load_more_next_tv"):
+                    st.session_state.next_tv_limit += 50
+                    st.rerun()
 
     else:
         up_next_mov = []
@@ -482,9 +492,10 @@ with t_next:
         elif next_sort == "Release Date": up_next_mov.sort(key=lambda x: x["date"] or "1900-01-01", reverse=True)
         elif next_sort == "Smart Priority": up_next_mov.sort(key=lambda x: (x["is_rec"], x["date"] or "1900-01-01"), reverse=True)
 
-        if not up_next_mov: st.info("You have no unwatched movies left! 🎉")
+        if not up_next_mov: 
+            st.info("You have no unwatched movies left! 🎉")
         else:
-            for item in up_next_mov:
+            for item in up_next_mov[:st.session_state.next_mov_limit]:
                 m = item["item"]
                 with st.container(border=True):
                     display_poster(m.get('poster_path'), width=500)
@@ -504,6 +515,11 @@ with t_next:
                                     log_watch("movie", mid)
                                     break
                         st.button("✔️ Watched", key=f"next_w_mov_{m['id']}", on_click=f_w_mov, use_container_width=True)
+                        
+            if len(up_next_mov) > st.session_state.next_mov_limit:
+                if st.button("Load More Movies", use_container_width=True, key="load_more_next_mov"):
+                    st.session_state.next_mov_limit += 50
+                    st.rerun()
 
 # ==========================================
 # TAB 2: UPCOMING CALENDAR
@@ -541,9 +557,10 @@ with t_soon:
         if soon_sort == "Alphabetical": soon_tv.sort(key=lambda x: x["item"]["name"].lower())
         else: soon_tv.sort(key=lambda x: x["date"] or "2099-01-01")
 
-        if not soon_tv: st.info("No upcoming episodes scheduled yet.")
+        if not soon_tv: 
+            st.info("No upcoming episodes scheduled yet.")
         else:
-            for item in soon_tv:
+            for item in soon_tv[:st.session_state.soon_tv_limit]:
                 days_left = (datetime.strptime(item["date"], '%Y-%m-%d') - datetime.today()).days
                 show, details, ep, ep_code = item["item"], item["details"], item["ep"], item["code"]
                 with st.container(border=True):
@@ -566,6 +583,11 @@ with t_soon:
                                     break
                         st.button("✔️ Watched", key=f"soon_w_tv_{show['id']}_{ep_code}", on_click=f_w_s_tv, use_container_width=True)
 
+            if len(soon_tv) > st.session_state.soon_tv_limit:
+                if st.button("Load More Upcoming Series", use_container_width=True, key="load_more_soon_tv"):
+                    st.session_state.soon_tv_limit += 50
+                    st.rerun()
+
     else:
         soon_mov = []
         for m in st.session_state.db["movies"]:
@@ -577,9 +599,10 @@ with t_soon:
         if soon_sort == "Alphabetical": soon_mov.sort(key=lambda x: x["item"]["name"].lower())
         else: soon_mov.sort(key=lambda x: x["date"] or "2099-01-01")
 
-        if not soon_mov: st.info("No upcoming movies scheduled yet.")
+        if not soon_mov: 
+            st.info("No upcoming movies scheduled yet.")
         else:
-            for item in soon_mov:
+            for item in soon_mov[:st.session_state.soon_mov_limit]:
                 days_left = (datetime.strptime(item["date"], '%Y-%m-%d') - datetime.today()).days
                 m = item["item"]
                 with st.container(border=True):
@@ -600,6 +623,11 @@ with t_soon:
                                     log_watch("movie", mid)
                                     break
                         st.button("✔️ Watched", key=f"soon_w_mov_{m['id']}", on_click=f_w_s_mov, use_container_width=True)
+
+            if len(soon_mov) > st.session_state.soon_mov_limit:
+                if st.button("Load More Upcoming Movies", use_container_width=True, key="load_more_soon_mov"):
+                    st.session_state.soon_mov_limit += 50
+                    st.rerun()
 
 # ==========================================
 # TAB 3: GLOBAL SEARCH 
@@ -862,7 +890,7 @@ with t_profile:
                             st.write(ep_data.get("overview", "No synopsis available."))
                             
             if len(tv_hist) > st.session_state.tv_hist_limit:
-                if st.button("Load More Series", use_container_width=True, key="load_more_tv"):
+                if st.button("Load More Series", use_container_width=True, key="load_more_tv_hist"):
                     st.session_state.tv_hist_limit += 10
                     st.rerun()
                     
@@ -901,7 +929,7 @@ with t_profile:
                             st.write(details.get("overview", "No synopsis available."))
 
             if len(mov_hist) > st.session_state.mov_hist_limit:
-                if st.button("Load More Movies", use_container_width=True, key="load_more_mov"):
+                if st.button("Load More Movies", use_container_width=True, key="load_more_mov_hist"):
                     st.session_state.mov_hist_limit += 10
                     st.rerun()
 
@@ -926,6 +954,7 @@ with t_profile:
                     "history": [] if wipe_db else st.session_state.db.get("history", [])
                 }
                 
+                # Process Movies
                 if m_file:
                     stat_txt.text("Processing Movies... fetching data safely.")
                     try:
@@ -972,8 +1001,9 @@ with t_profile:
                 
                 if m_file and t_file: prog.progress(0)
                 
+                # Process Shows
                 if t_file:
-                    stat_txt.text("Processing Series... compressing matrix keys.")
+                    stat_txt.text("Processing Series... fetching data safely.")
                     try:
                         t_data = json.load(t_file)
                         for idx, s in enumerate(t_data):
@@ -1030,7 +1060,7 @@ with t_profile:
                                             if str(show["id"]) == str(tmdb_id):
                                                 show["watched_episodes"] = list(set(show["watched_episodes"] + watched_eps))
                                                 break
-                            except Exception as item_error: continue 
+                            except Exception as item_error: continue
                     except Exception as e: st.error(f"Error processing series: {e}")
                 
                 new_db["history"].sort(key=lambda x: x.get("d", "2000-01-01 12:00:00"), reverse=True)
