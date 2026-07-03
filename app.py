@@ -11,7 +11,7 @@ from datetime import datetime, timedelta
 # Mobile-friendly layout configuration
 st.set_page_config(page_title="My TV Time", layout="centered", initial_sidebar_state="collapsed")
 
-# --- MOBILE-FIRST CSS OVERHAUL ---
+# --- MOBILE-FIRST NATIVE APP CSS ---
 st.markdown("""
 <style>
     /* Hide Default Streamlit Clutter */
@@ -41,52 +41,54 @@ st.markdown("""
     div.stButton > button {
         border-radius: 20px; font-weight: 600; transition: all 0.2s;
         padding: 4px 8px !important; font-size: 0.75rem !important;
-        min-height: 2.2rem; /* Better thumb target */
+        min-height: 2.2rem;
     }
     div.stButton > button:active { transform: scale(0.95); }
     
     button[kind="primary"] { background-color: #FFC107 !important; color: #000 !important; border: none !important; }
     button[kind="secondary"] { background-color: #222 !important; color: #ccc !important; border: 1px solid #444 !important; }
     
-    /* Transparent Toggles */
-    .ep-toggle-btn div.stButton > button, .hist-toggle-btn div.stButton > button {
-        background: transparent !important; border: none !important; color: #888 !important; box-shadow: none !important;
-        min-height: unset !important; height: auto !important;
-    }
-    .ep-toggle-btn div.stButton > button { font-size: 0.9rem !important; padding: 0 !important; margin-top: 6px !important; }
-    .hist-toggle-btn div.stButton > button { font-size: 1.1rem !important; padding: 0 !important; margin-top: 15px !important; }
-    .ep-toggle-btn div.stButton > button:active, .hist-toggle-btn div.stButton > button:active { color: #FFC107 !important; transform: none !important; }
-    
     /* --- RESPONSIVE MOBILE MAGIC --- */
     @media (max-width: 768px) {
         /* 1. Swipeable Top Navigation Tabs */
         div[data-testid="stTabs"] > div[role="tablist"] {
-            display: flex !important;
-            overflow-x: auto !important;
-            scrollbar-width: none; 
-            -ms-overflow-style: none;
+            display: flex !important; overflow-x: auto !important;
+            scrollbar-width: none; -ms-overflow-style: none;
         }
         div[data-testid="stTabs"] > div[role="tablist"]::-webkit-scrollbar { display: none; }
-        div[data-testid="stTabs"] > div[role="tablist"] > button {
-            flex: 1 0 auto !important;
-            padding-left: 0.75rem !important;
-            padding-right: 0.75rem !important;
+        
+        /* 2. Override Streamlit's Auto-Stacking */
+        div[data-testid="stHorizontalBlock"], div[data-testid="stColumns"] {
+            flex-direction: row !important;
+            flex-wrap: wrap !important;
         }
         
-        /* 2. Force Exact 3-Column Lock for Poster Grids */
-        div[data-testid="stHorizontalBlock"]:has(> div[data-testid="column"]:nth-child(3):last-child) {
-            flex-direction: row !important; flex-wrap: nowrap !important; gap: 0.25rem !important; 
-        }
-        div[data-testid="stHorizontalBlock"]:has(> div[data-testid="column"]:nth-child(3):last-child) > div[data-testid="column"] {
-            width: 33.33% !important; flex: 1 1 0% !important; min-width: 0 !important; padding: 0 !important;
+        /* 3. Mathematical 3x3 Grid Lock for Posters */
+        div[data-testid="column"]:nth-child(1):nth-last-child(3),
+        div[data-testid="column"]:nth-child(2):nth-last-child(2),
+        div[data-testid="column"]:nth-child(3):nth-last-child(1),
+        div[data-testid="stColumn"]:nth-child(1):nth-last-child(3),
+        div[data-testid="stColumn"]:nth-child(2):nth-last-child(2),
+        div[data-testid="stColumn"]:nth-child(3):nth-last-child(1) {
+            flex: 0 0 calc(33.333% - 0.5rem) !important;
+            max-width: calc(33.333% - 0.5rem) !important;
+            min-width: calc(33.333% - 0.5rem) !important;
+            padding: 0 !important;
         }
         
-        /* 3. Widescreen Pop-up Dialogs */
+        /* 4. Fluid Width for 2-Column Elements (like Feed & Toggles) */
+        div[data-testid="column"]:nth-child(1):nth-last-child(2),
+        div[data-testid="column"]:nth-child(2):nth-last-child(1),
+        div[data-testid="stColumn"]:nth-child(1):nth-last-child(2),
+        div[data-testid="stColumn"]:nth-child(2):nth-last-child(1) {
+            min-width: 0 !important; 
+            padding: 0 0.2rem !important;
+        }
+        
+        /* 5. Widescreen Pop-up Dialogs */
         div[role="dialog"] {
-            width: 95vw !important;
-            max-width: 95vw !important;
-            margin: 0 auto !important;
-            padding: 1rem !important;
+            width: 95vw !important; max-width: 95vw !important;
+            margin: 0 auto !important; padding: 1rem !important;
         }
     }
     
@@ -110,6 +112,10 @@ st.markdown("""
         text-transform: uppercase; letter-spacing: 1px; min-height: 1.5rem !important;
     }
     .movie-wall-btn div.stButton > button:active { color: white !important; }
+    
+    /* Feed Stylings for Watch Journal */
+    .feed-title { font-size: 0.95rem !important; font-weight: 700; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;}
+    .feed-date { font-size: 0.75rem !important; color: #aaa; margin-top: 4px; margin-bottom: 6px;}
 </style>
 """, unsafe_allow_html=True)
 
@@ -118,6 +124,8 @@ if "next_tv_limit" not in st.session_state: st.session_state.next_tv_limit = 50
 if "next_mov_limit" not in st.session_state: st.session_state.next_mov_limit = 50
 if "soon_tv_limit" not in st.session_state: st.session_state.soon_tv_limit = 50
 if "soon_mov_limit" not in st.session_state: st.session_state.soon_mov_limit = 50
+if "hist_tv_limit" not in st.session_state: st.session_state.hist_tv_limit = 10
+if "hist_mov_limit" not in st.session_state: st.session_state.hist_mov_limit = 10
 
 # --- CREDENTIALS & DB ---
 TMDB_KEY = st.secrets["TMDB_KEY"]
@@ -329,9 +337,17 @@ def parse_tvtime_date(d_str):
         return dt.strftime("%Y-%m-%d %H:%M:%S")
     except: return "2000-01-01 12:00:00"
 
-# --- DIALOGS ---
+# --- DIALOGS (Lazy Loaded for Speed) ---
 @st.dialog("Episode Details")
-def show_episode_details(show_id, show_name, ep_code, ep_data, is_watched):
+def show_episode_details(show_id, show_name, ep_code, ep_data=None, is_watched=False):
+    # Lazy fetch API data only when button is clicked!
+    if not ep_data:
+        try:
+            s_num = ep_code.split('E')[0].replace('S', '')
+            e_num = ep_code.split('E')[1]
+            ep_data = fetch_api(f"https://api.themoviedb.org/3/tv/{show_id}/season/{s_num}/episode/{e_num}?api_key={TMDB_KEY}")
+        except: ep_data = {}
+        
     display_poster(ep_data.get("still_path"), width=500)
     st.markdown(f"### {ep_data.get('name', 'Untitled Episode')}")
     render_badges([ep_code, f"⭐ {ep_data.get('vote_average', 0.0)}"], is_gold=True)
@@ -417,7 +433,11 @@ def manage_show_dialog(show_id, show_name, details):
     show_cast_grid(credits.get("cast", []), limit=6)
 
 @st.dialog("Movie Details")
-def show_movie_details(m_id, m_name, details, is_watched):
+def show_movie_details(m_id, m_name, details=None, is_watched=False):
+    # Lazy fetch API data only when button is clicked!
+    if not details:
+        details = fetch_api(f"https://api.themoviedb.org/3/movie/{m_id}?api_key={TMDB_KEY}")
+        
     display_poster(details.get("backdrop_path"), width=500)
     st.markdown(f"### {m_name}")
     genres = [g["name"] for g in details.get("genres", [])]
@@ -545,8 +565,7 @@ with t_next:
                     c1, c2 = st.columns(2)
                     with c1:
                         if st.button("ℹ️ Info", key=f"next_i_mov_{m['id']}", use_container_width=True):
-                            details = fetch_api(f"https://api.themoviedb.org/3/movie/{m['id']}?api_key={TMDB_KEY}")
-                            show_movie_details(m['id'], m['name'], details, is_watched=False)
+                            show_movie_details(m['id'], m['name'], details=None, is_watched=False)
                     with c2:
                         def f_w_mov(mid=m['id']):
                             for mv in st.session_state.db["movies"]:
@@ -653,8 +672,7 @@ with t_soon:
                     c1, c2 = st.columns(2)
                     with c1:
                         if st.button("ℹ️ Info", key=f"soon_i_mov_{m['id']}", use_container_width=True):
-                            details = fetch_api(f"https://api.themoviedb.org/3/movie/{m['id']}?api_key={TMDB_KEY}")
-                            show_movie_details(m['id'], m['name'], details, is_watched=False)
+                            show_movie_details(m['id'], m['name'], details=None, is_watched=False)
                     with c2:
                         def f_w_s_mov(mid=m['id']):
                             for mv in st.session_state.db["movies"]:
@@ -820,8 +838,7 @@ with t_movies:
                                 
                                 st.markdown('<div class="movie-wall-btn">', unsafe_allow_html=True)
                                 if st.button("DETAILS", key=f"m_mgr_{m['id']}", use_container_width=True):
-                                    details = fetch_api(f"https://api.themoviedb.org/3/movie/{m['id']}?api_key={TMDB_KEY}")
-                                    show_movie_details(m['id'], m['name'], details, is_watched)
+                                    show_movie_details(m['id'], m['name'], details=None, is_watched=is_watched)
                                 st.markdown('</div>', unsafe_allow_html=True)
 
 # ==========================================
@@ -883,21 +900,18 @@ with t_profile:
 
     st.divider()
     
-    # --- PAGINATED WATCH HISTORY JOURNAL ---
+    # --- NATIVE APP WATCH HISTORY FEED ---
     st.markdown("### 📜 Watch History Journal")
     h_tv, h_mov = st.tabs(["📺 Series", "🎬 Movies"])
     
     history_sorted = sorted(st.session_state.db.get("history", []), key=lambda x: x.get("d", "2000-01-01 12:00:00"), reverse=True)
-    
-    if "tv_hist_limit" not in st.session_state: st.session_state.tv_hist_limit = 10
-    if "mov_hist_limit" not in st.session_state: st.session_state.mov_hist_limit = 10
     
     with h_tv:
         tv_hist = [h for h in history_sorted if h.get("t") == "s"]
         if not tv_hist: st.info("No series history recorded yet.")
         else:
             grouped_tv = {}
-            for h_idx, h in enumerate(tv_hist[:st.session_state.tv_hist_limit]):
+            for h_idx, h in enumerate(tv_hist[:st.session_state.hist_tv_limit]):
                 try:
                     dt = datetime.strptime(h["d"], '%Y-%m-%d %H:%M:%S')
                     grouped_tv.setdefault(dt.strftime('%B %Y'), []).append((h, dt, h_idx))
@@ -908,30 +922,22 @@ with t_profile:
                 for h, dt, h_idx in items:
                     show = next((s for s in st.session_state.db["shows"] if str(s["id"]) == str(h.get("i"))), None)
                     s_name = show["name"] if show else "Unknown Series"
-                    info_key = f"h_tv_{h.get('i')}_{h.get('e','')}_{h_idx}"
+                    ep_code = h.get('e', '')
+                    poster = show.get("poster_path", "") if show else ""
                     
                     with st.container(border=True):
-                        c1, c2, c3 = st.columns([5, 4, 1])
-                        c1.markdown(f"**{s_name}** \n\n*{h.get('e', '')}*")
-                        c2.caption(dt.strftime('%b %d • %I:%M %p'))
-                        with c3:
-                            st.markdown('<div class="hist-toggle-btn">', unsafe_allow_html=True)
-                            def t_info(k=info_key): st.session_state[k] = not st.session_state.get(k, False)
-                            is_open = st.session_state.get(info_key, False)
-                            st.button("▲" if is_open else "▼", key=f"btn_{info_key}", on_click=t_info)
-                            st.markdown('</div>', unsafe_allow_html=True)
-                    if is_open:
-                        try:
-                            s_num, e_num = h.get("e", "").split("E")
-                            ep_data = fetch_api(f"https://api.themoviedb.org/3/tv/{h.get('i')}/season/{s_num.replace('S', '')}/episode/{e_num}?api_key={TMDB_KEY}")
-                        except: ep_data = {}
-                        with st.container(border=True):
-                            display_poster(ep_data.get("still_path"), width=500)
-                            st.write(ep_data.get("overview", "No synopsis available."))
-                            
-            if len(tv_hist) > st.session_state.tv_hist_limit:
+                        c1, c2 = st.columns([1, 3])
+                        with c1: display_poster(poster, width=92)
+                        with c2:
+                            st.markdown(f'<div class="feed-title">{s_name}</div>', unsafe_allow_html=True)
+                            if ep_code: render_badges([ep_code], is_gold=False)
+                            st.markdown(f'<div class="feed-date">{dt.strftime("%b %d • %I:%M %p")}</div>', unsafe_allow_html=True)
+                            if st.button("Details", key=f"hist_tv_btn_{h.get('i')}_{ep_code}_{h_idx}"):
+                                show_episode_details(h.get('i'), s_name, ep_code, ep_data=None, is_watched=True)
+                                
+            if len(tv_hist) > st.session_state.hist_tv_limit:
                 if st.button("Load More Series", use_container_width=True, key="load_more_tv_hist"):
-                    st.session_state.tv_hist_limit += 10
+                    st.session_state.hist_tv_limit += 10
                     st.rerun()
                     
     with h_mov:
@@ -939,7 +945,7 @@ with t_profile:
         if not mov_hist: st.info("No movie history recorded yet.")
         else:
             grouped_mov = {}
-            for h_idx, h in enumerate(mov_hist[:st.session_state.mov_hist_limit]):
+            for h_idx, h in enumerate(mov_hist[:st.session_state.hist_mov_limit]):
                 try:
                     dt = datetime.strptime(h["d"], '%Y-%m-%d %H:%M:%S')
                     grouped_mov.setdefault(dt.strftime('%B %Y'), []).append((h, dt, h_idx))
@@ -950,27 +956,21 @@ with t_profile:
                 for h, dt, h_idx in items:
                     mov = next((m for m in st.session_state.db["movies"] if str(m["id"]) == str(h.get("i"))), None)
                     m_name = mov["name"] if mov else "Unknown Movie"
-                    info_key = f"h_mov_{h.get('i')}_{h_idx}"
+                    poster = mov.get("poster_path", "") if mov else ""
                     
                     with st.container(border=True):
-                        c1, c2, c3 = st.columns([5, 4, 1])
-                        c1.markdown(f"**{m_name}**")
-                        c2.caption(dt.strftime('%b %d • %I:%M %p'))
-                        with c3:
-                            st.markdown('<div class="hist-toggle-btn">', unsafe_allow_html=True)
-                            def m_info(k=info_key): st.session_state[k] = not st.session_state.get(k, False)
-                            is_open = st.session_state.get(info_key, False)
-                            st.button("▲" if is_open else "▼", key=f"btn_{info_key}", on_click=m_info)
-                            st.markdown('</div>', unsafe_allow_html=True)
-                    if is_open:
-                        details = fetch_api(f"https://api.themoviedb.org/3/movie/{h.get('i')}?api_key={TMDB_KEY}")
-                        with st.container(border=True):
-                            display_poster(details.get("backdrop_path"), width=500)
-                            st.write(details.get("overview", "No synopsis available."))
+                        c1, c2 = st.columns([1, 3])
+                        with c1: display_poster(poster, width=92)
+                        with c2:
+                            st.markdown(f'<div class="feed-title">{m_name}</div>', unsafe_allow_html=True)
+                            render_badges(["Movie"], is_gold=False)
+                            st.markdown(f'<div class="feed-date">{dt.strftime("%b %d • %I:%M %p")}</div>', unsafe_allow_html=True)
+                            if st.button("Details", key=f"hist_mov_btn_{h.get('i')}_{h_idx}"):
+                                show_movie_details(h.get('i'), m_name, details=None, is_watched=True)
 
-            if len(mov_hist) > st.session_state.mov_hist_limit:
+            if len(mov_hist) > st.session_state.hist_mov_limit:
                 if st.button("Load More Movies", use_container_width=True, key="load_more_mov_hist"):
-                    st.session_state.mov_hist_limit += 10
+                    st.session_state.hist_mov_limit += 10
                     st.rerun()
 
     st.divider()
@@ -1098,7 +1098,7 @@ with t_profile:
                                             if str(show["id"]) == str(tmdb_id):
                                                 show["watched_episodes"] = list(set(show["watched_episodes"] + watched_eps))
                                                 break
-                            except Exception as item_error: continue
+                            except Exception as item_error: continue 
                     except Exception as e: st.error(f"Error processing series: {e}")
                 
                 new_db["history"].sort(key=lambda x: x.get("d", "2000-01-01 12:00:00"), reverse=True)
