@@ -4,8 +4,6 @@ import pandas as pd
 import json
 import time
 import re
-import zlib
-import base64
 from datetime import datetime, timedelta
 
 # Mobile-friendly layout configuration
@@ -19,7 +17,7 @@ st.html("""
     header {visibility: hidden !important;}
     footer {visibility: hidden !important; display: none !important;}
     
-    /* 🚨 THE BOTTOM-RIGHT POPUP KILLER 🚨 */
+    /* THE BOTTOM-RIGHT POPUP KILLER */
     .viewerBadge_container {display: none !important; visibility: hidden !important;}
     .viewerBadge_link {display: none !important; visibility: hidden !important;}
     div[class^="viewerBadge"] {display: none !important; visibility: hidden !important;}
@@ -31,11 +29,6 @@ st.html("""
     /* True Mobile Edge-to-Edge Layout */
     .block-container { 
         padding: 1rem 0.5rem 7rem 0.5rem !important; 
-        max-width: 100vw !important;
-        overflow-x: hidden !important;
-    }
-    .block-container { 
-        padding: 1rem 0.5rem 7rem 0.5rem !important; /* Increased bottom padding to ensure content cleanly clears the bottom nav bar */
         max-width: 100vw !important;
         overflow-x: hidden !important;
     }
@@ -71,7 +64,7 @@ st.html("""
             bottom: 0 !important;
             left: 0 !important;
             width: 100vw !important;
-            background-color: #111111 !important; /* Premium dark background */
+            background-color: #111111 !important;
             z-index: 999999 !important;
             display: flex !important;
             flex-direction: row !important;
@@ -96,7 +89,7 @@ st.html("""
         }
         
         div[role="tablist"] button p {
-            font-size: 0.65rem !important; /* Sized perfectly to keep 6 items linear on the S26 Ultra */
+            font-size: 0.65rem !important; 
             font-weight: 700 !important;
             color: #888888 !important;
             margin: 0 !important;
@@ -160,7 +153,7 @@ st.html("""
     }
     .movie-wall-btn div.stButton > button:active { color: #FFC107 !important; }
 </style>
-""", unsafe_allow_html=True)
+""")
 
 # --- PAGINATION STATES ---
 if "next_tv_limit" not in st.session_state: st.session_state.next_tv_limit = 30
@@ -770,7 +763,7 @@ with t_search:
         endpoint = "tv" if search_type == "TV Shows" else "movie"
         res = fetch_api(f"https://api.themoviedb.org/3/search/{endpoint}?api_key={TMDB_KEY}&query={search_query}")
         results = res.get("results", [])
-        if font_results := results:
+        if results:
             for item in results:
                 with st.container(border=True):
                     c1, c2 = st.columns([1, 2])
@@ -979,13 +972,13 @@ with t_profile:
     data_mov = []
     for dt in last_12_months:
         m_key = dt.strftime('%Y-%m') 
-        label = dt.strftime('%b %y')
+        label = dt.strftime('%Y-%m')
         stats = analytics.get(m_key, {"tv": 0, "movie": 0})
         data_tv.append({"Month": label, "Episodes": stats["tv"]})
         data_mov.append({"Month": label, "Movies": stats["movie"]})
         
-    df_tv = pd.DataFrame(data_tv)
-    df_mov = pd.DataFrame(data_mov)
+    df_tv = pd.DataFrame(data_tv).sort_values("Month")
+    df_mov = pd.DataFrame(data_mov).sort_values("Month")
     
     with chart_tab1:
         st.bar_chart(df_tv, x="Month", y="Episodes", color="#FFC107")
