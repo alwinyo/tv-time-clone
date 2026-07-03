@@ -21,7 +21,7 @@ st.markdown("""
     
     /* True Mobile Edge-to-Edge Layout */
     .block-container { 
-        padding: 1rem 0.5rem 5rem 0.5rem !important; 
+        padding: 1rem 0.5rem 6rem 0.5rem !important; /* Increased bottom padding so content clears the nav bar */
         max-width: 100vw !important;
         overflow-x: hidden !important;
     }
@@ -50,12 +50,53 @@ st.markdown("""
     
     /* --- GRID LOCK FOR HIGH-DPI SCREENS --- */
     @media (max-width: 992px) {
-        /* Swipeable Top Navigation Tabs */
+        
+        /* --- NATIVE BOTTOM APP NAVIGATION BAR --- */
         div[data-testid="stTabs"] > div[role="tablist"] {
-            display: flex !important; overflow-x: auto !important;
-            scrollbar-width: none; -ms-overflow-style: none;
+            position: fixed !important;
+            bottom: 0 !important;
+            left: 0 !important;
+            width: 100vw !important;
+            background-color: #121212 !important; /* Solid dark background */
+            z-index: 99999 !important;
+            display: flex !important;
+            flex-direction: row !important;
+            justify-content: space-between !important;
+            align-items: center !important;
+            padding: 8px 0px calc(8px + env(safe-area-inset-bottom)) 0px !important;
+            border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
+            box-shadow: 0px -4px 15px rgba(0, 0, 0, 0.5) !important;
         }
-        div[data-testid="stTabs"] > div[role="tablist"]::-webkit-scrollbar { display: none; }
+        
+        div[data-testid="stTabs"] > div[role="tablist"] button {
+            flex: 1 1 16.66% !important; /* Mathematically divides screen by 6 */
+            width: 16.66% !important;
+            padding: 6px 0px !important;
+            margin: 0 !important;
+            border: none !important;
+            background: transparent !important;
+            display: flex !important;
+            justify-content: center !important;
+            align-items: center !important;
+        }
+        
+        div[data-testid="stTabs"] > div[role="tablist"] button p {
+            font-size: 0.6rem !important; /* Downscaled to safely fit 6 labels across an S26 Ultra */
+            font-weight: 700 !important;
+            color: #777 !important;
+            margin: 0 !important;
+            white-space: nowrap !important;
+        }
+        
+        /* Active Tab Styling */
+        div[data-testid="stTabs"] > div[role="tablist"] button[aria-selected="true"] p {
+            color: #FFC107 !important;
+        }
+        
+        /* Kill the default Streamlit colored underline */
+        div[data-testid="stTabs"] > div[role="tablist"] button::after {
+            display: none !important; 
+        }
         
         /* STRICT 3-COLUMN LOCK (Libraries) */
         div[data-testid="stHorizontalBlock"]:has(.grid-3-col),
@@ -314,7 +355,6 @@ def show_cast_horizontal(cast_list, limit=12):
         imdb_url = f"https://www.imdb.com/find/?q={encoded_name}"
         html += f'<div style="flex: 0 0 85px; width: 85px; text-align: center;"><a href="{imdb_url}" target="_blank" style="text-decoration: none; color: inherit;"><img src="{img_url}" style="width: 85px; height: 127px; border-radius: 8px; object-fit: cover; box-shadow: 0 4px 6px rgba(0,0,0,0.3); margin-bottom: 6px;"><div style="font-size: 0.65rem; font-weight: 600; color: #E0E0E0; line-height: 1.2; white-space: pre-wrap;">{safe_name}</div></a></div>'
     html += '</div>'
-    # Stripping all newlines ensures Streamlit Markdown engine DOES NOT break into raw code
     html = html.replace('\n', '')
     st.markdown(html, unsafe_allow_html=True)
 
@@ -845,7 +885,6 @@ with t_movies:
         elif mov_sort == "Release Date":
             is_upc = (st.session_state.mov_tab == "UPCOMING")
             def_date = '2099-01-01' if is_upc else '1900-01-01'
-            # Upcoming Movies sort Ascending (soonest first). Others sort Descending (latest first).
             display_movies.sort(key=lambda x: x[0].get('release_date', def_date) or def_date, reverse=not is_upc)
         elif mov_sort == "Recently Added":
             display_movies.reverse()
@@ -917,8 +956,6 @@ with t_profile:
             
     data_tv = []
     data_mov = []
-    # Because we loop from oldest (11 months ago) to newest (today), 
-    # the array is perfectly, chronologically sorted naturally!
     for dt in last_12_months:
         m_key = dt.strftime('%Y-%m') 
         label = dt.strftime('%b %y')
