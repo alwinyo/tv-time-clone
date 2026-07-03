@@ -442,6 +442,11 @@ def manage_show_dialog(show_id, show_name, details):
             ep_col1, ep_col2 = st.columns([6, 1])
             with ep_col1:
                 st.checkbox(f"**E{ep['episode_number']}.** {ep.get('name', 'Episode')}", value=is_watched, key=f"chk_dlg_{show_id}_{e_code}", on_change=on_check)
+            if st.session_state.get(info_key, False):
+                with st.container(border=True):
+                    display_poster(ep.get("still_path"), width=500)
+                    st.caption(f"⭐ {ep.get('vote_average', 0.0)} | **Aired:** {ep.get('air_date', 'N/A')}")
+                    st.write(ep.get("overview", "No synopsis available."))
     st.divider()
     st.markdown("#### Top Cast")
     credits = fetch_api(f"https://api.themoviedb.org/3/tv/{show_id}/credits?api_key={TMDB_KEY}")
@@ -649,7 +654,7 @@ with t_soon:
                 for ep in s_data.get("episodes", []):
                     ep_code = f"S{s_info['season_number']}E{ep['episode_number']}"
                     air_date = ep.get("air_date", "")
-                    if ep_code not in watched_set Useful and air_date and air_date > TODAY:
+                    if ep_code not in watched_set and air_date and air_date > TODAY:
                         soon_tv.append({"item": show, "details": details, "ep": ep, "code": ep_code, "date": air_date})
                         found_next = True; break
 
@@ -828,7 +833,6 @@ with t_tv:
         elif tv_sort == "Release Date":
             is_upc = (st.session_state.tv_tab == "UPCOMING")
             def_date = '2099-01-01' if is_upc else '1900-01-01'
-            # Upcoming shows now correctly match upcoming movies (soonest first)
             display_shows.sort(key=lambda x: x[0].get('first_air_date', def_date) or def_date, reverse=not is_upc)
         elif tv_sort == "Recently Added":
             display_shows.reverse()
