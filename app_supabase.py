@@ -14,10 +14,20 @@ st.set_page_config(page_title="My TV Time", layout="centered", initial_sidebar_s
 # --- MOBILE-FIRST TARGETED CSS OVERHAUL ---
 st.markdown("""
 <style>
-    /* Hide Default Streamlit Clutter & Floating Badges */
-    #MainMenu {visibility: hidden;}
-    footer {visibility: hidden;}
-    header {visibility: hidden;}
+    /* --- STREAMLIT UI ANNIHILATION (From Forum Hack) --- */
+    #MainMenu {visibility: hidden !important;}
+    header {visibility: hidden !important;}
+    footer {visibility: hidden !important; display: none !important;}
+    .stDeployButton {display: none !important;}
+    [data-testid="stStatusWidget"] {visibility: hidden !important; display: none !important;}
+    [data-testid="stHeader"] {visibility: hidden !important; display: none !important;}
+    
+    /* True Mobile Edge-to-Edge Layout */
+    .block-container { 
+        padding: 1rem 0.5rem 7rem 0.5rem !important; 
+        max-width: 100vw !important;
+        overflow-x: hidden !important;
+    }
     [data-testid="stStatusWidget"] {visibility: hidden; display: none !important;}
     [data-testid="stToolbar"] {visibility: hidden; display: none !important;}
     .stDeployButton {visibility: hidden; display: none !important;}
