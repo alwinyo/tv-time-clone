@@ -14,10 +14,13 @@ st.set_page_config(page_title="My TV Time", layout="centered", initial_sidebar_s
 # --- MOBILE-FIRST TARGETED CSS OVERHAUL ---
 st.markdown("""
 <style>
-    /* Hide Default Streamlit Clutter */
+    /* Hide Default Streamlit Clutter & Floating Badges */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
     header {visibility: hidden;}
+    [data-testid="stStatusWidget"] {visibility: hidden; display: none !important;}
+    [data-testid="stToolbar"] {visibility: hidden; display: none !important;}
+    .stDeployButton {visibility: hidden; display: none !important;}
     
     /* True Mobile Edge-to-Edge Layout */
     .block-container { 
@@ -756,7 +759,7 @@ with t_search:
         endpoint = "tv" if search_type == "TV Shows" else "movie"
         res = fetch_api(f"https://api.themoviedb.org/3/search/{endpoint}?api_key={TMDB_KEY}&query={search_query}")
         results = res.get("results", [])
-        if results:
+        if font_results := results:
             for item in results:
                 with st.container(border=True):
                     c1, c2 = st.columns([1, 2])
