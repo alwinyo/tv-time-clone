@@ -4,6 +4,8 @@ import pandas as pd
 import json
 import time
 import re
+import calendar
+import random
 from datetime import datetime, timedelta
 
 # Mobile-friendly layout configuration
@@ -59,22 +61,22 @@ st.html("""
         display: flex !important; 
         width: 100vw !important;
         max-width: 100% !important;
-        margin-left: -0.5rem !important; /* Pull edge to edge to maximize space */
+        margin-left: -0.5rem !important; 
         padding: 0 !important;
-        gap: 0 !important; /* Eradicate default Streamlit spacing */
-        overflow-x: hidden !important; /* Kill the scroll track completely */
+        gap: 0 !important; 
+        overflow-x: hidden !important; 
     }
     
     div[data-testid="stTabs"] button[role="tab"] {
-        flex: 1 1 0px !important; /* 0px basis forces all tabs to be exactly equal */
-        min-width: 0 !important; /* CRITICAL: Prevents long text from pushing buttons wider */
+        flex: 1 1 0px !important; 
+        min-width: 0 !important; 
         padding: 10px 0px !important;
         margin: 0 !important;
         border-radius: 0 !important;
     }
     
     div[data-testid="stTabs"] button[role="tab"] p {
-        font-size: 0.55rem !important; /* Aggressive shrink to guarantee fit on any phone screen */
+        font-size: 0.55rem !important; 
         font-weight: 700 !important;
         text-align: center !important;
         margin: 0 auto !important;
@@ -82,6 +84,31 @@ st.html("""
         letter-spacing: -0.4px !important; 
         overflow: hidden !important;
         text-overflow: clip !important;
+    }
+    
+    /* --- DISCOVER FEED: HORIZONTAL CAROUSEL HACK --- */
+    div[data-testid="stHorizontalBlock"]:has(.carousel-marker),
+    div[data-testid="stColumns"]:has(.carousel-marker) {
+        display: flex !important;
+        flex-direction: row !important;
+        overflow-x: auto !important;
+        flex-wrap: nowrap !important;
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+        padding-bottom: 15px !important;
+        gap: 12px !important;
+    }
+    div[data-testid="stHorizontalBlock"]:has(.carousel-marker)::-webkit-scrollbar,
+    div[data-testid="stColumns"]:has(.carousel-marker)::-webkit-scrollbar { 
+        display: none; 
+    }
+    div[data-testid="column"]:has(.carousel-marker),
+    div[data-testid="stColumn"]:has(.carousel-marker) {
+        flex: 0 0 110px !important; 
+        width: 110px !important;
+        min-width: 110px !important;
+        padding: 0 !important;
+        display: block !important;
     }
     
     /* --- GRID LOCK FOR HIGH-DPI SCREENS --- */
@@ -732,14 +759,15 @@ with t_soon:
                     st.rerun()
 
 # ==========================================
-# TAB 3: GLOBAL SEARCH 
+# TAB 3: GLOBAL SEARCH / DISCOVER FEED
 # ==========================================
 with t_search:
     st.markdown("### Discover")
-    search_type = st.radio("Category:", ["TV Shows", "Movies"], horizontal=True, key="search_filter_radio")
-    search_query = st.text_input("Enter title to search:", key="search_query_input")
+    search_query = st.text_input("Search", key="search_query_input", placeholder="Search TV shows, movies, actors...", label_visibility="collapsed")
 
     if search_query:
+        # --- SEARCH MODE ---
+        search_type = st.radio("Category:", ["TV Shows", "Movies"], horizontal=True, key="search_filter_radio")
         endpoint = "tv" if search_type == "TV Shows" else "movie"
         res = fetch_api(f"https://api.themoviedb.org/3/search/{endpoint}?api_key={TMDB_KEY}&query={search_query}")
         results = res.get("results", [])
@@ -763,9 +791,7 @@ with t_search:
                                         "poster_path": details.get("poster_path", ""), "first_air_date": details.get("first_air_date", ""),
                                         "total_episodes": details.get("number_of_episodes", 1)
                                     })
-                                    if save_db():
-                                        st.toast("Added!")
-                                        st.rerun()
+                                    if save_db(): st.rerun()
                             else: st.button("✔️ Added", key=f"dsbl_tv_{item_id}", disabled=True, use_container_width=True)
                         else:
                             if not any(str(m["id"]) == str(item_id) for m in st.session_state.db["movies"]):
@@ -776,10 +802,94 @@ with t_search:
                                         "poster_path": details.get("poster_path", ""), "release_date": details.get("release_date", ""),
                                         "runtime": details.get("runtime", 0)
                                     })
-                                    if save_db():
-                                        st.toast("Added!")
-                                        st.rerun()
+                                    if save_db(): st.rerun()
                             else: st.button("✔️ Added", key=f"dsbl_mov_{item_id}", disabled=True, use_container_width=True)
+    
+    else:
+        # --- DISCOVER MODE (NETFLIX-STYLE FEED) ---
+        genre_options = ["🔥 Trending", "🤣 Comedy", "💥 Action", "🐉 Sci-Fi/Fantasy", "🔪 Thriller", "💖 Romance"]
+        selected_genre = st.radio("Filters", genre_options, horizontal=True, label_visibility="collapsed")
+        st.divider()
+
+        def render_carousel(title, items, c_type):
+            if not items: return
+            st.markdown(f"<h5 style='margin-bottom:0;'>{title}</h5>", unsafe_allow_html=True)
+            # Create exact column count to prevent Streamlit from adding ghost spacing
+            cols = st.columns(len(items[:10]))
+            for idx, item in enumerate(items[:10]):
+                with cols[idx]:
+                    st.markdown('<span class="carousel-marker"></span>', unsafe_allow_html=True)
+                    display_poster(item.get("poster_path"), width=154)
+                    i_title = item.get("name") if c_type == "tv" else item.get("title")
+                    st.markdown(f'<div class="grid-title" title="{i_title}">{i_title}</div>', unsafe_allow_html=True)
+                    
+                    st.markdown('<div class="movie-wall-btn">', unsafe_allow_html=True)
+                    item_id = item["id"]
+                    if c_type == "tv":
+                        if not any(str(s["id"]) == str(item_id) for s in st.session_state.db["shows"]):
+                            if st.button("➕ Add", key=f"c_add_tv_{item_id}_{idx}", use_container_width=True):
+                                details = fetch_api(f"https://api.themoviedb.org/3/tv/{item_id}?api_key={TMDB_KEY}")
+                                st.session_state.db["shows"].append({
+                                    "id": item_id, "name": i_title, "watched_episodes": [],
+                                    "poster_path": details.get("poster_path", ""), "first_air_date": details.get("first_air_date", ""),
+                                    "total_episodes": details.get("number_of_episodes", 1)
+                                })
+                                if save_db(): st.rerun()
+                        else: st.button("✔️ Added", key=f"c_dsb_tv_{item_id}_{idx}", disabled=True, use_container_width=True)
+                    else:
+                        if not any(str(m["id"]) == str(item_id) for m in st.session_state.db["movies"]):
+                            if st.button("➕ Add", key=f"c_add_mov_{item_id}_{idx}", use_container_width=True):
+                                details = fetch_api(f"https://api.themoviedb.org/3/movie/{item_id}?api_key={TMDB_KEY}")
+                                st.session_state.db["movies"].append({
+                                    "id": item_id, "name": i_title, "watched": False,
+                                    "poster_path": details.get("poster_path", ""), "release_date": details.get("release_date", ""),
+                                    "runtime": details.get("runtime", 0)
+                                })
+                                if save_db(): st.rerun()
+                        else: st.button("✔️ Added", key=f"c_dsb_mov_{item_id}_{idx}", disabled=True, use_container_width=True)
+                    st.markdown('</div>', unsafe_allow_html=True)
+
+        if selected_genre == "🔥 Trending":
+            # 1. "For You" Recommendation Engine
+            watched_tv = [s for s in st.session_state.db.get("shows", []) if s.get("watched_episodes")]
+            if watched_tv:
+                random_show = random.choice(watched_tv)
+                recs = fetch_api(f"https://api.themoviedb.org/3/tv/{random_show['id']}/recommendations?api_key={TMDB_KEY}")
+                if recs.get("results"):
+                    render_carousel(f"Because you watched {random_show['name']}", recs["results"], "tv")
+
+            # 2. Trending All
+            trending = fetch_api(f"https://api.themoviedb.org/3/trending/all/day?api_key={TMDB_KEY}")
+            if trending.get("results"):
+                t_tv = [i for i in trending["results"] if i.get("media_type") == "tv"]
+                t_mov = [i for i in trending["results"] if i.get("media_type") == "movie"]
+                render_carousel("🔥 Trending Series", t_tv, "tv")
+                render_carousel("🎬 Trending Movies", t_mov, "movie")
+
+            # 3. Dedicated Korean Content Block (Current Month)
+            current_date = datetime.today()
+            start_month = current_date.replace(day=1).strftime('%Y-%m-%d')
+            last_day = calendar.monthrange(current_date.year, current_date.month)[1]
+            end_month_str = current_date.replace(day=last_day).strftime('%Y-%m-%d')
+            
+            k_tv = fetch_api(f"https://api.themoviedb.org/3/discover/tv?api_key={TMDB_KEY}&with_original_language=ko&first_air_date.gte={start_month}&first_air_date.lte={end_month_str}&sort_by=popularity.desc")
+            if k_tv.get("results"):
+                render_carousel(f"🇰🇷 K-Dramas ({current_date.strftime('%B %Y')})", k_tv["results"], "tv")
+                
+            k_mov = fetch_api(f"https://api.themoviedb.org/3/discover/movie?api_key={TMDB_KEY}&with_original_language=ko&primary_release_date.gte={start_month}&primary_release_date.lte={end_month_str}&sort_by=popularity.desc")
+            if k_mov.get("results"):
+                render_carousel(f"🇰🇷 K-Movies ({current_date.strftime('%B %Y')})", k_mov["results"], "movie")
+
+        else:
+            # 4. Genre Filter Feed
+            genre_map_tv = {"🤣 Comedy": 35, "💥 Action": 10759, "🐉 Sci-Fi/Fantasy": 10765, "🔪 Thriller": 9648, "💖 Romance": 10749}
+            genre_map_mov = {"🤣 Comedy": 35, "💥 Action": 28, "🐉 Sci-Fi/Fantasy": 878, "🔪 Thriller": 53, "💖 Romance": 10749}
+            
+            tv_g = fetch_api(f"https://api.themoviedb.org/3/discover/tv?api_key={TMDB_KEY}&with_genres={genre_map_tv[selected_genre]}&sort_by=popularity.desc")
+            mov_g = fetch_api(f"https://api.themoviedb.org/3/discover/movie?api_key={TMDB_KEY}&with_genres={genre_map_mov[selected_genre]}&sort_by=popularity.desc")
+            
+            render_carousel(f"Top {selected_genre} Series", tv_g.get("results", []), "tv")
+            render_carousel(f"Top {selected_genre} Movies", mov_g.get("results", []), "movie")
 
 # ==========================================
 # TAB 4: TV LIBRARY 
@@ -897,8 +1007,15 @@ with t_movies:
                                 st.markdown(f'<div class="grid-title" title="{m["name"]}">{m["name"]}</div>', unsafe_allow_html=True)
                                 
                                 st.markdown('<div class="movie-wall-btn">', unsafe_allow_html=True)
-                                if st.button("DETAILS", key=f"m_mgr_{m['id']}", use_container_width=True):
-                                    show_movie_details(m['id'], m['name'], details=None, is_watched=is_watched)
+                                def f_w_mov(mid=m['id']):
+                                    for mv in st.session_state.db["movies"]:
+                                        if str(mv["id"]) == str(mid):
+                                            mv["watched"] = True
+                                            log_watch("movie", mid)
+                                            break
+                                st.button("✔️ Watch", key=f"n_w_mov_{m['id']}_{idx}", on_click=f_w_mov, use_container_width=True)
+                                if st.button("ℹ️ Info", key=f"n_i_mov_{m['id']}_{idx}", use_container_width=True):
+                                    show_movie_details(m['id'], m['name'], details=None, is_watched=False)
                                 st.markdown('</div>', unsafe_allow_html=True)
 
 # ==========================================
