@@ -48,7 +48,16 @@ st.markdown("""
     button[kind="primary"] { background-color: #FFC107 !important; color: #000 !important; border: none !important; }
     button[kind="secondary"] { background-color: #222 !important; color: #ccc !important; border: 1px solid #444 !important; }
     
-    /* --- RESPONSIVE MOBILE MAGIC --- */
+    /* Transparent Toggles */
+    .ep-toggle-btn div.stButton > button, .hist-toggle-btn div.stButton > button {
+        background: transparent !important; border: none !important; color: #888 !important; box-shadow: none !important;
+        min-height: unset !important; height: auto !important;
+    }
+    .ep-toggle-btn div.stButton > button { font-size: 0.9rem !important; padding: 0 !important; margin-top: 6px !important; }
+    .hist-toggle-btn div.stButton > button { font-size: 1.1rem !important; padding: 0 !important; margin-top: 15px !important; }
+    .ep-toggle-btn div.stButton > button:active, .hist-toggle-btn div.stButton > button:active { color: #FFC107 !important; transform: none !important; }
+    
+    /* --- RESPONSIVE MOBILE MAGIC (S26 ULTRA FIX) --- */
     @media (max-width: 768px) {
         /* 1. Swipeable Top Navigation Tabs */
         div[data-testid="stTabs"] > div[role="tablist"] {
@@ -57,35 +66,37 @@ st.markdown("""
         }
         div[data-testid="stTabs"] > div[role="tablist"]::-webkit-scrollbar { display: none; }
         
-        /* 2. Override Streamlit's Auto-Stacking */
-        div[data-testid="stHorizontalBlock"], div[data-testid="stColumns"] {
+        /* 2. STRICT NO-WRAP LOCK FOR 3-COLUMN GRIDS */
+        /* This physically forbids the browser from pushing the 3rd poster to a new line */
+        div[data-testid="stColumns"]:has(> div[data-testid="stColumn"]:nth-child(3):last-child),
+        div[data-testid="stHorizontalBlock"]:has(> div[data-testid="column"]:nth-child(3):last-child) {
+            display: flex !important;
             flex-direction: row !important;
-            flex-wrap: wrap !important;
+            flex-wrap: nowrap !important; 
+            gap: 0.3rem !important;
         }
         
-        /* 3. Mathematical 3x3 Grid Lock for Posters */
-        div[data-testid="column"]:nth-child(1):nth-last-child(3),
-        div[data-testid="column"]:nth-child(2):nth-last-child(2),
-        div[data-testid="column"]:nth-child(3):nth-last-child(1),
-        div[data-testid="stColumn"]:nth-child(1):nth-last-child(3),
-        div[data-testid="stColumn"]:nth-child(2):nth-last-child(2),
-        div[data-testid="stColumn"]:nth-child(3):nth-last-child(1) {
-            flex: 0 0 calc(33.333% - 0.5rem) !important;
-            max-width: calc(33.333% - 0.5rem) !important;
-            min-width: calc(33.333% - 0.5rem) !important;
+        div[data-testid="stColumns"]:has(> div[data-testid="stColumn"]:nth-child(3):last-child) > div[data-testid="stColumn"],
+        div[data-testid="stHorizontalBlock"]:has(> div[data-testid="column"]:nth-child(3):last-child) > div[data-testid="column"] {
+            width: 32% !important;
+            flex: 1 1 0% !important;
+            min-width: 0 !important;
             padding: 0 !important;
         }
         
-        /* 4. Fluid Width for 2-Column Elements (like Feed & Toggles) */
-        div[data-testid="column"]:nth-child(1):nth-last-child(2),
-        div[data-testid="column"]:nth-child(2):nth-last-child(1),
-        div[data-testid="stColumn"]:nth-child(1):nth-last-child(2),
-        div[data-testid="stColumn"]:nth-child(2):nth-last-child(1) {
+        /* 3. Fluid Width for 2-Column Elements (like Top Toggles) */
+        div[data-testid="stColumns"]:has(> div[data-testid="stColumn"]:nth-child(2):last-child),
+        div[data-testid="stHorizontalBlock"]:has(> div[data-testid="column"]:nth-child(2):last-child) {
+            flex-direction: row !important;
+            flex-wrap: nowrap !important;
+        }
+        div[data-testid="stColumns"]:has(> div[data-testid="stColumn"]:nth-child(2):last-child) > div[data-testid="stColumn"],
+        div[data-testid="stHorizontalBlock"]:has(> div[data-testid="column"]:nth-child(2):last-child) > div[data-testid="column"] {
             min-width: 0 !important; 
-            padding: 0 0.2rem !important;
+            padding: 0 0.1rem !important;
         }
         
-        /* 5. Widescreen Pop-up Dialogs */
+        /* 4. Widescreen Pop-up Dialogs */
         div[role="dialog"] {
             width: 95vw !important; max-width: 95vw !important;
             margin: 0 auto !important; padding: 1rem !important;
@@ -340,7 +351,6 @@ def parse_tvtime_date(d_str):
 # --- DIALOGS (Lazy Loaded for Speed) ---
 @st.dialog("Episode Details")
 def show_episode_details(show_id, show_name, ep_code, ep_data=None, is_watched=False):
-    # Lazy fetch API data only when button is clicked!
     if not ep_data:
         try:
             s_num = ep_code.split('E')[0].replace('S', '')
@@ -434,7 +444,6 @@ def manage_show_dialog(show_id, show_name, details):
 
 @st.dialog("Movie Details")
 def show_movie_details(m_id, m_name, details=None, is_watched=False):
-    # Lazy fetch API data only when button is clicked!
     if not details:
         details = fetch_api(f"https://api.themoviedb.org/3/movie/{m_id}?api_key={TMDB_KEY}")
         
@@ -994,6 +1003,7 @@ with t_profile:
                     "history": [] if wipe_db else st.session_state.db.get("history", [])
                 }
                 
+                # Process Movies
                 if m_file:
                     stat_txt.text("Processing Movies... fetching data safely.")
                     try:
@@ -1040,6 +1050,7 @@ with t_profile:
                 
                 if m_file and t_file: prog.progress(0)
                 
+                # Process Shows
                 if t_file:
                     stat_txt.text("Processing Series... fetching data safely.")
                     try:
