@@ -11,36 +11,25 @@ from datetime import datetime, timedelta
 # Mobile-friendly layout configuration
 st.set_page_config(page_title="My TV Time", layout="centered", initial_sidebar_state="collapsed")
 
-# --- MOBILE-FIRST NATIVE APP CSS ---
+# --- CUSTOM CSS: SMART MOBILE GRID & APP STYLING ---
 st.markdown("""
 <style>
     /* Hide Default Streamlit Clutter */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
     header {visibility: hidden;}
-    
-    /* True Mobile Edge-to-Edge Layout */
-    .block-container { 
-        padding: 1rem 0.5rem 5rem 0.5rem !important; 
-        max-width: 100vw !important;
-        overflow-x: hidden !important;
-    }
-    
+    .block-container { padding-top: 1rem !important; padding-bottom: 5rem !important; }
     img { border-radius: 8px !important; }
     [data-testid="stProgressBar"] > div > div { background-color: #FFC107 !important; }
     
-    /* Sleek Native-App Cards */
     [data-testid="stVerticalBlockBorderWrapper"] {
-        border-radius: 12px !important; 
-        border: 1px solid rgba(200, 200, 200, 0.2) !important;
-        box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.05) !important; 
-        padding: 0.5rem !important;
+        border-radius: 12px !important; border: 1px solid rgba(200, 200, 200, 0.2) !important;
+        box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1) !important; padding: 0.5rem !important;
     }
     
-    /* Touch-Friendly Button Targets */
     div.stButton > button {
         border-radius: 20px; font-weight: 600; transition: all 0.2s;
-        padding: 4px 8px !important; font-size: 0.75rem !important;
+        padding: 2px 5px !important; font-size: 0.75rem !important;
         min-height: 2.2rem;
     }
     div.stButton > button:active { transform: scale(0.95); }
@@ -48,7 +37,6 @@ st.markdown("""
     button[kind="primary"] { background-color: #FFC107 !important; color: #000 !important; border: none !important; }
     button[kind="secondary"] { background-color: #222 !important; color: #ccc !important; border: 1px solid #444 !important; }
     
-    /* Transparent Toggles */
     .ep-toggle-btn div.stButton > button, .hist-toggle-btn div.stButton > button {
         background: transparent !important; border: none !important; color: #888 !important; box-shadow: none !important;
         min-height: unset !important; height: auto !important;
@@ -57,7 +45,7 @@ st.markdown("""
     .hist-toggle-btn div.stButton > button { font-size: 1.1rem !important; padding: 0 !important; margin-top: 15px !important; }
     .ep-toggle-btn div.stButton > button:active, .hist-toggle-btn div.stButton > button:active { color: #FFC107 !important; transform: none !important; }
     
-    /* --- RESPONSIVE MOBILE MAGIC (S26 ULTRA FIX) --- */
+    /* --- RESPONSIVE MOBILE MAGIC (S26 ULTRA HORIZONTAL FIX) --- */
     @media (max-width: 768px) {
         /* 1. Swipeable Top Navigation Tabs */
         div[data-testid="stTabs"] > div[role="tablist"] {
@@ -67,43 +55,30 @@ st.markdown("""
         div[data-testid="stTabs"] > div[role="tablist"]::-webkit-scrollbar { display: none; }
         
         /* 2. STRICT NO-WRAP LOCK FOR 3-COLUMN GRIDS */
-        /* This physically forbids the browser from pushing the 3rd poster to a new line */
-        div[data-testid="stColumns"]:has(> div[data-testid="stColumn"]:nth-child(3):last-child),
-        div[data-testid="stHorizontalBlock"]:has(> div[data-testid="column"]:nth-child(3):last-child) {
+        div[data-testid="stHorizontalBlock"]:has(> div[data-testid="column"]:nth-child(3):last-child),
+        div[data-testid="stColumns"]:has(> div[data-testid="stColumn"]:nth-child(3):last-child) {
             display: flex !important;
-            flex-direction: row !important;
+            flex-direction: row !important; 
             flex-wrap: nowrap !important; 
-            gap: 0.3rem !important;
+            gap: 4px !important; 
         }
         
-        div[data-testid="stColumns"]:has(> div[data-testid="stColumn"]:nth-child(3):last-child) > div[data-testid="stColumn"],
-        div[data-testid="stHorizontalBlock"]:has(> div[data-testid="column"]:nth-child(3):last-child) > div[data-testid="column"] {
-            width: 32% !important;
-            flex: 1 1 0% !important;
-            min-width: 0 !important;
-            padding: 0 !important;
-        }
-        
-        /* 3. Fluid Width for 2-Column Elements (like Top Toggles) */
-        div[data-testid="stColumns"]:has(> div[data-testid="stColumn"]:nth-child(2):last-child),
-        div[data-testid="stHorizontalBlock"]:has(> div[data-testid="column"]:nth-child(2):last-child) {
-            flex-direction: row !important;
-            flex-wrap: nowrap !important;
-        }
-        div[data-testid="stColumns"]:has(> div[data-testid="stColumn"]:nth-child(2):last-child) > div[data-testid="stColumn"],
-        div[data-testid="stHorizontalBlock"]:has(> div[data-testid="column"]:nth-child(2):last-child) > div[data-testid="column"] {
+        div[data-testid="stHorizontalBlock"]:has(> div[data-testid="column"]:nth-child(3):last-child) > div[data-testid="column"],
+        div[data-testid="stColumns"]:has(> div[data-testid="stColumn"]:nth-child(3):last-child) > div[data-testid="stColumn"] {
+            width: 32% !important; /* Adjusted from 33.3% to stop S26 Ultra staggering */
+            flex: 1 1 0% !important; 
             min-width: 0 !important; 
-            padding: 0 0.1rem !important;
+            padding: 0 !important;
+            display: block !important;
         }
         
-        /* 4. Widescreen Pop-up Dialogs */
+        /* 3. Widescreen Pop-up Dialogs */
         div[role="dialog"] {
             width: 95vw !important; max-width: 95vw !important;
             margin: 0 auto !important; padding: 1rem !important;
         }
     }
     
-    /* Text formatting for tight mobile grids */
     .grid-title {
         font-size: 0.65rem !important; font-weight: 700; white-space: nowrap; overflow: hidden;
         text-overflow: ellipsis; text-align: center; margin-top: 6px; line-height: 1.2;
@@ -115,16 +90,14 @@ st.markdown("""
     }
     .badge-gold { background-color: #FFC107; color: #000000; }
     
-    /* Edge-to-Edge Poster Magic */
     .movie-poster-sharp img { border-radius: 6px !important; aspect-ratio: 2/3; object-fit: cover; }
     .movie-wall-btn div.stButton > button {
         border: none !important; background-color: transparent !important; color: #aaa !important;
-        font-size: 0.7rem !important; padding: 0 !important; margin-top: 2px !important; margin-bottom: 5px !important; 
-        text-transform: uppercase; letter-spacing: 1px; min-height: 1.5rem !important;
+        font-size: 0.7rem !important; padding: 0 !important; margin-top: 2px !important; margin-bottom: 5px !important; text-transform: uppercase; letter-spacing: 1px;
     }
     .movie-wall-btn div.stButton > button:active { color: white !important; }
     
-    /* Feed Stylings for Watch Journal */
+    /* Watch Journal Native App Styling */
     .feed-title { font-size: 0.95rem !important; font-weight: 700; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;}
     .feed-date { font-size: 0.75rem !important; color: #aaa; margin-top: 4px; margin-bottom: 6px;}
 </style>
