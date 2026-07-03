@@ -17,14 +17,22 @@ st.html("""
     header {visibility: hidden !important;}
     footer {visibility: hidden !important; display: none !important;}
     
-    /* THE BOTTOM-RIGHT POPUP KILLER */
-    .viewerBadge_container {display: none !important; visibility: hidden !important;}
-    .viewerBadge_link {display: none !important; visibility: hidden !important;}
-    div[class^="viewerBadge"] {display: none !important; visibility: hidden !important;}
+    /* 🚨 THE NUCLEAR OPTION FOR FLOATING BADGES 🚨 */
+    /* This hides literally anything Streamlit injects outside the main app */
+    [data-testid="stAppViewContainer"] ~ div { display: none !important; visibility: hidden !important; opacity: 0 !important; pointer-events: none !important; }
     
+    /* Backup specific targets */
+    .viewerBadge_container, .viewerBadge_link, div[class^="viewerBadge"] {display: none !important; visibility: hidden !important;}
     .stDeployButton {display: none !important;}
     [data-testid="stStatusWidget"] {visibility: hidden !important; display: none !important;}
     [data-testid="stHeader"] {visibility: hidden !important; display: none !important;}
+    
+    /* True Mobile Edge-to-Edge Layout */
+    .block-container { 
+        padding: 1rem 0.5rem 7rem 0.5rem !important; 
+        max-width: 100vw !important;
+        overflow-x: hidden !important;
+    }
     
     /* True Mobile Edge-to-Edge Layout */
     .block-container { 
