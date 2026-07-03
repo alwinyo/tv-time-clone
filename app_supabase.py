@@ -53,32 +53,39 @@ st.html("""
     button[kind="primary"] { background-color: #FFC107 !important; color: #000 !important; border: none !important; }
     button[kind="secondary"] { background-color: #222 !important; color: #ccc !important; border: 1px solid #444 !important; }
     
-    /* --- SYMMETRICAL TOP NAVIGATION TABS --- */
+    /* --- SYMMETRICAL TOP NAVIGATION TABS (FORCED FIT) --- */
+    div[data-testid="stTabs"] > div[data-baseweb="tab-list"],
     div[data-testid="stTabs"] > div[role="tablist"] {
         display: flex !important; 
-        flex-direction: row !important;
-        justify-content: space-between !important;
-        width: 100% !important;
+        width: 100vw !important;
+        max-width: 100% !important;
+        margin-left: -0.5rem !important; /* Pull edge to edge to maximize space */
+        padding: 0 !important;
+        gap: 0 !important; /* Eradicate default Streamlit spacing */
+        overflow-x: hidden !important; /* Kill the scroll track completely */
     }
     
-    div[data-testid="stTabs"] > div[role="tablist"] button {
-        flex: 1 1 16.66% !important; /* Forces 6 exactly even columns */
-        padding: 8px 0px !important;
-        min-width: 0 !important;
+    div[data-testid="stTabs"] button[role="tab"] {
+        flex: 1 1 0px !important; /* 0px basis forces all tabs to be exactly equal */
+        min-width: 0 !important; /* CRITICAL: Prevents long text from pushing buttons wider */
+        padding: 10px 0px !important;
+        margin: 0 !important;
+        border-radius: 0 !important;
     }
     
-    div[data-testid="stTabs"] > div[role="tablist"] button p {
-        font-size: 0.60rem !important; /* Downscaled to fit perfectly */
+    div[data-testid="stTabs"] button[role="tab"] p {
+        font-size: 0.55rem !important; /* Aggressive shrink to guarantee fit on any phone screen */
         font-weight: 700 !important;
         text-align: center !important;
         margin: 0 auto !important;
         white-space: nowrap !important;
-        letter-spacing: -0.3px !important; /* Tightens the text slightly */
+        letter-spacing: -0.4px !important; 
+        overflow: hidden !important;
+        text-overflow: clip !important;
     }
     
     /* --- GRID LOCK FOR HIGH-DPI SCREENS --- */
     @media (max-width: 992px) {
-        
         /* STRICT 3-COLUMN LOCK (Libraries) */
         div[data-testid="stHorizontalBlock"]:has(.grid-3-col),
         div[data-testid="stColumns"]:has(.grid-3-col) {
