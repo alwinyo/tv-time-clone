@@ -97,7 +97,7 @@ def fetch_robust(url):
         try:
             r = requests.get(url, timeout=5)
             if r.status_code == 429:
-                time.sleep(1)
+                time.sleep(1.5)
                 continue
             if r.status_code == 200:
                 return r.json()
@@ -105,14 +105,51 @@ def fetch_robust(url):
         except: time.sleep(1)
     return {}
 
+# --- MATHEMATICAL RANGE ENCODER ---
+def encode_eps(eps):
+    """Compresses ['S1E1', 'S1E2', 'S1E3'] into '1:1-3'"""
+    seasons = {}
+    for ep in eps:
+        try:
+            s, e = ep.split('E')
+            seasons.setdefault(int(s.replace('S', '')), []).append(int(e))
+        except: pass
+    res = []
+    for s, e_list in seasons.items():
+        if not e_list: continue
+        e_list = sorted(list(set(e_list)))
+        ranges, start, prev = [], e_list[0], e_list[0]
+        for e in e_list[1:]:
+            if e == prev + 1: prev = e
+            else:
+                ranges.append(str(start) if start == prev else f"{start}-{prev}")
+                start = prev = e
+        ranges.append(str(start) if start == prev else f"{start}-{prev}")
+        res.append(f"{s}:{'.'.join(ranges)}")
+    return "|".join(res)
+
+def decode_eps(ep_str):
+    """Decompresses '1:1-3' back to ['S1E1', 'S1E2', 'S1E3']"""
+    if not ep_str: return []
+    eps = []
+    for s_part in str(ep_str).split('|'):
+        if ':' not in s_part: continue
+        s, e_part = s_part.split(':')
+        for r in e_part.split('.'):
+            if '-' in r:
+                start, end = r.split('-')
+                eps.extend([f"S{s}E{e}" for e in range(int(start), int(end)+1)])
+            else:
+                if r: eps.append(f"S{s}E{r}")
+    return eps
+
 # --- DEEP COMPRESSION ENGINE ---
 def pack_db(db):
-    """Aggressively converts lists of dicts into strict data arrays to bypass cloud limits."""
     packed = {"m": [], "s": [], "h": [], "a": {}}
     for m in db.get("movies", []):
         packed["m"].append([m["id"], m["name"], 1 if m["watched"] else 0, m.get("poster_path", ""), m.get("release_date", ""), m.get("runtime", 0)])
     for s in db.get("shows", []):
-        packed["s"].append([s["id"], s["name"], "|".join(s.get("watched_episodes", [])), s.get("poster_path", ""), s.get("first_air_date", ""), s.get("total_episodes", 1)])
+        packed["s"].append([s["id"], s["name"], encode_eps(s.get("watched_episodes", [])), s.get("poster_path", ""), s.get("first_air_date", ""), s.get("total_episodes", 1)])
     for h in db.get("history", []):
         packed["h"].append([1 if h.get("t") == "s" else 0, h.get("i"), h.get("e", ""), h.get("d")])
     for k, v in db.get("analytics", {}).items():
@@ -120,12 +157,11 @@ def pack_db(db):
     return packed
 
 def unpack_db(packed):
-    """Rebuilds the database natively for app operations."""
     db = {"movies": [], "shows": [], "history": [], "analytics": {}}
     for m in packed.get("m", []):
         db["movies"].append({"id": m[0], "name": m[1], "watched": bool(m[2]), "poster_path": m[3], "release_date": m[4], "runtime": m[5]})
     for s in packed.get("s", []):
-        db["shows"].append({"id": s[0], "name": s[1], "watched_episodes": str(s[2]).split("|") if s[2] else [], "poster_path": s[3], "first_air_date": s[4], "total_episodes": s[5]})
+        db["shows"].append({"id": s[0], "name": s[1], "watched_episodes": decode_eps(s[2]), "poster_path": s[3], "first_air_date": s[4], "total_episodes": s[5]})
     for h in packed.get("h", []):
         db["history"].append({"t": "s" if h[0]==1 else "m", "i": h[1], "e": h[2], "d": h[3]})
     for k, v in packed.get("a", {}).items():
@@ -133,7 +169,7 @@ def unpack_db(packed):
     return db
 
 def load_db():
-    url = f"{BIN_URL}?meta=false&t={int(time.time())}" # CDN Cache-Buster
+    url = f"{BIN_URL}?meta=false&t={int(time.time())}" 
     res = requests.get(url, headers=headers)
     if res.status_code == 200:
         data = res.json()
@@ -150,7 +186,6 @@ def load_db():
         elif "m" in data and "s" in data:
             return unpack_db(data)
         
-        # New initialization format
         if "shows" not in data: data["shows"] = []
         if "movies" not in data: data["movies"] = []
         if "history" not in data: data["history"] = []
@@ -158,14 +193,13 @@ def load_db():
         return data
     else:
         st.error(f"⚠️ Failed to connect to JSONBin. Code: {res.status_code} | Msg: {res.text}")
-        return None # Prevents app from wiping current data if cloud goes down
+        return None
 
 def save_db():
-    """Returns True if successful, False if blocked by JSONBin."""
     try:
         packed = pack_db(st.session_state.db)
         raw_str = json.dumps(packed, separators=(',', ':'))
-        comp = zlib.compress(raw_str.encode('utf-8'))
+        comp = zlib.compress(raw_str.encode('utf-8'), level=9) # Max compression level
         b64 = base64.b64encode(comp).decode('utf-8')
         payload = {"payload": b64}
         
@@ -178,11 +212,9 @@ def save_db():
         st.error(f"Compression Engine Error: {e}")
         return False
 
-# Application Startup Gate
 if "db" not in st.session_state:
     db_data = load_db()
-    if db_data is None:
-        st.stop() # Freeze the app so we don't wipe data
+    if db_data is None: st.stop()
     st.session_state.db = db_data
 
 # --- CENTRALIZED HISTORY LOGGER ---
@@ -601,7 +633,9 @@ with t_search:
                                         "poster_path": details.get("poster_path", ""), "first_air_date": details.get("first_air_date", ""),
                                         "total_episodes": details.get("number_of_episodes", 1)
                                     })
-                                    if save_db(): st.toast("Added!"); st.rerun()
+                                    if save_db():
+                                        st.toast("Added!")
+                                        st.rerun()
                             else: st.button("✔️ Added", key=f"dsbl_tv_{item_id}", disabled=True, use_container_width=True)
                         else:
                             if not any(str(m["id"]) == str(item_id) for m in st.session_state.db["movies"]):
@@ -612,7 +646,9 @@ with t_search:
                                         "poster_path": details.get("poster_path", ""), "release_date": details.get("release_date", ""),
                                         "runtime": details.get("runtime", 0)
                                     })
-                                    if save_db(): st.toast("Added!"); st.rerun()
+                                    if save_db():
+                                        st.toast("Added!")
+                                        st.rerun()
                             else: st.button("✔️ Added", key=f"dsbl_mov_{item_id}", disabled=True, use_container_width=True)
 
 # ==========================================
@@ -937,7 +973,7 @@ with t_profile:
                 if m_file and t_file: prog.progress(0)
                 
                 if t_file:
-                    stat_txt.text("Processing Series... fetching data safely.")
+                    stat_txt.text("Processing Series... compressing matrix keys.")
                     try:
                         t_data = json.load(t_file)
                         for idx, s in enumerate(t_data):
@@ -994,7 +1030,7 @@ with t_profile:
                                             if str(show["id"]) == str(tmdb_id):
                                                 show["watched_episodes"] = list(set(show["watched_episodes"] + watched_eps))
                                                 break
-                            except Exception as item_error: continue
+                            except Exception as item_error: continue 
                     except Exception as e: st.error(f"Error processing series: {e}")
                 
                 new_db["history"].sort(key=lambda x: x.get("d", "2000-01-01 12:00:00"), reverse=True)
@@ -1003,12 +1039,13 @@ with t_profile:
                 new_db["history"] = tv_h + mov_h
                 
                 st.session_state.db = new_db
+                
                 if save_db():
                     stat_txt.text("✅ Mass Import & Cloud Sync Complete!")
                     st.toast("Library successfully imported.")
                     time.sleep(1.5)
                     st.rerun()
                 else:
-                    stat_txt.text("🛑 Import failed to save to the cloud. See error above.")
+                    stat_txt.text("🛑 Import finished, but the cloud save failed. See error above.")
             else:
                 st.error("Please upload at least one JSON file first.")
