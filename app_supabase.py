@@ -113,10 +113,10 @@ if "soon_tv_limit" not in st.session_state: st.session_state.soon_tv_limit = 30
 if "soon_mov_limit" not in st.session_state: st.session_state.soon_mov_limit = 30
 if "hist_tv_limit" not in st.session_state: st.session_state.hist_tv_limit = 20
 if "hist_mov_limit" not in st.session_state: st.session_state.hist_mov_limit = 20
+if "last_action" not in st.session_state: st.session_state.last_action = None
 
 # --- SUPABASE DATABASE PIPELINE ---
 TMDB_KEY = st.secrets["TMDB_KEY"]
-# The .rstrip("/") ensures trailing slashes don't break the connection link!
 SUPABASE_URL = st.secrets["SUPABASE_URL"].rstrip("/") 
 SUPABASE_KEY = st.secrets["SUPABASE_KEY"]
 DB_ENDPOINT = f"{SUPABASE_URL}/rest/v1/tv_time_data?id=eq.1"
@@ -218,7 +218,6 @@ def load_db():
                 payload = data[0].get("payload", {})
                 if "m" in payload and "s" in payload:
                     return unpack_db(payload)
-            # Fallback Empty State
             return {"shows": [], "movies": [], "history": [], "analytics": {}}
         else:
             st.error(f"⚠️ Supabase Connection Failed: {res.status_code}")
@@ -257,6 +256,9 @@ def log_watch(item_type, item_id, detail=""):
     t_flag = "s" if item_type == "tv" else "m"
     db.setdefault("history", []).insert(0, {"t": t_flag, "i": item_id, "e": detail, "d": now_str})
     
+    # Store undo action hook
+    st.session_state.last_action = {"t": item_type, "i": item_id, "e": detail}
+    
     tv_h = [h for h in db["history"] if h.get("t") == "s"][:100]
     mov_h = [h for h in db["history"] if h.get("t") == "m"][:100]
     db["history"] = tv_h + mov_h
@@ -290,13 +292,15 @@ def display_poster(path, width=185):
         st.markdown(f'<div style="background-color:#222; border-radius:8px; width:100%; aspect-ratio: 2/3; display:flex; align-items:center; justify-content:center; color:#555; font-size:0.8rem; text-align:center; margin-bottom:5px;">No Image</div>', unsafe_allow_html=True)
 
 def show_cast_horizontal(cast_list, limit=12):
-    """TV Time Inspired Horizontal Carousel - One solid HTML line to bypass Markdown code breaks!"""
+    """TV Time Inspired Horizontal Carousel - Explicit IMDb click hook integrated directly on the solid line block!"""
     if not cast_list: return
     html = '<div style="display: flex; overflow-x: auto; gap: 14px; padding-bottom: 10px; scrollbar-width: none; -ms-overflow-style: none;">'
     for actor in cast_list[:limit]:
         img_url = f"https://image.tmdb.org/t/p/w185{actor['profile_path']}" if actor.get("profile_path") else "https://via.placeholder.com/185x278/222222/888888?text=No+Photo"
         safe_name = str(actor.get('name', '')).replace('"', '&quot;').replace("'", "&#39;")
-        html += f'<div style="flex: 0 0 85px; width: 85px; text-align: center;"><img src="{img_url}" style="width: 85px; height: 127px; border-radius: 8px; object-fit: cover; box-shadow: 0 4px 6px rgba(0,0,0,0.3); margin-bottom: 6px;"><div style="font-size: 0.65rem; font-weight: 600; color: #E0E0E0; line-height: 1.2; white-space: pre-wrap;">{safe_name}</div></div>'
+        encoded_name = str(actor.get('name', '')).replace(" ", "+")
+        imdb_url = f"https://www.imdb.com/find/?q={encoded_name}"
+        html += f'<div style="flex: 0 0 85px; width: 85px; text-align: center;"><a href="{imdb_url}" target="_blank" style="text-decoration: none; color: inherit;"><img src="{img_url}" style="width: 85px; height: 127px; border-radius: 8px; object-fit: cover; box-shadow: 0 4px 6px rgba(0,0,0,0.3); margin-bottom: 6px;"><div style="font-size: 0.65rem; font-weight: 600; color: #E0E0E0; line-height: 1.2; white-space: pre-wrap;">{safe_name}</div></a></div>'
     html += '</div>'
     st.markdown(html, unsafe_allow_html=True)
 
@@ -422,6 +426,16 @@ def show_movie_details(m_id, m_name, details=None, is_watched=False):
 t_next, t_soon, t_search, t_tv, t_movies, t_profile = st.tabs(["🔥 Next", "📅 Soon", "🔍 Search", "📺 TV", "🎬 Movies", "👤 Profile"])
 
 # ==========================================
+# GLOBAL UNDO TOAST CONTROLLER
+# ==========================================
+if st.session_state.last_action:
+    la = st.session_state.last_action
+    if st.button(f"↩️ Undo Last Watch ({la['e'] if la['e'] else 'Movie'})", use_container_width=True, type="primary"):
+        remove_watch(la["t"], la["i"], la["e"])
+        st.session_state.last_action = None
+        st.rerun()
+
+# ==========================================
 # TAB 1: UP NEXT DASHBOARD
 # ==========================================
 with t_next:
@@ -480,11 +494,11 @@ with t_next:
                 cols = st.columns(3)
                 for j in range(3):
                     idx = i + j
-                    if idx < len(up_next_tv[:limit]):
-                        item = up_next_tv[idx]
-                        show, details, ep, ep_code = item["item"], item["details"], item["ep"], item["code"]
-                        with cols[j]:
-                            st.markdown('<span class="grid-3-col"></span>', unsafe_allow_html=True)
+                    with cols[j]:
+                        st.markdown('<span class="grid-3-col"></span>', unsafe_allow_html=True)
+                        if idx < len(up_next_tv[:limit]):
+                            item = up_next_tv[idx]
+                            show, details, ep, ep_code = item["item"], item["details"], item["ep"], item["code"]
                             with st.container(border=True):
                                 display_poster(show.get("poster_path") or details.get('poster_path'), width=185)
                                 st.markdown(f'<div class="grid-title" title="{show["name"]}">{show["name"]}</div>', unsafe_allow_html=True)
@@ -528,10 +542,10 @@ with t_next:
                 cols = st.columns(3)
                 for j in range(3):
                     idx = i + j
-                    if idx < len(up_next_mov[:limit]):
-                        m = up_next_mov[idx]["item"]
-                        with cols[j]:
-                            st.markdown('<span class="grid-3-col"></span>', unsafe_allow_html=True)
+                    with cols[j]:
+                        st.markdown('<span class="grid-3-col"></span>', unsafe_allow_html=True)
+                        if idx < len(up_next_mov[:limit]):
+                            m = up_next_mov[idx]["item"]
                             with st.container(border=True):
                                 display_poster(m.get('poster_path'), width=185)
                                 st.markdown(f'<div class="grid-title" title="{m["name"]}">{m["name"]}</div>', unsafe_allow_html=True)
@@ -599,12 +613,12 @@ with t_soon:
                 cols = st.columns(3)
                 for j in range(3):
                     idx = i + j
-                    if idx < len(soon_tv[:limit]):
-                        item = soon_tv[idx]
-                        show, details, ep, ep_code = item["item"], item["details"], item["ep"], item["code"]
-                        days_left = (datetime.strptime(item["date"], '%Y-%m-%d') - datetime.today()).days
-                        with cols[j]:
-                            st.markdown('<span class="grid-3-col"></span>', unsafe_allow_html=True)
+                    with cols[j]:
+                        st.markdown('<span class="grid-3-col"></span>', unsafe_allow_html=True)
+                        if idx < len(soon_tv[:limit]):
+                            item = soon_tv[idx]
+                            show, details, ep, ep_code = item["item"], item["details"], item["ep"], item["code"]
+                            days_left = (datetime.strptime(item["date"], '%Y-%m-%d') - datetime.today()).days
                             with st.container(border=True):
                                 display_poster(show.get("poster_path") or details.get('poster_path'), width=185)
                                 st.markdown(f'<div class="grid-title" title="{show["name"]}">{show["name"]}</div>', unsafe_allow_html=True)
@@ -646,12 +660,12 @@ with t_soon:
                 cols = st.columns(3)
                 for j in range(3):
                     idx = i + j
-                    if idx < len(soon_mov[:limit]):
-                        item = soon_mov[idx]
-                        m = item["item"]
-                        days_left = (datetime.strptime(item["date"], '%Y-%m-%d') - datetime.today()).days
-                        with cols[j]:
-                            st.markdown('<span class="grid-3-col"></span>', unsafe_allow_html=True)
+                    with cols[j]:
+                        st.markdown('<span class="grid-3-col"></span>', unsafe_allow_html=True)
+                        if idx < len(soon_mov[:limit]):
+                            item = soon_mov[idx]
+                            m = item["item"]
+                            days_left = (datetime.strptime(item["date"], '%Y-%m-%d') - datetime.today()).days
                             with st.container(border=True):
                                 display_poster(m.get('poster_path'), width=185)
                                 st.markdown(f'<div class="grid-title" title="{m["name"]}">{m["name"]}</div>', unsafe_allow_html=True)
@@ -686,7 +700,7 @@ with t_search:
         endpoint = "tv" if search_type == "TV Shows" else "movie"
         res = fetch_api(f"https://api.themoviedb.org/3/search/{endpoint}?api_key={TMDB_KEY}&query={search_query}")
         results = res.get("results", [])
-        if results:
+        if font_results := results:
             for item in results:
                 with st.container(border=True):
                     c1, c2 = st.columns([1, 2])
@@ -766,10 +780,10 @@ with t_tv:
             for i in range(0, len(display_shows), 3):
                 cols = st.columns(3)
                 for j in range(3):
-                    if i + j < len(display_shows):
-                        show, t_eps, w_eps = display_shows[i + j]
-                        with cols[j]:
-                            st.markdown('<span class="grid-3-col"></span>', unsafe_allow_html=True)
+                    with cols[j]:
+                        st.markdown('<span class="grid-3-col"></span>', unsafe_allow_html=True)
+                        if i + j < len(display_shows):
+                            show, t_eps, w_eps = display_shows[i + j]
                             with st.container(border=True):
                                 display_poster(show.get("poster_path"), width=185)
                                 st.markdown(f'<div class="grid-title" title="{show["name"]}">{show["name"]}</div>', unsafe_allow_html=True)
@@ -819,10 +833,10 @@ with t_movies:
             for i in range(0, len(display_movies), 3):
                 cols = st.columns(3)
                 for j in range(3):
-                    if i + j < len(display_movies):
-                        m, is_watched = display_movies[i + j]
-                        with cols[j]:
-                            st.markdown('<span class="grid-3-col"></span>', unsafe_allow_html=True)
+                    with cols[j]:
+                        st.markdown('<span class="grid-3-col"></span>', unsafe_allow_html=True)
+                        if i + j < len(display_movies):
+                            m, is_watched = display_movies[i + j]
                             with st.container(border=True):
                                 display_poster(m.get("poster_path"), width=185)
                                 st.markdown(f'<div class="grid-title" title="{m["name"]}">{m["name"]}</div>', unsafe_allow_html=True)
@@ -883,13 +897,14 @@ with t_profile:
     data_mov = []
     for dt in last_12_months:
         m_key = dt.strftime('%Y-%m') 
-        label = dt.strftime('%b %y')
+        # Using exact chronological year keys allows pandas/streamlit to sort perfectly from past to present
+        label = dt.strftime('%Y-%m')
         stats = analytics.get(m_key, {"tv": 0, "movie": 0})
         data_tv.append({"Month": label, "Episodes": stats["tv"]})
         data_mov.append({"Month": label, "Movies": stats["movie"]})
         
-    df_tv = pd.DataFrame(data_tv)
-    df_mov = pd.DataFrame(data_mov)
+    df_tv = pd.DataFrame(data_tv).sort_values("Month")
+    df_mov = pd.DataFrame(data_mov).sort_values("Month")
     
     with chart_tab1:
         st.bar_chart(df_tv, x="Month", y="Episodes", color="#FFC107")
