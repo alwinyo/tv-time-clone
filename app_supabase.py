@@ -26,7 +26,7 @@ st.html("""
     
     /* True Mobile Edge-to-Edge Layout */
     .block-container { 
-        padding: 1rem 0.5rem 5rem 0.5rem !important; /* Reverted bottom padding to standard */
+        padding: 1rem 0.5rem 5rem 0.5rem !important; 
         max-width: 100vw !important;
         overflow-x: hidden !important;
     }
@@ -53,15 +53,31 @@ st.html("""
     button[kind="primary"] { background-color: #FFC107 !important; color: #000 !important; border: none !important; }
     button[kind="secondary"] { background-color: #222 !important; color: #ccc !important; border: 1px solid #444 !important; }
     
+    /* --- SYMMETRICAL TOP NAVIGATION TABS --- */
+    div[data-testid="stTabs"] > div[role="tablist"] {
+        display: flex !important; 
+        flex-direction: row !important;
+        justify-content: space-between !important;
+        width: 100% !important;
+    }
+    
+    div[data-testid="stTabs"] > div[role="tablist"] button {
+        flex: 1 1 16.66% !important; /* Forces 6 exactly even columns */
+        padding: 8px 0px !important;
+        min-width: 0 !important;
+    }
+    
+    div[data-testid="stTabs"] > div[role="tablist"] button p {
+        font-size: 0.60rem !important; /* Downscaled to fit perfectly */
+        font-weight: 700 !important;
+        text-align: center !important;
+        margin: 0 auto !important;
+        white-space: nowrap !important;
+        letter-spacing: -0.3px !important; /* Tightens the text slightly */
+    }
+    
     /* --- GRID LOCK FOR HIGH-DPI SCREENS --- */
     @media (max-width: 992px) {
-        
-        /* Swipeable Top Navigation Tabs */
-        div[data-testid="stTabs"] > div[role="tablist"] {
-            display: flex !important; overflow-x: auto !important;
-            scrollbar-width: none; -ms-overflow-style: none;
-        }
-        div[data-testid="stTabs"] > div[role="tablist"]::-webkit-scrollbar { display: none; }
         
         /* STRICT 3-COLUMN LOCK (Libraries) */
         div[data-testid="stHorizontalBlock"]:has(.grid-3-col),
