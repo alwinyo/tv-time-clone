@@ -36,6 +36,44 @@ st.html("""
     img { border-radius: 8px !important; }
     [data-testid="stProgressBar"] > div > div { background-color: #FFC107 !important; }
     
+    /* --- SLICK NATIVE iOS-STYLE SEGMENTED CONTROLS (RADIO BUTTONS) --- */
+    div[role="radiogroup"] {
+        display: flex !important;
+        flex-direction: row !important;
+        background-color: rgba(255, 255, 255, 0.05) !important;
+        border-radius: 20px !important;
+        padding: 4px !important;
+        gap: 0px !important;
+        justify-content: space-around !important;
+    }
+    div[role="radiogroup"] > label {
+        flex: 1 !important;
+        display: flex !important;
+        justify-content: center !important;
+        padding: 8px 12px !important;
+        border-radius: 16px !important;
+        margin: 0 !important;
+        transition: background-color 0.2s !important;
+    }
+    /* Hide the actual radio circle */
+    div[role="radiogroup"] > label > div:first-child {
+        display: none !important;
+    }
+    /* Style the checked state */
+    div[role="radiogroup"] > label[data-checked="true"] {
+        background-color: #FFC107 !important;
+    }
+    div[role="radiogroup"] > label[data-checked="true"] p {
+        color: #000 !important;
+        font-weight: 800 !important;
+    }
+    div[role="radiogroup"] > label p {
+        font-size: 0.75rem !important;
+        font-weight: 600 !important;
+        margin: 0 !important;
+        color: #aaa !important;
+    }
+    
     /* Sleek Native-App Cards */
     [data-testid="stVerticalBlockBorderWrapper"] {
         border-radius: 12px !important; 
@@ -807,7 +845,7 @@ with t_search:
     
     else:
         # --- DISCOVER MODE (NETFLIX-STYLE FEED) ---
-        genre_options = ["🔥 Trending", "🤣 Comedy", "💥 Action", "🐉 Sci-Fi/Fantasy", "🔪 Thriller", "💖 Romance"]
+        genre_options = ["🔥 Trending", "🤣 Comedy", "💥 Action", "🐉 Sci-Fi/Fantasy", "🔪 Thriller", "👻 Horror"]
         selected_genre = st.radio("Filters", genre_options, horizontal=True, label_visibility="collapsed")
         st.divider()
 
@@ -861,7 +899,6 @@ with t_search:
             # 2. Trending All
             trending = fetch_api(f"https://api.themoviedb.org/3/trending/all/day?api_key={TMDB_KEY}")
             if trending.get("results"):
-                # FIXED: Variables renamed to prevent overriding the main 't_tv' tab
                 trending_tv_shows = [i for i in trending["results"] if i.get("media_type") == "tv"]
                 trending_movies = [i for i in trending["results"] if i.get("media_type") == "movie"]
                 render_carousel("🔥 Trending Series", trending_tv_shows, "tv")
@@ -882,9 +919,9 @@ with t_search:
                 render_carousel(f"🇰🇷 K-Movies ({current_date.strftime('%B %Y')})", k_mov["results"], "movie")
 
         else:
-            # 4. Genre Filter Feed
-            genre_map_tv = {"🤣 Comedy": 35, "💥 Action": 10759, "🐉 Sci-Fi/Fantasy": 10765, "🔪 Thriller": 9648, "💖 Romance": 10749}
-            genre_map_mov = {"🤣 Comedy": 35, "💥 Action": 28, "🐉 Sci-Fi/Fantasy": 878, "🔪 Thriller": 53, "💖 Romance": 10749}
+            # 4. Genre Filter Feed (Replaced Romance with Horror)
+            genre_map_tv = {"🤣 Comedy": 35, "💥 Action": 10759, "🐉 Sci-Fi/Fantasy": 10765, "🔪 Thriller": 9648, "👻 Horror": 9648} 
+            genre_map_mov = {"🤣 Comedy": 35, "💥 Action": 28, "🐉 Sci-Fi/Fantasy": 878, "🔪 Thriller": 53, "👻 Horror": 27}
             
             tv_g = fetch_api(f"https://api.themoviedb.org/3/discover/tv?api_key={TMDB_KEY}&with_genres={genre_map_tv[selected_genre]}&sort_by=popularity.desc")
             mov_g = fetch_api(f"https://api.themoviedb.org/3/discover/movie?api_key={TMDB_KEY}&with_genres={genre_map_mov[selected_genre]}&sort_by=popularity.desc")
@@ -949,9 +986,17 @@ with t_tv:
                                 st.markdown(f'<div class="grid-title" title="{show["name"]}">{show["name"]}</div>', unsafe_allow_html=True)
                                 st.progress(min(w_eps / t_eps, 1.0) if t_eps > 0 else 0.0)
                                 st.markdown('<div class="movie-wall-btn">', unsafe_allow_html=True)
+                                
                                 if st.button("DETAILS", key=f"s_mgr_{show['id']}", use_container_width=True):
                                     details = fetch_api(f"https://api.themoviedb.org/3/tv/{show['id']}?api_key={TMDB_KEY}")
                                     manage_show_dialog(show['id'], show['name'], details)
+                                    
+                                if st.session_state.tv_tab == "WATCHLIST":
+                                    def del_tv(s_id=show['id']):
+                                        st.session_state.db["shows"] = [s for s in st.session_state.db["shows"] if str(s["id"]) != str(s_id)]
+                                        save_db()
+                                    st.button("🗑️ REMOVE", key=f"s_del_{show['id']}", on_click=del_tv, use_container_width=True)
+                                    
                                 st.markdown('</div>', unsafe_allow_html=True)
 
 # ==========================================
@@ -1008,8 +1053,16 @@ with t_movies:
                                 st.markdown(f'<div class="grid-title" title="{m["name"]}">{m["name"]}</div>', unsafe_allow_html=True)
                                 
                                 st.markdown('<div class="movie-wall-btn">', unsafe_allow_html=True)
+                                
                                 if st.button("DETAILS", key=f"m_mgr_{m['id']}", use_container_width=True):
                                     show_movie_details(m['id'], m['name'], details=None, is_watched=is_watched)
+                                    
+                                if st.session_state.mov_tab == "WATCHLIST":
+                                    def del_mov(m_id=m['id']):
+                                        st.session_state.db["movies"] = [mv for mv in st.session_state.db["movies"] if str(mv["id"]) != str(m_id)]
+                                        save_db()
+                                    st.button("🗑️ REMOVE", key=f"m_del_{m['id']}", on_click=del_mov, use_container_width=True)
+                                    
                                 st.markdown('</div>', unsafe_allow_html=True)
 
 # ==========================================
@@ -1034,16 +1087,34 @@ with t_profile:
     total_mins = total_tv_mins + total_mov_mins
     months = total_mins // 43800; days = (total_mins % 43800) // 1440; hours = (total_mins % 1440) // 60
     
-    with st.container(border=True):
-        c1, c2, c3 = st.columns(3)
-        c1.metric("Months", f"{months}")
-        c2.metric("Days", f"{days}")
-        c3.metric("Hours", f"{hours}")
-    with st.container(border=True):
-        c1, c2 = st.columns(2)
-        c1.metric("Episodes", total_episodes_watched)
-        c2.metric("Movies", total_movies_watched)
-        
+    # --- REDESIGNED SLEEK PROFILE METRICS ---
+    html_stats = f"""
+    <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+        <div style="flex: 1; background-color: rgba(255,255,255,0.05); border-radius: 12px; padding: 15px; text-align: center; border: 1px solid rgba(255,255,255,0.1);">
+            <div style="font-size: 1.8rem; font-weight: 800; color: #FFC107; line-height: 1;">{months}</div>
+            <div style="font-size: 0.65rem; color: #aaa; text-transform: uppercase; font-weight: 600; margin-top: 4px;">Months</div>
+        </div>
+        <div style="flex: 1; background-color: rgba(255,255,255,0.05); border-radius: 12px; padding: 15px; text-align: center; border: 1px solid rgba(255,255,255,0.1);">
+            <div style="font-size: 1.8rem; font-weight: 800; color: #FFC107; line-height: 1;">{days}</div>
+            <div style="font-size: 0.65rem; color: #aaa; text-transform: uppercase; font-weight: 600; margin-top: 4px;">Days</div>
+        </div>
+        <div style="flex: 1; background-color: rgba(255,255,255,0.05); border-radius: 12px; padding: 15px; text-align: center; border: 1px solid rgba(255,255,255,0.1);">
+            <div style="font-size: 1.8rem; font-weight: 800; color: #FFC107; line-height: 1;">{hours}</div>
+            <div style="font-size: 0.65rem; color: #aaa; text-transform: uppercase; font-weight: 600; margin-top: 4px;">Hours</div>
+        </div>
+    </div>
+    <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+        <div style="flex: 1; background-color: rgba(255,255,255,0.05); border-radius: 12px; padding: 15px; text-align: center; border: 1px solid rgba(255,255,255,0.1);">
+            <div style="font-size: 2.2rem; font-weight: 800; color: #fff; line-height: 1;">{total_episodes_watched:,}</div>
+            <div style="font-size: 0.75rem; color: #aaa; text-transform: uppercase; font-weight: 600; margin-top: 4px;">Episodes</div>
+        </div>
+        <div style="flex: 1; background-color: rgba(255,255,255,0.05); border-radius: 12px; padding: 15px; text-align: center; border: 1px solid rgba(255,255,255,0.1);">
+            <div style="font-size: 2.2rem; font-weight: 800; color: #fff; line-height: 1;">{total_movies_watched:,}</div>
+            <div style="font-size: 0.75rem; color: #aaa; text-transform: uppercase; font-weight: 600; margin-top: 4px;">Movies</div>
+        </div>
+    </div>
+    """
+    st.markdown(html_stats, unsafe_allow_html=True)
     st.divider()
     
     # --- PANDAS GRAPHS: 12-MONTH CHRONOLOGICAL TIMELINE ---
