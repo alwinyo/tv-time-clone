@@ -861,10 +861,11 @@ with t_search:
             # 2. Trending All
             trending = fetch_api(f"https://api.themoviedb.org/3/trending/all/day?api_key={TMDB_KEY}")
             if trending.get("results"):
-                t_tv = [i for i in trending["results"] if i.get("media_type") == "tv"]
-                t_mov = [i for i in trending["results"] if i.get("media_type") == "movie"]
-                render_carousel("🔥 Trending Series", t_tv, "tv")
-                render_carousel("🎬 Trending Movies", t_mov, "movie")
+                # FIXED: Variables renamed to prevent overriding the main 't_tv' tab
+                trending_tv_shows = [i for i in trending["results"] if i.get("media_type") == "tv"]
+                trending_movies = [i for i in trending["results"] if i.get("media_type") == "movie"]
+                render_carousel("🔥 Trending Series", trending_tv_shows, "tv")
+                render_carousel("🎬 Trending Movies", trending_movies, "movie")
 
             # 3. Dedicated Korean Content Block (Current Month)
             current_date = datetime.today()
@@ -1007,15 +1008,8 @@ with t_movies:
                                 st.markdown(f'<div class="grid-title" title="{m["name"]}">{m["name"]}</div>', unsafe_allow_html=True)
                                 
                                 st.markdown('<div class="movie-wall-btn">', unsafe_allow_html=True)
-                                def f_w_mov(mid=m['id']):
-                                    for mv in st.session_state.db["movies"]:
-                                        if str(mv["id"]) == str(mid):
-                                            mv["watched"] = True
-                                            log_watch("movie", mid)
-                                            break
-                                st.button("✔️ Watch", key=f"n_w_mov_{m['id']}_{idx}", on_click=f_w_mov, use_container_width=True)
-                                if st.button("ℹ️ Info", key=f"n_i_mov_{m['id']}_{idx}", use_container_width=True):
-                                    show_movie_details(m['id'], m['name'], details=None, is_watched=False)
+                                if st.button("DETAILS", key=f"m_mgr_{m['id']}", use_container_width=True):
+                                    show_movie_details(m['id'], m['name'], details=None, is_watched=is_watched)
                                 st.markdown('</div>', unsafe_allow_html=True)
 
 # ==========================================
