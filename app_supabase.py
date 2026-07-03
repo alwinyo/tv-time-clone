@@ -256,18 +256,18 @@ def log_watch(item_type, item_id, detail=""):
     t_flag = "s" if item_type == "tv" else "m"
     db.setdefault("history", []).insert(0, {"t": t_flag, "i": item_id, "e": detail, "d": now_str})
     
-    # Store undo action hook
     st.session_state.last_action = {"t": item_type, "i": item_id, "e": detail}
     
     tv_h = [h for h in db["history"] if h.get("t") == "s"][:100]
     mov_h = [h for h in db["history"] if h.get("t") == "m"][:100]
     db["history"] = tv_h + mov_h
-    if save_db(): st.toast("Watched! ✅")
+    save_db()
 
 def remove_watch(item_type, item_id, detail=""):
     db = st.session_state.db
     t_flag = "s" if item_type == "tv" else "m"
     
+    # Unmark from History
     for idx, h in enumerate(db.get("history", [])):
         if h.get("t") == t_flag and str(h.get("i")) == str(item_id) and str(h.get("e", "")) == str(detail):
             removed = db["history"].pop(idx)
@@ -277,6 +277,19 @@ def remove_watch(item_type, item_id, detail=""):
                     db["analytics"][m_key][item_type] -= 1
             except: pass
             break
+            
+    # Unmark from Library State
+    if item_type == "tv":
+        for show in db.get("shows", []):
+            if str(show.get("id")) == str(item_id):
+                if detail in show.get("watched_episodes", []):
+                    show["watched_episodes"].remove(detail)
+                break
+    else:
+        for m in db.get("movies", []):
+            if str(m.get("id")) == str(item_id):
+                m["watched"] = False
+                break
     save_db()
 
 # --- HELPERS ---
@@ -292,7 +305,6 @@ def display_poster(path, width=185):
         st.markdown(f'<div style="background-color:#222; border-radius:8px; width:100%; aspect-ratio: 2/3; display:flex; align-items:center; justify-content:center; color:#555; font-size:0.8rem; text-align:center; margin-bottom:5px;">No Image</div>', unsafe_allow_html=True)
 
 def show_cast_horizontal(cast_list, limit=12):
-    """TV Time Inspired Horizontal Carousel - Explicit IMDb click hook integrated directly on the solid line block!"""
     if not cast_list: return
     html = '<div style="display: flex; overflow-x: auto; gap: 14px; padding-bottom: 10px; scrollbar-width: none; -ms-overflow-style: none;">'
     for actor in cast_list[:limit]:
@@ -302,6 +314,8 @@ def show_cast_horizontal(cast_list, limit=12):
         imdb_url = f"https://www.imdb.com/find/?q={encoded_name}"
         html += f'<div style="flex: 0 0 85px; width: 85px; text-align: center;"><a href="{imdb_url}" target="_blank" style="text-decoration: none; color: inherit;"><img src="{img_url}" style="width: 85px; height: 127px; border-radius: 8px; object-fit: cover; box-shadow: 0 4px 6px rgba(0,0,0,0.3); margin-bottom: 6px;"><div style="font-size: 0.65rem; font-weight: 600; color: #E0E0E0; line-height: 1.2; white-space: pre-wrap;">{safe_name}</div></a></div>'
     html += '</div>'
+    # Stripping all newlines ensures Streamlit Markdown engine DOES NOT break into raw code
+    html = html.replace('\n', '')
     st.markdown(html, unsafe_allow_html=True)
 
 def parse_tvtime_date(d_str):
@@ -422,18 +436,19 @@ def show_movie_details(m_id, m_name, details=None, is_watched=False):
                 break
         st.rerun()
 
-# --- APP NAVIGATION BAR ---
-t_next, t_soon, t_search, t_tv, t_movies, t_profile = st.tabs(["🔥 Next", "📅 Soon", "🔍 Search", "📺 TV", "🎬 Movies", "👤 Profile"])
-
 # ==========================================
-# GLOBAL UNDO TOAST CONTROLLER
+# GLOBAL UNDO TOAST CONTROLLER (ALWAYS VISIBLE AT TOP)
 # ==========================================
 if st.session_state.last_action:
     la = st.session_state.last_action
-    if st.button(f"↩️ Undo Last Watch ({la['e'] if la['e'] else 'Movie'})", use_container_width=True, type="primary"):
+    st.success(f"Watched! ✅")
+    if st.button(f"↩️ Undo Last Action", use_container_width=True):
         remove_watch(la["t"], la["i"], la["e"])
         st.session_state.last_action = None
         st.rerun()
+
+# --- APP NAVIGATION BAR ---
+t_next, t_soon, t_search, t_tv, t_movies, t_profile = st.tabs(["🔥 Next", "📅 Soon", "🔍 Search", "📺 TV", "🎬 Movies", "👤 Profile"])
 
 # ==========================================
 # TAB 1: UP NEXT DASHBOARD
@@ -650,7 +665,7 @@ with t_soon:
                     soon_mov.append({"item": m, "date": r_date})
 
         if soon_sort == "Alphabetical": soon_mov.sort(key=lambda x: x["item"]["name"].lower())
-        else: soon_mov.sort(key=lambda x: x["date"] or "2099-01-01")
+        else: soon_mov.sort(key=lambda x: x["date"] or "2099-01-01", reverse=False)
 
         if not soon_mov: 
             st.info("No upcoming movies scheduled yet.")
@@ -825,8 +840,15 @@ with t_movies:
             elif st.session_state.mov_tab == "UPCOMING" and is_upcoming and not is_watched: display_movies.append((m, is_watched))
             elif st.session_state.mov_tab == "WATCHLIST" and not is_upcoming and not is_watched: display_movies.append((m, is_watched))
                 
-        if mov_sort == "Alphabetical": display_movies.sort(key=lambda x: x[0]['name'].lower())
-        elif mov_sort == "Release Date": display_movies.sort(key=lambda x: x[0].get('release_date', '1900-01-01') or '1900-01-01', reverse=True)
+        if mov_sort == "Alphabetical": 
+            display_movies.sort(key=lambda x: x[0]['name'].lower())
+        elif mov_sort == "Release Date":
+            is_upc = (st.session_state.mov_tab == "UPCOMING")
+            def_date = '2099-01-01' if is_upc else '1900-01-01'
+            # Upcoming Movies sort Ascending (soonest first). Others sort Descending (latest first).
+            display_movies.sort(key=lambda x: x[0].get('release_date', def_date) or def_date, reverse=not is_upc)
+        elif mov_sort == "Recently Added":
+            display_movies.reverse()
                 
         if not display_movies: st.info(f"Your {st.session_state.mov_tab.lower()} is currently empty.")
         else:
@@ -895,16 +917,17 @@ with t_profile:
             
     data_tv = []
     data_mov = []
+    # Because we loop from oldest (11 months ago) to newest (today), 
+    # the array is perfectly, chronologically sorted naturally!
     for dt in last_12_months:
         m_key = dt.strftime('%Y-%m') 
-        # Using exact chronological year keys allows pandas/streamlit to sort perfectly from past to present
-        label = dt.strftime('%Y-%m')
+        label = dt.strftime('%b %y')
         stats = analytics.get(m_key, {"tv": 0, "movie": 0})
         data_tv.append({"Month": label, "Episodes": stats["tv"]})
         data_mov.append({"Month": label, "Movies": stats["movie"]})
         
-    df_tv = pd.DataFrame(data_tv).sort_values("Month")
-    df_mov = pd.DataFrame(data_mov).sort_values("Month")
+    df_tv = pd.DataFrame(data_tv)
+    df_mov = pd.DataFrame(data_mov)
     
     with chart_tab1:
         st.bar_chart(df_tv, x="Month", y="Episodes", color="#FFC107")
