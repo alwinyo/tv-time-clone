@@ -21,7 +21,7 @@ st.markdown("""
     
     /* True Mobile Edge-to-Edge Layout */
     .block-container { 
-        padding: 1rem 0.5rem 6rem 0.5rem !important; /* Increased bottom padding so content clears the nav bar */
+        padding: 1rem 0.5rem 7rem 0.5rem !important; /* Increased bottom padding to ensure content cleanly clears the bottom nav bar */
         max-width: 100vw !important;
         overflow-x: hidden !important;
     }
@@ -51,27 +51,28 @@ st.markdown("""
     /* --- GRID LOCK FOR HIGH-DPI SCREENS --- */
     @media (max-width: 992px) {
         
-        /* --- NATIVE BOTTOM APP NAVIGATION BAR --- */
-        div[data-testid="stTabs"] > div[role="tablist"] {
+        /* --- GLOBAL FORCE: NATIVE BOTTOM NAVIGATION BAR --- */
+        div[role="tablist"] {
             position: fixed !important;
             bottom: 0 !important;
             left: 0 !important;
             width: 100vw !important;
-            background-color: #121212 !important; /* Solid dark background */
-            z-index: 99999 !important;
+            background-color: #111111 !important; /* Premium dark background */
+            z-index: 999999 !important;
             display: flex !important;
             flex-direction: row !important;
             justify-content: space-between !important;
             align-items: center !important;
-            padding: 8px 0px calc(8px + env(safe-area-inset-bottom)) 0px !important;
-            border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
-            box-shadow: 0px -4px 15px rgba(0, 0, 0, 0.5) !important;
+            padding: 10px 0px calc(10px + env(safe-area-inset-bottom)) 0px !important;
+            border-top: 1px solid rgba(255, 255, 255, 0.1) !important;
+            box-shadow: 0px -6px 20px rgba(0, 0, 0, 0.6) !important;
         }
         
-        div[data-testid="stTabs"] > div[role="tablist"] button {
-            flex: 1 1 16.66% !important; /* Mathematically divides screen by 6 */
+        /* Force individual tabs to divide space symmetrically */
+        div[role="tablist"] button {
+            flex: 1 1 16.66% !important; 
             width: 16.66% !important;
-            padding: 6px 0px !important;
+            padding: 4px 0px !important;
             margin: 0 !important;
             border: none !important;
             background: transparent !important;
@@ -80,21 +81,21 @@ st.markdown("""
             align-items: center !important;
         }
         
-        div[data-testid="stTabs"] > div[role="tablist"] button p {
-            font-size: 0.6rem !important; /* Downscaled to safely fit 6 labels across an S26 Ultra */
+        div[role="tablist"] button p {
+            font-size: 0.65rem !important; /* Sized perfectly to keep 6 items linear on the S26 Ultra */
             font-weight: 700 !important;
-            color: #777 !important;
+            color: #888888 !important;
             margin: 0 !important;
             white-space: nowrap !important;
         }
         
-        /* Active Tab Styling */
-        div[data-testid="stTabs"] > div[role="tablist"] button[aria-selected="true"] p {
+        /* Active Selected State Colorway */
+        div[role="tablist"] button[aria-selected="true"] p {
             color: #FFC107 !important;
         }
         
-        /* Kill the default Streamlit colored underline */
-        div[data-testid="stTabs"] > div[role="tablist"] button::after {
+        /* Kill standard desktop focus underlines */
+        div[role="tablist"] button::after {
             display: none !important; 
         }
         
@@ -441,11 +442,6 @@ def manage_show_dialog(show_id, show_name, details):
             ep_col1, ep_col2 = st.columns([6, 1])
             with ep_col1:
                 st.checkbox(f"**E{ep['episode_number']}.** {ep.get('name', 'Episode')}", value=is_watched, key=f"chk_dlg_{show_id}_{e_code}", on_change=on_check)
-            if st.session_state.get(info_key, False):
-                with st.container(border=True):
-                    display_poster(ep.get("still_path"), width=500)
-                    st.caption(f"⭐ {ep.get('vote_average', 0.0)} | **Aired:** {ep.get('air_date', 'N/A')}")
-                    st.write(ep.get("overview", "No synopsis available."))
     st.divider()
     st.markdown("#### Top Cast")
     credits = fetch_api(f"https://api.themoviedb.org/3/tv/{show_id}/credits?api_key={TMDB_KEY}")
@@ -653,12 +649,12 @@ with t_soon:
                 for ep in s_data.get("episodes", []):
                     ep_code = f"S{s_info['season_number']}E{ep['episode_number']}"
                     air_date = ep.get("air_date", "")
-                    if ep_code not in watched_set and air_date and air_date > TODAY:
+                    if ep_code not in watched_set Useful and air_date and air_date > TODAY:
                         soon_tv.append({"item": show, "details": details, "ep": ep, "code": ep_code, "date": air_date})
                         found_next = True; break
 
         if soon_sort == "Alphabetical": soon_tv.sort(key=lambda x: x["item"]["name"].lower())
-        else: soon_tv.sort(key=lambda x: x["date"] or "2099-01-01")
+        else: soon_tv.sort(key=lambda x: x["date"] or "2099-01-01", reverse=False)
 
         if not soon_tv: 
             st.info("No upcoming episodes scheduled yet.")
@@ -755,7 +751,7 @@ with t_search:
         endpoint = "tv" if search_type == "TV Shows" else "movie"
         res = fetch_api(f"https://api.themoviedb.org/3/search/{endpoint}?api_key={TMDB_KEY}&query={search_query}")
         results = res.get("results", [])
-        if font_results := results:
+        if results:
             for item in results:
                 with st.container(border=True):
                     c1, c2 = st.columns([1, 2])
@@ -827,8 +823,15 @@ with t_tv:
             elif st.session_state.tv_tab == "UPCOMING" and is_upcoming and not is_completed: display_shows.append((show, t_eps, w_eps))
             elif st.session_state.tv_tab == "WATCHLIST" and not is_upcoming and not is_completed: display_shows.append((show, t_eps, w_eps))
                 
-        if tv_sort == "Alphabetical": display_shows.sort(key=lambda x: x[0]['name'].lower())
-        elif tv_sort == "Release Date": display_shows.sort(key=lambda x: x[0].get('first_air_date', '1900-01-01') or '1900-01-01', reverse=True)
+        if tv_sort == "Alphabetical": 
+            display_shows.sort(key=lambda x: x[0]['name'].lower())
+        elif tv_sort == "Release Date":
+            is_upc = (st.session_state.tv_tab == "UPCOMING")
+            def_date = '2099-01-01' if is_upc else '1900-01-01'
+            # Upcoming shows now correctly match upcoming movies (soonest first)
+            display_shows.sort(key=lambda x: x[0].get('first_air_date', def_date) or def_date, reverse=not is_upc)
+        elif tv_sort == "Recently Added":
+            display_shows.reverse()
                 
         if not display_shows: st.info(f"Your {st.session_state.tv_tab.lower()} is currently empty.")
         else:
