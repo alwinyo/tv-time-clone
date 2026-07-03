@@ -12,12 +12,18 @@ from datetime import datetime, timedelta
 st.set_page_config(page_title="My TV Time", layout="centered", initial_sidebar_state="collapsed")
 
 # --- MOBILE-FIRST TARGETED CSS OVERHAUL ---
-st.markdown("""
+st.html("""
 <style>
-    /* --- STREAMLIT UI ANNIHILATION (From Forum Hack) --- */
+    /* --- STREAMLIT UI ANNIHILATION --- */
     #MainMenu {visibility: hidden !important;}
     header {visibility: hidden !important;}
     footer {visibility: hidden !important; display: none !important;}
+    
+    /* 🚨 THE BOTTOM-RIGHT POPUP KILLER 🚨 */
+    .viewerBadge_container {display: none !important; visibility: hidden !important;}
+    .viewerBadge_link {display: none !important; visibility: hidden !important;}
+    div[class^="viewerBadge"] {display: none !important; visibility: hidden !important;}
+    
     .stDeployButton {display: none !important;}
     [data-testid="stStatusWidget"] {visibility: hidden !important; display: none !important;}
     [data-testid="stHeader"] {visibility: hidden !important; display: none !important;}
@@ -28,11 +34,6 @@ st.markdown("""
         max-width: 100vw !important;
         overflow-x: hidden !important;
     }
-    [data-testid="stStatusWidget"] {visibility: hidden; display: none !important;}
-    [data-testid="stToolbar"] {visibility: hidden; display: none !important;}
-    .stDeployButton {visibility: hidden; display: none !important;}
-    
-    /* True Mobile Edge-to-Edge Layout */
     .block-container { 
         padding: 1rem 0.5rem 7rem 0.5rem !important; /* Increased bottom padding to ensure content cleanly clears the bottom nav bar */
         max-width: 100vw !important;
