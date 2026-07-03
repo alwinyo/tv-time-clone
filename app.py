@@ -301,19 +301,15 @@ def display_poster(path, width=185):
     else:
         st.markdown(f'<div style="background-color:#222; border-radius:8px; width:100%; aspect-ratio: 2/3; display:flex; align-items:center; justify-content:center; color:#555; font-size:0.8rem; text-align:center; margin-bottom:5px;">No Image</div>', unsafe_allow_html=True)
 
-def show_cast_grid(cast_list, limit=9):
-    """Pure HTML CSS Grid for a bulletproof 3x3 layout (No Streamlit quirks)"""
+def show_cast_horizontal(cast_list, limit=12):
+    """TV Time Inspired Horizontal Carousel - One solid HTML line to bypass Markdown code breaks!"""
     if not cast_list: return
-    html = '<div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;">'
+    html = '<div style="display: flex; overflow-x: auto; gap: 14px; padding-bottom: 10px; scrollbar-width: none; -ms-overflow-style: none;">'
     for actor in cast_list[:limit]:
         img_url = f"https://image.tmdb.org/t/p/w185{actor['profile_path']}" if actor.get("profile_path") else "https://via.placeholder.com/185x278/222222/888888?text=No+Photo"
-        safe_name = actor['name'].replace('"', '&quot;').replace("'", "&#39;")
-        html += f'''
-        <div style="text-align: center;">
-            <img src="{img_url}" style="width: 100%; border-radius: 8px; aspect-ratio: 2/3; object-fit: cover; box-shadow: 0 2px 4px rgba(0,0,0,0.3);">
-            <div style="font-size: 0.7rem; font-weight: 600; color: #E0E0E0; margin-top: 6px; line-height: 1.2;">{safe_name}</div>
-        </div>
-        '''
+        safe_name = str(actor.get('name', '')).replace('"', '&quot;').replace("'", "&#39;")
+        # Squashed into a single line to prevent Streamlit from interpreting it as markdown code
+        html += f'<div style="flex: 0 0 85px; width: 85px; text-align: center;"><img src="{img_url}" style="width: 85px; height: 127px; border-radius: 8px; object-fit: cover; box-shadow: 0 4px 6px rgba(0,0,0,0.3); margin-bottom: 6px;"><div style="font-size: 0.65rem; font-weight: 600; color: #E0E0E0; line-height: 1.2; white-space: pre-wrap;">{safe_name}</div></div>'
     html += '</div>'
     st.markdown(html, unsafe_allow_html=True)
 
@@ -325,7 +321,7 @@ def parse_tvtime_date(d_str):
         return dt.strftime("%Y-%m-%d %H:%M:%S")
     except: return "2000-01-01 12:00:00"
 
-# --- DIALOGS ---
+# --- DIALOGS (Lazy Loaded for Speed) ---
 @st.dialog("Episode Details")
 def show_episode_details(show_id, show_name, ep_code, ep_data=None, is_watched=False):
     if not ep_data:
@@ -344,7 +340,7 @@ def show_episode_details(show_id, show_name, ep_code, ep_data=None, is_watched=F
     st.markdown("#### Cast & Guest Stars")
     credits = fetch_api(f"https://api.themoviedb.org/3/tv/{show_id}/credits?api_key={TMDB_KEY}")
     combined_cast = credits.get("cast", []) + ep_data.get("guest_stars", [])
-    show_cast_grid(combined_cast, limit=9)
+    show_cast_horizontal(combined_cast, limit=15)
     st.divider()
     btn_label = "❌ Unmark as Watched" if is_watched else "✅ Mark as Watched"
     if st.button(btn_label, use_container_width=True, key=f"dlg_btn_tv_{show_id}_{ep_code}"):
@@ -414,7 +410,7 @@ def manage_show_dialog(show_id, show_name, details):
     st.divider()
     st.markdown("#### Top Cast")
     credits = fetch_api(f"https://api.themoviedb.org/3/tv/{show_id}/credits?api_key={TMDB_KEY}")
-    show_cast_grid(credits.get("cast", []), limit=9)
+    show_cast_horizontal(credits.get("cast", []), limit=15)
 
 @st.dialog("Movie Details")
 def show_movie_details(m_id, m_name, details=None, is_watched=False):
@@ -429,7 +425,7 @@ def show_movie_details(m_id, m_name, details=None, is_watched=False):
     st.divider()
     st.markdown("#### Top Cast")
     credits = fetch_api(f"https://api.themoviedb.org/3/movie/{m_id}/credits?api_key={TMDB_KEY}")
-    show_cast_grid(credits.get("cast", []), limit=9)
+    show_cast_horizontal(credits.get("cast", []), limit=15)
     st.divider()
     btn_label = "❌ Unmark as Watched" if is_watched else "✅ Mark as Watched"
     if st.button(btn_label, use_container_width=True, key=f"dlg_btn_mov_{m_id}"):
@@ -897,24 +893,29 @@ with t_profile:
     last_12_months = []
     try:
         for i in range(11, -1, -1):
-            last_12_months.append((datetime.today() - pd.DateOffset(months=i)).strftime('%Y-%m'))
+            last_12_months.append(datetime.today() - pd.DateOffset(months=i))
     except:
         for i in range(11, -1, -1):
-            last_12_months.append((datetime.today() - timedelta(days=30*i)).strftime('%Y-%m'))
+            last_12_months.append(datetime.today() - timedelta(days=30*i))
             
-    analytics_12m = {m_str: analytics.get(m_str, {"tv": 0, "movie": 0}) for m_str in last_12_months}
-    
-    # Explicitly sorting Date objects to mathematically enforce chart flow
-    df_tv = pd.DataFrame([{"Month": pd.to_datetime(m).date(), "Episodes": analytics_12m[m]["tv"]} for m in last_12_months])
-    df_tv = df_tv.sort_values("Month")
-    df_mov = pd.DataFrame([{"Month": pd.to_datetime(m).date(), "Movies": analytics_12m[m]["movie"]} for m in last_12_months])
-    df_mov = df_mov.sort_values("Month")
+    # Process explicitly with 'x' and 'y' labels for Streamlit mapping
+    data_tv = []
+    data_mov = []
+    for dt in last_12_months:
+        m_key = dt.strftime('%Y-%m') 
+        label = dt.strftime('%b %y') # Display as "May 26"
+        stats = analytics.get(m_key, {"tv": 0, "movie": 0})
+        data_tv.append({"Month": label, "Episodes": stats["tv"]})
+        data_mov.append({"Month": label, "Movies": stats["movie"]})
+        
+    df_tv = pd.DataFrame(data_tv)
+    df_mov = pd.DataFrame(data_mov)
     
     with chart_tab1:
-        st.bar_chart(df_tv.set_index("Month"), color="#FFC107")
+        st.bar_chart(df_tv, x="Month", y="Episodes", color="#FFC107")
         
     with chart_tab2:
-        st.bar_chart(df_mov.set_index("Month"), color="#555555")
+        st.bar_chart(df_mov, x="Month", y="Movies", color="#555555")
 
     st.divider()
     
