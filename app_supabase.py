@@ -17,11 +17,8 @@ st.html("""
     header {visibility: hidden !important;}
     footer {visibility: hidden !important; display: none !important;}
     
-    /* 🚨 THE NUCLEAR OPTION FOR FLOATING BADGES 🚨 */
-    /* This hides literally anything Streamlit injects outside the main app */
+    /* THE BOTTOM-RIGHT POPUP KILLER */
     [data-testid="stAppViewContainer"] ~ div { display: none !important; visibility: hidden !important; opacity: 0 !important; pointer-events: none !important; }
-    
-    /* Backup specific targets */
     .viewerBadge_container, .viewerBadge_link, div[class^="viewerBadge"] {display: none !important; visibility: hidden !important;}
     .stDeployButton {display: none !important;}
     [data-testid="stStatusWidget"] {visibility: hidden !important; display: none !important;}
@@ -29,14 +26,7 @@ st.html("""
     
     /* True Mobile Edge-to-Edge Layout */
     .block-container { 
-        padding: 1rem 0.5rem 7rem 0.5rem !important; 
-        max-width: 100vw !important;
-        overflow-x: hidden !important;
-    }
-    
-    /* True Mobile Edge-to-Edge Layout */
-    .block-container { 
-        padding: 1rem 0.5rem 7rem 0.5rem !important; 
+        padding: 1rem 0.5rem 5rem 0.5rem !important; /* Reverted bottom padding to standard */
         max-width: 100vw !important;
         overflow-x: hidden !important;
     }
@@ -66,53 +56,12 @@ st.html("""
     /* --- GRID LOCK FOR HIGH-DPI SCREENS --- */
     @media (max-width: 992px) {
         
-        /* --- GLOBAL FORCE: NATIVE BOTTOM NAVIGATION BAR --- */
-        div[role="tablist"] {
-            position: fixed !important;
-            bottom: 0 !important;
-            left: 0 !important;
-            width: 100vw !important;
-            background-color: #111111 !important;
-            z-index: 999999 !important;
-            display: flex !important;
-            flex-direction: row !important;
-            justify-content: space-between !important;
-            align-items: center !important;
-            padding: 10px 0px calc(10px + env(safe-area-inset-bottom)) 0px !important;
-            border-top: 1px solid rgba(255, 255, 255, 0.1) !important;
-            box-shadow: 0px -6px 20px rgba(0, 0, 0, 0.6) !important;
+        /* Swipeable Top Navigation Tabs */
+        div[data-testid="stTabs"] > div[role="tablist"] {
+            display: flex !important; overflow-x: auto !important;
+            scrollbar-width: none; -ms-overflow-style: none;
         }
-        
-        /* Force individual tabs to divide space symmetrically */
-        div[role="tablist"] button {
-            flex: 1 1 16.66% !important; 
-            width: 16.66% !important;
-            padding: 4px 0px !important;
-            margin: 0 !important;
-            border: none !important;
-            background: transparent !important;
-            display: flex !important;
-            justify-content: center !important;
-            align-items: center !important;
-        }
-        
-        div[role="tablist"] button p {
-            font-size: 0.65rem !important; 
-            font-weight: 700 !important;
-            color: #888888 !important;
-            margin: 0 !important;
-            white-space: nowrap !important;
-        }
-        
-        /* Active Selected State Colorway */
-        div[role="tablist"] button[aria-selected="true"] p {
-            color: #FFC107 !important;
-        }
-        
-        /* Kill standard desktop focus underlines */
-        div[role="tablist"] button::after {
-            display: none !important; 
-        }
+        div[data-testid="stTabs"] > div[role="tablist"]::-webkit-scrollbar { display: none; }
         
         /* STRICT 3-COLUMN LOCK (Libraries) */
         div[data-testid="stHorizontalBlock"]:has(.grid-3-col),
