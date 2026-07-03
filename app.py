@@ -119,16 +119,15 @@ st.markdown("""
     }
     .movie-wall-btn div.stButton > button:active { color: #FFC107 !important; }
     
-    /* Feed Stylings for Watch Journal */
-    .feed-title { font-size: 0.95rem !important; font-weight: 700; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;}
-    .feed-date { font-size: 0.75rem !important; color: #aaa; margin-top: 4px; margin-bottom: 6px;}
-    
-    /* Transparent Journal Toggles */
-    .ep-toggle-btn div.stButton > button, .hist-toggle-btn div.stButton > button {
-        background: transparent !important; border: none !important; color: #888 !important; box-shadow: none !important;
-        min-height: unset !important; height: auto !important;
+    /* --- NEW: Sleek Native App Feed Styling --- */
+    .feed-title { font-size: 1.1rem !important; font-weight: 700; margin-bottom: 4px; line-height: 1.2;}
+    .feed-date { font-size: 0.8rem !important; color: #aaa; margin-top: 6px; font-weight: 500;}
+    .hist-detail-btn div.stButton > button {
+        background-color: transparent !important; border: 1px solid rgba(255, 193, 7, 0.4) !important;
+        color: #FFC107 !important; font-size: 0.7rem !important; padding: 2px 12px !important;
+        min-height: 1.8rem !important; margin-top: 8px; width: auto !important; border-radius: 6px;
     }
-    .ep-toggle-btn div.stButton > button:active, .hist-toggle-btn div.stButton > button:active { color: #FFC107 !important; transform: none !important; }
+    .hist-detail-btn div.stButton > button:active { background-color: rgba(255, 193, 7, 0.1) !important; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -339,7 +338,7 @@ def show_cast_grid(cast_list, limit=6):
                     encoded_name = actor['name'].replace(" ", "+")
                     imdb_url = f"https://www.imdb.com/find/?q={encoded_name}"
                     img_url = f"https://image.tmdb.org/t/p/w185{actor['profile_path']}" if actor.get("profile_path") else "https://via.placeholder.com/185x278/222222/888888?text=No+Photo"
-                    html = f'<a href="{imdb_url}" target="_blank" style="text-decoration:none; color:inherit;"><img src="{img_url}" style="width:100%; border-radius:8px; display:block;"><div class="grid-title" style="color: white !important;">{actor["name"]}</div></a>'
+                    html = f'<a href="{imdb_url}" target="_blank" style="text-decoration:none; color:inherit;"><img src="{img_url}" style="width:100%; border-radius:8px; display:block;"><div class="grid-title">{actor["name"]}</div></a>'
                     st.markdown(html, unsafe_allow_html=True)
 
 def parse_tvtime_date(d_str):
@@ -350,7 +349,7 @@ def parse_tvtime_date(d_str):
         return dt.strftime("%Y-%m-%d %H:%M:%S")
     except: return "2000-01-01 12:00:00"
 
-# --- DIALOGS (Lazy Loaded for Speed) ---
+# --- DIALOGS ---
 @st.dialog("Episode Details")
 def show_episode_details(show_id, show_name, ep_code, ep_data=None, is_watched=False):
     if not ep_data:
@@ -537,7 +536,6 @@ with t_next:
                         with cols[j]:
                             st.markdown('<span class="grid-3-col"></span>', unsafe_allow_html=True)
                             with st.container(border=True):
-                                # Using standard show poster for clean 3x3 grids instead of horizontal ep stills
                                 display_poster(show.get("poster_path") or details.get('poster_path'), width=185)
                                 st.markdown(f'<div class="grid-title" title="{show["name"]}">{show["name"]}</div>', unsafe_allow_html=True)
                                 st.markdown(f'<div style="text-align:center; font-size:0.7rem; color:#aaa; margin-bottom:5px; font-weight:600;">{ep_code}</div>', unsafe_allow_html=True)
@@ -918,7 +916,7 @@ with t_profile:
         
     st.divider()
     
-    # --- PANDAS GRAPHS: 12-MONTH ROLLING WATCH ACTIVITY ---
+    # --- PANDAS GRAPHS: 12-MONTH CHRONOLOGICAL TIMELINE ---
     st.markdown("### 📊 Watch Activity")
     chart_tab1, chart_tab2 = st.tabs(["📺 Series Activity", "🎬 Movie Activity"])
     analytics = st.session_state.db.get("analytics", {})
@@ -933,7 +931,9 @@ with t_profile:
             
     analytics_12m = {m_str: analytics.get(m_str, {"tv": 0, "movie": 0}) for m_str in last_12_months}
     df = pd.DataFrame.from_dict(analytics_12m, orient='index')
-    df.index = pd.to_datetime(df.index, format='%Y-%m').strftime('%b %Y')
+    
+    # Passing true Datetime to Streamlit ensures PERFECT chronological order!
+    df.index = pd.to_datetime(df.index)
     
     with chart_tab1:
         st.bar_chart(df[["tv"]], color="#FFC107")
@@ -943,7 +943,7 @@ with t_profile:
 
     st.divider()
     
-    # --- NATIVE APP WATCH HISTORY FEED ---
+    # --- NATIVE APP WATCH HISTORY FEED (SLEEK LIST LAYOUT) ---
     st.markdown("### 📜 Watch History Journal")
     h_tv, h_mov = st.tabs(["📺 Series", "🎬 Movies"])
     
@@ -961,22 +961,24 @@ with t_profile:
                 except: pass
             
             for month_str, items in grouped_tv.items():
-                st.markdown(f"#### {month_str}")
+                st.markdown(f"<h4 style='color: #FFC107; margin-top: 1rem; margin-bottom: 0.5rem;'>{month_str}</h4>", unsafe_allow_html=True)
                 for h, dt, h_idx in items:
                     show = next((s for s in st.session_state.db["shows"] if str(s["id"]) == str(h.get("i"))), None)
                     s_name = show["name"] if show else "Unknown Series"
                     ep_code = h.get('e', '')
                     poster = show.get("poster_path", "") if show else ""
                     
-                    with st.container(border=True):
-                        c1, c2 = st.columns([1, 3])
-                        with c1: display_poster(poster, width=92)
-                        with c2:
-                            st.markdown(f'<div class="feed-title">{s_name}</div>', unsafe_allow_html=True)
-                            if ep_code: render_badges([ep_code], is_gold=False)
-                            st.markdown(f'<div class="feed-date">{dt.strftime("%b %d • %I:%M %p")}</div>', unsafe_allow_html=True)
-                            if st.button("Details", key=f"hist_tv_btn_{h.get('i')}_{ep_code}_{h_idx}"):
-                                show_episode_details(h.get('i'), s_name, ep_code, ep_data=None, is_watched=True)
+                    c1, c2 = st.columns([1, 3], gap="small")
+                    with c1: display_poster(poster, width=154)
+                    with c2:
+                        st.markdown(f'<div class="feed-title">{s_name}</div>', unsafe_allow_html=True)
+                        if ep_code: render_badges([ep_code], is_gold=False)
+                        st.markdown(f'<div class="feed-date">{dt.strftime("%b %d • %I:%M %p")}</div>', unsafe_allow_html=True)
+                        st.markdown('<div class="hist-detail-btn">', unsafe_allow_html=True)
+                        if st.button("View Details", key=f"hist_tv_btn_{h.get('i')}_{ep_code}_{h_idx}"):
+                            show_episode_details(h.get('i'), s_name, ep_code, ep_data=None, is_watched=True)
+                        st.markdown('</div>', unsafe_allow_html=True)
+                    st.markdown("<hr style='margin: 0.8rem 0; border-color: rgba(255,255,255,0.1);'>", unsafe_allow_html=True)
                                 
             if len(tv_hist) > st.session_state.hist_tv_limit:
                 if st.button("Load More Series", use_container_width=True, key="load_more_tv_hist"):
@@ -995,21 +997,23 @@ with t_profile:
                 except: pass
                 
             for month_str, items in grouped_mov.items():
-                st.markdown(f"#### {month_str}")
+                st.markdown(f"<h4 style='color: #FFC107; margin-top: 1rem; margin-bottom: 0.5rem;'>{month_str}</h4>", unsafe_allow_html=True)
                 for h, dt, h_idx in items:
                     mov = next((m for m in st.session_state.db["movies"] if str(m["id"]) == str(h.get("i"))), None)
                     m_name = mov["name"] if mov else "Unknown Movie"
                     poster = mov.get("poster_path", "") if mov else ""
                     
-                    with st.container(border=True):
-                        c1, c2 = st.columns([1, 3])
-                        with c1: display_poster(poster, width=92)
-                        with c2:
-                            st.markdown(f'<div class="feed-title">{m_name}</div>', unsafe_allow_html=True)
-                            render_badges(["Movie"], is_gold=False)
-                            st.markdown(f'<div class="feed-date">{dt.strftime("%b %d • %I:%M %p")}</div>', unsafe_allow_html=True)
-                            if st.button("Details", key=f"hist_mov_btn_{h.get('i')}_{h_idx}"):
-                                show_movie_details(h.get('i'), m_name, details=None, is_watched=True)
+                    c1, c2 = st.columns([1, 3], gap="small")
+                    with c1: display_poster(poster, width=154)
+                    with c2:
+                        st.markdown(f'<div class="feed-title">{m_name}</div>', unsafe_allow_html=True)
+                        render_badges(["Movie"], is_gold=False)
+                        st.markdown(f'<div class="feed-date">{dt.strftime("%b %d • %I:%M %p")}</div>', unsafe_allow_html=True)
+                        st.markdown('<div class="hist-detail-btn">', unsafe_allow_html=True)
+                        if st.button("View Details", key=f"hist_mov_btn_{h.get('i')}_{h_idx}"):
+                            show_movie_details(h.get('i'), m_name, details=None, is_watched=True)
+                        st.markdown('</div>', unsafe_allow_html=True)
+                    st.markdown("<hr style='margin: 0.8rem 0; border-color: rgba(255,255,255,0.1);'>", unsafe_allow_html=True)
 
             if len(mov_hist) > st.session_state.hist_mov_limit:
                 if st.button("Load More Movies", use_container_width=True, key="load_more_mov_hist"):
