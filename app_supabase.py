@@ -11,7 +11,7 @@ from datetime import datetime, timedelta
 # Mobile-friendly layout configuration
 st.set_page_config(page_title="My TV Time", layout="centered", initial_sidebar_state="collapsed")
 
-# --- MOBILE-FIRST TARGETED CSS OVERHAUL (PREMIUM GLASSMORPHISM) ---
+# --- MOBILE-FIRST TARGETED CSS OVERHAUL ---
 st.html("""
 <style>
     /* --- STREAMLIT UI ANNIHILATION --- */
@@ -99,6 +99,7 @@ st.html("""
     [data-testid="stVerticalBlockBorderWrapper"] {
         background: linear-gradient(145deg, rgba(30, 32, 40, 0.4) 0%, rgba(15, 17, 22, 0.6) 100%) !important;
         backdrop-filter: blur(10px) !important;
+        -webkit-backdrop-filter: blur(10px) !important;
         border-radius: 12px !important; 
         border: 1px solid rgba(255, 255, 255, 0.08) !important;
         box-shadow: 0px 8px 24px rgba(0, 0, 0, 0.4) !important; 
@@ -131,19 +132,20 @@ st.html("""
     .movie-wall-btn div.stButton > button {
         background: rgba(255, 255, 255, 0.03) !important;
         backdrop-filter: blur(5px) !important;
+        -webkit-backdrop-filter: blur(5px) !important;
         border: 1px solid rgba(255, 255, 255, 0.08) !important;
         border-radius: 6px !important; 
         color: #E0E0E0 !important;
-        font-size: 0.50rem !important;
+        font-size: 0.50rem !important; 
         font-weight: 700 !important;
-        padding: 4px 1px !important;
+        padding: 4px 1px !important; 
         margin: 0 !important;
         text-transform: uppercase;
         letter-spacing: -0.2px !important; 
         min-height: 1.8rem !important; 
         line-height: 1;
         width: 100% !important;
-        white-space: nowrap !important;
+        white-space: nowrap !important; 
         overflow: hidden !important;
         text-overflow: clip !important;
         transition: all 0.2s !important;
@@ -168,6 +170,7 @@ st.html("""
         overflow-x: hidden !important; 
         background-color: rgba(8, 9, 12, 0.85) !important;
         backdrop-filter: blur(12px) !important;
+        -webkit-backdrop-filter: blur(12px) !important;
         border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
     }
     
@@ -242,6 +245,7 @@ st.html("""
             width: 95vw !important; max-width: 95vw !important; margin: 0 auto !important; padding: 1rem !important;
             background: rgba(15, 17, 22, 0.95) !important;
             backdrop-filter: blur(20px) !important;
+            -webkit-backdrop-filter: blur(20px) !important;
             border: 1px solid rgba(255, 255, 255, 0.1) !important;
         }
     }
@@ -472,7 +476,7 @@ def display_poster(path, width=185):
     if path and str(path).lower() not in ["none", "null", ""]:
         st.image(f"https://image.tmdb.org/t/p/w{width}{path}", use_container_width=True)
     else:
-        st.markdown(f'<div style="background-color:#222; border-radius:8px; width:100%; aspect-ratio: 2/3; display:flex; align-items:center; justify-content:center; color:#555; font-size:0.8rem; text-align:center; margin-bottom:5px;">No Image</div>', unsafe_allow_html=True)
+        st.markdown(f'<div style="background-color: rgba(255,255,255,0.05); border-radius:8px; width:100%; aspect-ratio: 2/3; display:flex; align-items:center; justify-content:center; color:#555; font-size:0.8rem; text-align:center; margin-bottom:5px;">No Image</div>', unsafe_allow_html=True)
 
 def show_cast_horizontal(cast_list, limit=12):
     if not cast_list: return
@@ -872,7 +876,7 @@ with t_search:
     search_query = st.text_input("Search", key="search_query_input", placeholder="Search TV shows, movies, actors...", label_visibility="collapsed")
 
     if search_query:
-        # --- SEARCH MODE ---
+        # --- SEARCH MODE (3x3 GRID) ---
         search_type = st.selectbox("Search in:", ["TV Shows", "Movies"], label_visibility="collapsed", key="search_filter_box")
         endpoint = "tv" if search_type == "TV Shows" else "movie"
         res = fetch_api(f"https://api.themoviedb.org/3/search/{endpoint}?api_key={TMDB_KEY}&query={search_query}")
@@ -895,33 +899,37 @@ with t_search:
                                 st.markdown(f'<div class="grid-title" title="{title}">{title}</div>', unsafe_allow_html=True)
                                 
                                 st.markdown('<div class="movie-wall-btn">', unsafe_allow_html=True)
+                                st.markdown('<span class="grid-2-col"></span>', unsafe_allow_html=True)
                                 
                                 is_tv = (search_type == "TV Shows")
                                 added = any(str(x["id"]) == str(item_id) for x in st.session_state.db["shows" if is_tv else "movies"])
                                 
-                                if not added:
-                                    if st.button("➕ ADD", key=f"add_{item_id}_{i+j}", use_container_width=True):
-                                        details = fetch_api(f"https://api.themoviedb.org/3/{'tv' if is_tv else 'movie'}/{item_id}?api_key={TMDB_KEY}")
-                                        if is_tv:
-                                            st.session_state.db["shows"].append({
-                                                "id": item_id, "name": title, "watched_episodes": [],
-                                                "poster_path": details.get("poster_path", ""), "first_air_date": details.get("first_air_date", ""),
-                                                "total_episodes": details.get("number_of_episodes", 1)
-                                            })
-                                        else:
-                                            st.session_state.db["movies"].append({
-                                                "id": item_id, "name": title, "watched": False,
-                                                "poster_path": details.get("poster_path", ""), "release_date": details.get("release_date", ""),
-                                                "runtime": details.get("runtime", 0)
-                                            })
-                                        if save_db(): st.rerun()
-                                else:
-                                    st.button("✔️ ADDED", key=f"dsb_{item_id}_{i+j}", disabled=True, use_container_width=True)
+                                bc1, bc2 = st.columns(2)
+                                with bc1:
+                                    if not added:
+                                        if st.button("➕ ADD", key=f"add_{item_id}_{i+j}", use_container_width=True):
+                                            details = fetch_api(f"https://api.themoviedb.org/3/{'tv' if is_tv else 'movie'}/{item_id}?api_key={TMDB_KEY}")
+                                            if is_tv:
+                                                st.session_state.db["shows"].append({
+                                                    "id": item_id, "name": title, "watched_episodes": [],
+                                                    "poster_path": details.get("poster_path", ""), "first_air_date": details.get("first_air_date", ""),
+                                                    "total_episodes": details.get("number_of_episodes", 1)
+                                                })
+                                            else:
+                                                st.session_state.db["movies"].append({
+                                                    "id": item_id, "name": title, "watched": False,
+                                                    "poster_path": details.get("poster_path", ""), "release_date": details.get("release_date", ""),
+                                                    "runtime": details.get("runtime", 0)
+                                                })
+                                            if save_db(): st.rerun()
+                                    else:
+                                        st.button("✔️ ADDED", key=f"dsb_{item_id}_{i+j}", disabled=True, use_container_width=True)
                                 
-                                if st.button("ℹ️ INFO", key=f"inf_{item_id}_{i+j}", use_container_width=True):
-                                    details = fetch_api(f"https://api.themoviedb.org/3/{'tv' if is_tv else 'movie'}/{item_id}?api_key={TMDB_KEY}")
-                                    if is_tv: manage_show_dialog(item_id, title, details)
-                                    else: show_movie_details(item_id, title, details, is_watched=False)
+                                with bc2:
+                                    if st.button("ℹ️ INFO", key=f"inf_{item_id}_{i+j}", use_container_width=True):
+                                        details = fetch_api(f"https://api.themoviedb.org/3/{'tv' if is_tv else 'movie'}/{item_id}?api_key={TMDB_KEY}")
+                                        if is_tv: manage_show_dialog(item_id, title, details)
+                                        else: show_movie_details(item_id, title, details, is_watched=False)
                                 
                                 st.markdown('</div>', unsafe_allow_html=True)
     else:
