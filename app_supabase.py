@@ -8,6 +8,7 @@ import calendar
 import random
 from datetime import datetime, timedelta
 from st_keyup import st_keyup
+import altair as alt
 
 # Mobile-friendly layout configuration
 st.set_page_config(page_title="My TV Time", layout="centered", initial_sidebar_state="collapsed")
@@ -392,10 +393,12 @@ def pack_db(db):
         packed["h"].append([1 if h.get("t") == "s" else 0, h.get("i"), h.get("e", ""), h.get("d")])
     for k, v in db.get("analytics", {}).items():
         packed["a"][k] = [v.get("tv", 0), v.get("movie", 0)]
+    # Pack viewed recaps list to save across server boots
+    packed["r"] = db.get("seen_recaps", [])
     return packed
 
 def unpack_db(packed):
-    db = {"movies": [], "shows": [], "history": [], "analytics": {}}
+    db = {"movies": [], "shows": [], "history": [], "analytics": {}, "seen_recaps": []}
     for m in packed.get("m", []):
         db["movies"].append({"id": m[0], "name": m[1], "watched": bool(m[2]), "poster_path": m[3], "release_date": m[4], "runtime": m[5]})
     for s in packed.get("s", []):
@@ -404,6 +407,7 @@ def unpack_db(packed):
         db["history"].append({"t": "s" if h[0]==1 else "m", "i": h[1], "e": h[2], "d": h[3]})
     for k, v in packed.get("a", {}).items():
         db["analytics"][k] = {"tv": v[0], "movie": v[1]}
+    db["seen_recaps"] = packed.get("r", [])
     return db
 
 def load_db():
@@ -415,7 +419,7 @@ def load_db():
                 payload = data[0].get("payload", {})
                 if "m" in payload and "s" in payload:
                     return unpack_db(payload)
-            return {"shows": [], "movies": [], "history": [], "analytics": {}}
+            return {"shows": [], "movies": [], "history": [], "analytics": {}, "seen_recaps": []}
         else:
             st.error(f"⚠️ Supabase Connection Failed: {res.status_code}")
             return None
@@ -500,6 +504,134 @@ def remove_watch(item_type, item_id, detail=""):
                 m["watched"] = False
                 break
     save_db()
+
+# --- AUTOMATED POP-UP RECAP ENGINE (MONTHLY & YEARLY AUTOMATION) ---
+@st.dialog("🌙 Monthly Wrap-Up")
+def show_monthly_recap_dialog(month_key, month_title, stats, recap_id):
+    st.markdown(f"## {month_title} Recap")
+    st.write("Here is a quick look at your screening inventory from last month:")
+    
+    tv_count = stats.get("tv", 0)
+    mov_count = stats.get("movie", 0)
+    total_mins = (tv_count * 45) + (mov_count * 120)
+    hours = total_mins // 60
+    
+    c1, c2 = st.columns(2)
+    with c1:
+        st.metric("📺 Episodes Logged", f"{tv_count} eps")
+    with c2:
+        st.metric("🎬 Movies Watched", f"{mov_count} titles")
+        
+    st.markdown(f"⏳ **Screen Time Investment:** ~`{hours}` hours spent streaming.")
+    
+    # Calculate most active series from logs matching that specific month frame
+    show_counts = {}
+    for h in st.session_state.db.get("history", []):
+        if h.get("t") == "s" and str(h.get("d", "")).startswith(month_key):
+            show_counts[h["i"]] = show_counts.get(h["i"], 0) + 1
+            
+    if show_counts:
+        top_show_id = max(show_counts, key=show_counts.get)
+        show = next((s for s in st.session_state.db["shows"] if str(s["id"]) == str(top_show_id)), None)
+        if show:
+            st.markdown(f"🔥 **Top Binge Focus:** *{show['name']}* ({show_counts[top_show_id]} episodes)")
+            
+    st.divider()
+    if st.button("Sweet!", use_container_width=True, key="close_month_recap_btn"):
+        st.session_state.db.setdefault("seen_recaps", []).append(recap_id)
+        save_db()
+        st.rerun()
+
+@st.dialog("🏆 Your Cinematic Wrapped")
+def show_yearly_recap_dialog(year, y_tv, y_mov, recap_id):
+    st.markdown(f"# 🍿 {year} YEAR IN REVIEW")
+    st.write("You smashed your theater goals last year! Check out your custom achievements:")
+    
+    total_time = (y_tv * 45) + (y_mov * 120)
+    days = total_time // 1440
+    rem_hours = (total_time % 1440) // 60
+    
+    st.markdown(f"""
+    <div style="background: linear-gradient(135deg, #FFD54F 0%, #FFC107 100%); border-radius: 14px; padding: 22px; color: black; text-align: center; margin-bottom: 15px; box-shadow: 0 4px 15px rgba(255,193,7,0.3);">
+        <div style="font-size: 2.6rem; font-weight: 900; line-height:1;">{y_tv + y_mov:,}</div>
+        <div style="font-size: 0.75rem; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; margin-top:4px;">Total Titles Inventoried</div>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        st.markdown(f"""
+        <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 15px; text-align: center;">
+            <div style="font-size: 1.4rem; font-weight: 800; color: #FFC107;">{y_tv}</div>
+            <div style="font-size: 0.65rem; color: #aaa; text-transform: uppercase; font-weight:700;">Episodes Logged</div>
+        </div>
+        """, unsafe_allow_html=True)
+    with col2:
+        st.markdown(f"""
+        <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 15px; text-align: center;">
+            <div style="font-size: 1.4rem; font-weight: 800; color: #FFC107;">{y_mov}</div>
+            <div style="font-size: 0.65rem; color: #aaa; text-transform: uppercase; font-weight:700;">Movies Checked</div>
+        </div>
+        """, unsafe_allow_html=True)
+        
+    st.markdown(f"⏳ **Time Commitment:** You dedicated total of **{days} days** and **{rem_hours} hours** to premium story arcs.")
+    
+    # Fun title tiers based on screening metrics density
+    if days > 12:
+        tier_title, tier_desc = "👑 Emperor of the Couch", "Absolute legend. Hollywood production lines should put you on their payroll."
+    elif days > 5:
+        tier_title, tier_desc = "🍿 Marathon Veteran", "You know exactly how to lock down a weekend block and demolish complex plotlines."
+    else:
+        tier_title, tier_desc = "🎬 Curation Connoisseur", "High-taste selection habits. You filter for absolute choice cinema narrative styles."
+        
+    st.markdown(f"""
+    <div style="background: rgba(255, 193, 7, 0.08); border: 1px dashed #FFC107; border-radius: 12px; padding: 15px; margin-top: 15px; text-align: center;">
+        <div style="font-size: 1.15rem; font-weight: 800; color: #FFD54F;">{tier_title}</div>
+        <div style="font-size: 0.75rem; color: #eee; margin-top: 5px; line-height:1.3;">{tier_desc}</div>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    st.divider()
+    if st.button("Claim Achievement Status", use_container_width=True, key="close_year_recap_btn"):
+        st.session_state.db.setdefault("seen_recaps", []).append(recap_id)
+        save_db()
+        st.rerun()
+
+def evaluate_and_trigger_recaps():
+    if "recaps_checked" in st.session_state: return
+    st.session_state.recaps_checked = True
+    
+    db = st.session_state.db
+    seen = db.setdefault("seen_recaps", [])
+    now = get_dubai_time()
+    
+    # 1. Monthly Automation Engine (Targeting immediate previous calendar month)
+    first_of_this_month = now.replace(day=1)
+    last_day_of_prev_month = first_of_this_month - timedelta(days=1)
+    prev_month_key = last_day_of_prev_month.strftime("%Y-%m")
+    prev_month_name = last_day_of_prev_month.strftime("%B %Y")
+    
+    month_recap_id = f"monthly-{prev_month_key}"
+    if month_recap_id not in seen:
+        stats = db.get("analytics", {}).get(prev_month_key, {"tv": 0, "movie": 0})
+        if stats["tv"] > 0 or stats["movie"] > 0:
+            show_monthly_recap_dialog(prev_month_key, prev_month_name, stats, month_recap_id)
+            return
+            
+    # 2. Yearly Automation Engine (Targeting immediate previous full year block)
+    prev_year_num = now.year - 1
+    year_recap_id = f"yearly-{prev_year_num}"
+    if year_recap_id not in seen:
+        y_tv, y_mov = 0, 0
+        for k, v in db.get("analytics", {}).items():
+            if k.startswith(str(prev_year_num)):
+                y_tv += v.get("tv", 0)
+                y_mov += v.get("movie", 0)
+        if y_tv > 0 or y_mov > 0:
+            show_yearly_recap_dialog(prev_year_num, y_tv, y_mov, year_recap_id)
+            return
+
+evaluate_and_trigger_recaps()
 
 # --- HELPERS ---
 def render_badges(items, is_gold=False):
@@ -755,7 +887,7 @@ with t_next:
                     for ep in s_data.get("episodes", []):
                         ep_code = f"S{s_info['season_number']}E{ep['episode_number']}"
                         air_date = ep.get("air_date", "")
-                        if ep_code not in watched_set and air_date and air_date <= TODAY:
+                        if ep_code not in watched_set && air_date and air_date <= TODAY:
                             candidate_skipped = {"item": show, "details": details, "ep": ep, "code": ep_code, "date": air_date, "is_rec": False, "is_skipped": True}
                             break
                     if candidate_skipped: break
@@ -1354,7 +1486,7 @@ with t_profile:
     st.markdown(html_stats, unsafe_allow_html=True)
     st.divider()
     
-    # --- PANDAS GRAPHS: 12-MONTH CHRONOLOGICAL TIMELINE ---
+    # --- CHRONOLOGICAL TIMELINE SLER DATA MAP ---
     st.markdown("### 📊 Watch Activity")
     chart_tab1, chart_tab2 = st.tabs(["📺 Series Activity", "🎬 Movie Activity"])
     analytics = st.session_state.db.get("analytics", {})
@@ -1379,11 +1511,32 @@ with t_profile:
     df_tv = pd.DataFrame(data_tv).sort_values("Month")
     df_mov = pd.DataFrame(data_mov).sort_values("Month")
     
+    # --- UPGRADED ALTAIR GRAPH MARK OVERLAYS (READABLE VAL LABELS) ---
     with chart_tab1:
-        st.bar_chart(df_tv, x="Month", y="Episodes", color="#FFC107")
+        if not df_tv.empty and df_tv["Episodes"].sum() > 0:
+            chart_tv = alt.Chart(df_tv).mark_bar(color="#FFC107", cornerRadiusTopLeft=6, cornerRadiusTopRight=6).encode(
+                x=alt.X("Month:N", title="Month", axis=alt.Axis(labelAngle=-45, labelColor="#aaa", titleColor="#aaa")),
+                y=alt.Y("Episodes:Q", title="Episodes Watched", axis=alt.Axis(labelColor="#aaa", titleColor="#aaa"))
+            )
+            text_tv = chart_tv.mark_text(
+                align='center', baseline='bottom', dy=-5, color='#EDEDED', fontSize=10, fontWeight='bold'
+            ).encode(text='Episodes:Q')
+            st.altair_chart((chart_tv + text_tv).properties(height=260), use_container_width=True)
+        else:
+            st.info("No series log history available for the last 12 months.")
         
     with chart_tab2:
-        st.bar_chart(df_mov, x="Month", y="Movies", color="#555555")
+        if not df_mov.empty and df_mov["Movies"].sum() > 0:
+            chart_mov = alt.Chart(df_mov).mark_bar(color="#555555", cornerRadiusTopLeft=6, cornerRadiusTopRight=6).encode(
+                x=alt.X("Month:N", title="Month", axis=alt.Axis(labelAngle=-45, labelColor="#aaa", titleColor="#aaa")),
+                y=alt.Y("Movies:Q", title="Movies Watched", axis=alt.Axis(labelColor="#aaa", titleColor="#aaa"))
+            )
+            text_mov = chart_mov.mark_text(
+                align='center', baseline='bottom', dy=-5, color='#EDEDED', fontSize=10, fontWeight='bold'
+            ).encode(text='Movies:Q')
+            st.altair_chart((chart_mov + text_mov).properties(height=260), use_container_width=True)
+        else:
+            st.info("No movie log history available for the last 12 months.")
 
     st.divider()
     
@@ -1496,7 +1649,8 @@ with t_profile:
                     "movies": [] if wipe_db else st.session_state.db.get("movies", []),
                     "shows": [] if wipe_db else st.session_state.db.get("shows", []),
                     "analytics": {} if wipe_db else st.session_state.db.get("analytics", {}),
-                    "history": [] if wipe_db else st.session_state.db.get("history", [])
+                    "history": [] if wipe_db else st.session_state.db.get("history", []),
+                    "seen_recaps": [] if wipe_db else st.session_state.db.get("seen_recaps", [])
                 }
                 
                 # Process Movies
