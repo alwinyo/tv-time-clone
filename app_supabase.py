@@ -11,12 +11,12 @@ from datetime import datetime, timedelta
 # Mobile-friendly layout configuration
 st.set_page_config(page_title="My TV Time", layout="centered", initial_sidebar_state="collapsed")
 
-# --- MOBILE-FIRST TARGETED CSS OVERHAUL ---
-st.html("""
+# --- MOBILE-FIRST TARGETED CSS OVERHAUL (AGGRESSIVE PREMIUM OVERRIDE) ---
+st.markdown("""
 <style>
     /* --- STREAMLIT UI ANNIHILATION --- */
     #MainMenu {visibility: hidden !important;}
-    header {visibility: hidden !important;}
+    header {visibility: hidden !important; background: transparent !important;}
     footer {visibility: hidden !important; display: none !important;}
     
     /* THE BOTTOM-RIGHT POPUP KILLER */
@@ -24,12 +24,12 @@ st.html("""
     .viewerBadge_container, .viewerBadge_link, div[class^="viewerBadge"] {display: none !important; visibility: hidden !important;}
     .stDeployButton {display: none !important;}
     [data-testid="stStatusWidget"] {visibility: hidden !important; display: none !important;}
-    [data-testid="stHeader"] {visibility: hidden !important; display: none !important;}
     
-    /* --- PREMIUM OLED BACKGROUND --- */
-    .stApp {
+    /* --- PREMIUM OLED BACKGROUND (FORCED) --- */
+    .stApp, [data-testid="stAppViewContainer"], [data-testid="stHeader"] {
         background-color: #050505 !important;
         background-image: radial-gradient(circle at 50% 0%, #1A1D24 0%, #050505 80%) !important;
+        background-attachment: fixed !important;
         color: #EDEDED !important;
     }
     
@@ -74,6 +74,7 @@ st.html("""
     div[role="radiogroup"] > label[data-checked="true"] { 
         background: linear-gradient(135deg, #FFD54F 0%, #FFC107 100%) !important; 
         box-shadow: 0 4px 12px rgba(255, 193, 7, 0.25) !important;
+        border: none !important;
     }
     div[role="radiogroup"] > label[data-checked="true"] p { color: #000 !important; font-weight: 800 !important; }
     div[role="radiogroup"] > label p { 
@@ -95,14 +96,14 @@ st.html("""
         padding: 4px !important;
     }
     
-    /* --- PREMIUM GLASSMORPHISM CARDS --- */
+    /* --- PREMIUM GLASSMORPHISM CARDS (FORCED) --- */
     [data-testid="stVerticalBlockBorderWrapper"] {
-        background: linear-gradient(145deg, rgba(30, 32, 40, 0.4) 0%, rgba(15, 17, 22, 0.6) 100%) !important;
-        backdrop-filter: blur(10px) !important;
-        -webkit-backdrop-filter: blur(10px) !important;
+        background: linear-gradient(145deg, rgba(30, 32, 40, 0.6) 0%, rgba(15, 17, 22, 0.8) 100%) !important;
+        backdrop-filter: blur(12px) !important;
+        -webkit-backdrop-filter: blur(12px) !important;
         border-radius: 12px !important; 
-        border: 1px solid rgba(255, 255, 255, 0.08) !important;
-        box-shadow: 0px 8px 24px rgba(0, 0, 0, 0.4) !important; 
+        border: 1px solid rgba(255, 255, 255, 0.1) !important;
+        box-shadow: 0px 8px 24px rgba(0, 0, 0, 0.6) !important; 
         padding: 0.3rem !important;
     }
     
@@ -130,7 +131,7 @@ st.html("""
     
     /* --- SLEEK FROSTED BLOCK BUTTONS (SCOPED TO POSTERS ONLY) --- */
     .movie-wall-btn div.stButton > button {
-        background: rgba(255, 255, 255, 0.03) !important;
+        background: rgba(255, 255, 255, 0.05) !important;
         backdrop-filter: blur(5px) !important;
         -webkit-backdrop-filter: blur(5px) !important;
         border: 1px solid rgba(255, 255, 255, 0.08) !important;
@@ -191,6 +192,15 @@ st.html("""
         letter-spacing: -0.4px !important; 
         overflow: hidden !important;
         text-overflow: clip !important;
+    }
+
+    /* Active Gold Tab Glow */
+    div[data-testid="stTabs"] button[role="tab"][aria-selected="true"] {
+        border-bottom: 2px solid #FFC107 !important;
+    }
+    div[data-testid="stTabs"] button[role="tab"][aria-selected="true"] p {
+        color: #FFC107 !important;
+        text-shadow: 0px 0px 10px rgba(255, 193, 7, 0.4) !important;
     }
     
     /* --- DISCOVER FEED: HORIZONTAL CAROUSEL HACK --- */
@@ -270,7 +280,7 @@ st.html("""
     /* Edge-to-Edge Poster Magic */
     .movie-poster-sharp img { border-radius: 6px !important; aspect-ratio: 2/3; object-fit: cover; }
 </style>
-""")
+""", unsafe_allow_html=True)
 
 # --- DUBAI TIMEZONE OVERRIDE ---
 def get_dubai_time():
@@ -899,37 +909,33 @@ with t_search:
                                 st.markdown(f'<div class="grid-title" title="{title}">{title}</div>', unsafe_allow_html=True)
                                 
                                 st.markdown('<div class="movie-wall-btn">', unsafe_allow_html=True)
-                                st.markdown('<span class="grid-2-col"></span>', unsafe_allow_html=True)
                                 
                                 is_tv = (search_type == "TV Shows")
                                 added = any(str(x["id"]) == str(item_id) for x in st.session_state.db["shows" if is_tv else "movies"])
                                 
-                                bc1, bc2 = st.columns(2)
-                                with bc1:
-                                    if not added:
-                                        if st.button("➕ ADD", key=f"add_{item_id}_{i+j}", use_container_width=True):
-                                            details = fetch_api(f"https://api.themoviedb.org/3/{'tv' if is_tv else 'movie'}/{item_id}?api_key={TMDB_KEY}")
-                                            if is_tv:
-                                                st.session_state.db["shows"].append({
-                                                    "id": item_id, "name": title, "watched_episodes": [],
-                                                    "poster_path": details.get("poster_path", ""), "first_air_date": details.get("first_air_date", ""),
-                                                    "total_episodes": details.get("number_of_episodes", 1)
-                                                })
-                                            else:
-                                                st.session_state.db["movies"].append({
-                                                    "id": item_id, "name": title, "watched": False,
-                                                    "poster_path": details.get("poster_path", ""), "release_date": details.get("release_date", ""),
-                                                    "runtime": details.get("runtime", 0)
-                                                })
-                                            if save_db(): st.rerun()
-                                    else:
-                                        st.button("✔️ ADDED", key=f"dsb_{item_id}_{i+j}", disabled=True, use_container_width=True)
-                                
-                                with bc2:
-                                    if st.button("ℹ️ INFO", key=f"inf_{item_id}_{i+j}", use_container_width=True):
+                                if not added:
+                                    if st.button("➕ ADD", key=f"add_{item_id}_{i+j}", use_container_width=True):
                                         details = fetch_api(f"https://api.themoviedb.org/3/{'tv' if is_tv else 'movie'}/{item_id}?api_key={TMDB_KEY}")
-                                        if is_tv: manage_show_dialog(item_id, title, details)
-                                        else: show_movie_details(item_id, title, details, is_watched=False)
+                                        if is_tv:
+                                            st.session_state.db["shows"].append({
+                                                "id": item_id, "name": title, "watched_episodes": [],
+                                                "poster_path": details.get("poster_path", ""), "first_air_date": details.get("first_air_date", ""),
+                                                "total_episodes": details.get("number_of_episodes", 1)
+                                            })
+                                        else:
+                                            st.session_state.db["movies"].append({
+                                                "id": item_id, "name": title, "watched": False,
+                                                "poster_path": details.get("poster_path", ""), "release_date": details.get("release_date", ""),
+                                                "runtime": details.get("runtime", 0)
+                                            })
+                                        if save_db(): st.rerun()
+                                else:
+                                    st.button("✔️ ADDED", key=f"dsb_{item_id}_{i+j}", disabled=True, use_container_width=True)
+                                
+                                if st.button("ℹ️ INFO", key=f"inf_{item_id}_{i+j}", use_container_width=True):
+                                    details = fetch_api(f"https://api.themoviedb.org/3/{'tv' if is_tv else 'movie'}/{item_id}?api_key={TMDB_KEY}")
+                                    if is_tv: manage_show_dialog(item_id, title, details)
+                                    else: show_movie_details(item_id, title, details, is_watched=False)
                                 
                                 st.markdown('</div>', unsafe_allow_html=True)
     else:
