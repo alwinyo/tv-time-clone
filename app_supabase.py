@@ -37,6 +37,9 @@ st.html("""
     [data-testid="stProgressBar"] > div > div { background-color: #FFC107 !important; }
     
     /* --- SLICK NATIVE iOS-STYLE FULL WIDTH CONTROLS --- */
+    div[data-testid="stRadio"] { width: 100% !important; }
+    div[data-testid="stRadio"] > div { width: 100% !important; }
+    
     div[role="radiogroup"] {
         display: flex !important;
         flex-direction: row !important;
@@ -44,20 +47,30 @@ st.html("""
         border-radius: 16px !important;
         padding: 4px !important;
         width: 100% !important;
+        box-sizing: border-box !important;
     }
     div[role="radiogroup"] > label {
-        flex: 1 !important;
+        flex: 1 1 0px !important;
         display: flex !important;
         justify-content: center !important;
-        padding: 8px 12px !important;
+        padding: 8px 0px !important;
         border-radius: 12px !important;
         margin: 0 !important;
         transition: background-color 0.2s !important;
+        min-width: 0 !important;
     }
     div[role="radiogroup"] > label > div:first-child { display: none !important; }
     div[role="radiogroup"] > label[data-checked="true"] { background-color: #FFC107 !important; }
     div[role="radiogroup"] > label[data-checked="true"] p { color: #000 !important; font-weight: 800 !important; }
-    div[role="radiogroup"] > label p { font-size: 0.8rem !important; font-weight: 600 !important; margin: 0 !important; color: #aaa !important; }
+    div[role="radiogroup"] > label p { 
+        font-size: 0.8rem !important; 
+        font-weight: 600 !important; 
+        margin: 0 !important; 
+        color: #aaa !important; 
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: clip !important;
+    }
     
     /* Make standard Selectboxes match the Pill Design */
     div[data-baseweb="select"] > div {
@@ -193,6 +206,7 @@ if "hist_mov_limit" not in st.session_state: st.session_state.hist_mov_limit = 2
 if "tv_lib_limit" not in st.session_state: st.session_state.tv_lib_limit = 50
 if "mov_lib_limit" not in st.session_state: st.session_state.mov_lib_limit = 50
 if "c_limits" not in st.session_state: st.session_state.c_limits = {}
+if "rec_show" not in st.session_state: st.session_state.rec_show = None  # Locks the recommendation
 if "last_action" not in st.session_state: st.session_state.last_action = None
 
 # --- SUPABASE DATABASE PIPELINE ---
@@ -888,9 +902,14 @@ with t_search:
                         st.rerun()
 
         if selected_genre == "🔥 Trending":
-            watched_tv = [s for s in st.session_state.db.get("shows", []) if s.get("watched_episodes")]
-            if watched_tv:
-                random_show = random.choice(watched_tv)
+            # FIXED: Lock the "Because you watched" recommendation per session
+            if not st.session_state.rec_show:
+                watched_tv = [s for s in st.session_state.db.get("shows", []) if s.get("watched_episodes")]
+                if watched_tv:
+                    st.session_state.rec_show = random.choice(watched_tv)
+            
+            if st.session_state.rec_show:
+                random_show = st.session_state.rec_show
                 recs = fetch_api(f"https://api.themoviedb.org/3/tv/{random_show['id']}/recommendations?api_key={TMDB_KEY}")
                 if recs.get("results"):
                     render_carousel(f"Because you watched {random_show['name']}", recs["results"], "tv")
