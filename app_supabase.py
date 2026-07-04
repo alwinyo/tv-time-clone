@@ -887,7 +887,7 @@ with t_next:
                     for ep in s_data.get("episodes", []):
                         ep_code = f"S{s_info['season_number']}E{ep['episode_number']}"
                         air_date = ep.get("air_date", "")
-                        if ep_code not in watched_set && air_date and air_date <= TODAY:
+                        if ep_code not in watched_set and air_date and air_date <= TODAY:
                             candidate_skipped = {"item": show, "details": details, "ep": ep, "code": ep_code, "date": air_date, "is_rec": False, "is_skipped": True}
                             break
                     if candidate_skipped: break
