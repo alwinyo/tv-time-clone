@@ -115,15 +115,18 @@ st.html("""
         border: 1px solid rgba(255, 255, 255, 0.05) !important;
         border-radius: 6px !important; 
         color: #E0E0E0 !important;
-        font-size: 0.55rem !important; /* Smaller to fit side-by-side */
+        font-size: 0.50rem !important; /* Shrunk slightly to guarantee fit */
         font-weight: 700 !important;
-        padding: 4px 2px !important; /* Tight padding */
+        padding: 4px 1px !important; /* Ultra-tight padding */
         margin: 0 !important;
         text-transform: uppercase;
-        letter-spacing: 0px;
+        letter-spacing: -0.2px !important; /* Pull letters together */
         min-height: 1.8rem !important; 
         line-height: 1;
         width: 100% !important;
+        white-space: nowrap !important; /* Force tick marks on the same line */
+        overflow: hidden !important;
+        text-overflow: clip !important;
         transition: all 0.2s !important;
     }
     .movie-wall-btn div.stButton > button:active { 
@@ -915,38 +918,34 @@ with t_search:
                     st.markdown(f'<div class="grid-title" title="{i_title}">{i_title}</div>', unsafe_allow_html=True)
                     
                     st.markdown('<div class="movie-wall-btn">', unsafe_allow_html=True)
-                    st.markdown('<span class="grid-2-col"></span>', unsafe_allow_html=True)
-                    
                     item_id = item["id"]
                     added = False
                     if c_type == "tv": added = any(str(s["id"]) == str(item_id) for s in st.session_state.db["shows"])
                     else: added = any(str(m["id"]) == str(item_id) for m in st.session_state.db["movies"])
                         
-                    bc1, bc2 = st.columns(2)
-                    with bc1:
-                        if not added:
-                            if st.button("➕ ADD", key=f"c_add_{c_type}_{item_id}_{idx}", use_container_width=True):
-                                details = fetch_api(f"https://api.themoviedb.org/3/{c_type}/{item_id}?api_key={TMDB_KEY}")
-                                if c_type == "tv":
-                                    st.session_state.db["shows"].append({
-                                        "id": item_id, "name": i_title, "watched_episodes": [],
-                                        "poster_path": details.get("poster_path", ""), "first_air_date": details.get("first_air_date", ""),
-                                        "total_episodes": details.get("number_of_episodes", 1)
-                                    })
-                                else:
-                                    st.session_state.db["movies"].append({
-                                        "id": item_id, "name": i_title, "watched": False,
-                                        "poster_path": details.get("poster_path", ""), "release_date": details.get("release_date", ""),
-                                        "runtime": details.get("runtime", 0)
-                                    })
-                                if save_db(): st.rerun()
-                        else: 
-                            st.button("✔️ ADDED", key=f"c_dsb_{c_type}_{item_id}_{idx}", disabled=True, use_container_width=True)
-                    with bc2:
-                        if st.button("ℹ️ INFO", key=f"c_inf_{c_type}_{item_id}_{idx}", use_container_width=True):
+                    if not added:
+                        if st.button("➕ ADD", key=f"c_add_{c_type}_{item_id}_{idx}", use_container_width=True):
                             details = fetch_api(f"https://api.themoviedb.org/3/{c_type}/{item_id}?api_key={TMDB_KEY}")
-                            if c_type == "tv": manage_show_dialog(item_id, i_title, details)
-                            else: show_movie_details(item_id, i_title, details, is_watched=False)
+                            if c_type == "tv":
+                                st.session_state.db["shows"].append({
+                                    "id": item_id, "name": i_title, "watched_episodes": [],
+                                    "poster_path": details.get("poster_path", ""), "first_air_date": details.get("first_air_date", ""),
+                                    "total_episodes": details.get("number_of_episodes", 1)
+                                })
+                            else:
+                                st.session_state.db["movies"].append({
+                                    "id": item_id, "name": i_title, "watched": False,
+                                    "poster_path": details.get("poster_path", ""), "release_date": details.get("release_date", ""),
+                                    "runtime": details.get("runtime", 0)
+                                })
+                            if save_db(): st.rerun()
+                    else: 
+                        st.button("✔️ ADDED", key=f"c_dsb_{c_type}_{item_id}_{idx}", disabled=True, use_container_width=True)
+                    
+                    if st.button("ℹ️ INFO", key=f"c_inf_{c_type}_{item_id}_{idx}", use_container_width=True):
+                        details = fetch_api(f"https://api.themoviedb.org/3/{c_type}/{item_id}?api_key={TMDB_KEY}")
+                        if c_type == "tv": manage_show_dialog(item_id, i_title, details)
+                        else: show_movie_details(item_id, i_title, details, is_watched=False)
                             
                     st.markdown('</div>', unsafe_allow_html=True)
             
