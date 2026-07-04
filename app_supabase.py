@@ -47,13 +47,14 @@ st.markdown("""
     div[data-testid="stRadio"] { width: 100% !important; }
     div[data-testid="stRadio"] > div { width: 100% !important; }
     
+    /* Deep Recessed Navigation Container */
     div[role="radiogroup"] {
         display: flex !important;
         flex-direction: row !important;
-        background-color: rgba(15, 17, 22, 0.8) !important;
+        background-color: rgba(0, 0, 0, 0.7) !important;
         border-radius: 16px !important;
         border: 1px solid rgba(255, 255, 255, 0.05) !important;
-        box-shadow: inset 0 2px 6px rgba(0,0,0,0.5) !important;
+        box-shadow: inset 0px 4px 10px rgba(0,0,0,0.8) !important;
         padding: 4px !important;
         width: 100% !important;
         box-sizing: border-box !important;
@@ -70,13 +71,17 @@ st.markdown("""
     }
     div[role="radiogroup"] > label > div:first-child { display: none !important; }
     
-    /* Premium Gold Glowing Active State */
-    div[role="radiogroup"] > label[data-checked="true"] { 
+    /* Premium Gold Glowing Active State (Using :has to force Streamlit override) */
+    div[role="radiogroup"] > label:has(input:checked) { 
         background: linear-gradient(135deg, #FFD54F 0%, #FFC107 100%) !important; 
-        box-shadow: 0 4px 12px rgba(255, 193, 7, 0.25) !important;
+        box-shadow: 0 4px 15px rgba(255, 193, 7, 0.4) !important;
         border: none !important;
     }
-    div[role="radiogroup"] > label[data-checked="true"] p { color: #000 !important; font-weight: 800 !important; }
+    div[role="radiogroup"] > label:has(input:checked) p { 
+        color: #000 !important; 
+        font-weight: 800 !important; 
+        text-shadow: none !important;
+    }
     div[role="radiogroup"] > label p { 
         font-size: 0.8rem !important; 
         font-weight: 600 !important; 
@@ -87,12 +92,12 @@ st.markdown("""
         text-overflow: clip !important;
     }
     
-    /* Make standard Selectboxes match the Pill Design */
-    div[data-baseweb="select"] > div {
-        background-color: rgba(15, 17, 22, 0.8) !important;
+    /* Deep Recessed Selectboxes */
+    div[data-baseweb="select"] > div:first-child {
+        background-color: rgba(0, 0, 0, 0.7) !important;
         border-radius: 14px !important;
-        border: 1px solid rgba(255, 255, 255, 0.08) !important;
-        box-shadow: inset 0 2px 6px rgba(0,0,0,0.5) !important;
+        border: 1px solid rgba(255, 255, 255, 0.05) !important;
+        box-shadow: inset 0px 4px 10px rgba(0,0,0,0.8) !important;
         padding: 4px !important;
     }
     
@@ -113,15 +118,15 @@ st.markdown("""
     }
     
     /* --- PRIMARY ACTION OVERRIDE (Tabs & Standard Buttons) --- */
-    button[data-testid="baseButton-primary"] { 
+    button[kind="primary"] { 
         background: linear-gradient(135deg, #FFD54F 0%, #FFC107 100%) !important; 
         color: #000 !important; 
         border: none !important; 
         border-radius: 20px !important;
         font-weight: 700 !important;
-        box-shadow: 0 4px 12px rgba(255, 193, 7, 0.3) !important;
+        box-shadow: 0 4px 15px rgba(255, 193, 7, 0.4) !important;
     }
-    button[data-testid="baseButton-secondary"] { 
+    button[kind="secondary"] { 
         background-color: rgba(255, 255, 255, 0.05) !important; 
         color: #ccc !important; 
         border: 1px solid rgba(255, 255, 255, 0.1) !important; 
@@ -181,6 +186,7 @@ st.markdown("""
         padding: 10px 0px !important;
         margin: 0 !important;
         border-radius: 0 !important;
+        transition: all 0.3s ease !important;
     }
     
     div[data-testid="stTabs"] button[role="tab"] p {
@@ -192,15 +198,19 @@ st.markdown("""
         letter-spacing: -0.4px !important; 
         overflow: hidden !important;
         text-overflow: clip !important;
+        color: #888 !important;
+        transition: all 0.3s ease !important;
     }
 
-    /* Active Gold Tab Glow */
+    /* Active Gold Tab Glow (Using true aria-selected state) */
     div[data-testid="stTabs"] button[role="tab"][aria-selected="true"] {
-        border-bottom: 2px solid #FFC107 !important;
+        border-bottom: 3px solid #FFC107 !important;
+        background: linear-gradient(to top, rgba(255, 193, 7, 0.15) 0%, transparent 100%) !important;
+        box-shadow: inset 0px -10px 15px -10px rgba(255, 193, 7, 0.5) !important;
     }
     div[data-testid="stTabs"] button[role="tab"][aria-selected="true"] p {
-        color: #FFC107 !important;
-        text-shadow: 0px 0px 10px rgba(255, 193, 7, 0.4) !important;
+        color: #FFD54F !important;
+        text-shadow: 0px 0px 10px rgba(255, 193, 7, 0.6) !important;
     }
     
     /* --- DISCOVER FEED: HORIZONTAL CAROUSEL HACK --- */
@@ -275,6 +285,7 @@ st.markdown("""
         background: linear-gradient(135deg, #FFD54F 0%, #FFC107 100%); 
         color: #000000; 
         border: none;
+        box-shadow: 0 2px 6px rgba(255, 193, 7, 0.3);
     }
     
     /* Edge-to-Edge Poster Magic */
