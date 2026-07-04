@@ -237,6 +237,10 @@ st.html("""
 </style>
 """)
 
+# --- DUBAI TIMEZONE OVERRIDE ---
+def get_dubai_time():
+    return datetime.utcnow() + timedelta(hours=4)
+
 # --- PAGINATION STATES ---
 if "next_tv_limit" not in st.session_state: st.session_state.next_tv_limit = 30
 if "next_mov_limit" not in st.session_state: st.session_state.next_mov_limit = 30
@@ -262,7 +266,7 @@ HEADERS = {
     "Content-Type": "application/json",
     "Prefer": "return=representation"
 }
-TODAY = datetime.today().strftime('%Y-%m-%d')
+TODAY = get_dubai_time().strftime('%Y-%m-%d')
 
 @st.cache_data(ttl=3600)
 def fetch_api(url):
@@ -380,8 +384,8 @@ if "db" not in st.session_state:
 
 # --- CENTRALIZED HISTORY LOGGER ---
 def log_watch(item_type, item_id, detail=""):
-    now_str = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    m_key = datetime.now().strftime('%Y-%m')
+    now_str = get_dubai_time().strftime('%Y-%m-%d %H:%M:%S')
+    m_key = get_dubai_time().strftime('%Y-%m')
     db = st.session_state.db
     
     db.setdefault("analytics", {}).setdefault(m_key, {"tv": 0, "movie": 0})
@@ -594,8 +598,8 @@ with t_next:
     next_sort = st.selectbox("Sort by:", ["Smart Priority", "Release Date", "Alphabetical"], label_visibility="collapsed", key="next_sort_box")
     st.divider()
     
-    try: fifteen_days_ago = datetime.now() - pd.DateOffset(days=15)
-    except: fifteen_days_ago = datetime.today() - timedelta(days=15)
+    try: fifteen_days_ago = get_dubai_time() - pd.DateOffset(days=15)
+    except: fifteen_days_ago = get_dubai_time() - timedelta(days=15)
     
     recent_active_ids = set()
     for h in st.session_state.db.get("history", []):
@@ -759,7 +763,7 @@ with t_soon:
                         if idx < len(soon_tv[:limit]):
                             item = soon_tv[idx]
                             show, details, ep, ep_code = item["item"], item["details"], item["ep"], item["code"]
-                            days_left = (datetime.strptime(item["date"], '%Y-%m-%d') - datetime.today()).days
+                            days_left = (datetime.strptime(item["date"], '%Y-%m-%d') - get_dubai_time()).days
                             with st.container(border=True):
                                 display_poster(show.get("poster_path") or details.get('poster_path'), width=185)
                                 st.markdown(f'<div class="grid-title" title="{show["name"]}">{show["name"]}</div>', unsafe_allow_html=True)
@@ -806,7 +810,7 @@ with t_soon:
                         if idx < len(soon_mov[:limit]):
                             item = soon_mov[idx]
                             m = item["item"]
-                            days_left = (datetime.strptime(item["date"], '%Y-%m-%d') - datetime.today()).days
+                            days_left = (datetime.strptime(item["date"], '%Y-%m-%d') - get_dubai_time()).days
                             with st.container(border=True):
                                 display_poster(m.get('poster_path'), width=185)
                                 st.markdown(f'<div class="grid-title" title="{m["name"]}">{m["name"]}</div>', unsafe_allow_html=True)
@@ -860,37 +864,33 @@ with t_search:
                                 st.markdown(f'<div class="grid-title" title="{title}">{title}</div>', unsafe_allow_html=True)
                                 
                                 st.markdown('<div class="movie-wall-btn">', unsafe_allow_html=True)
-                                st.markdown('<span class="grid-2-col"></span>', unsafe_allow_html=True)
                                 
                                 is_tv = (search_type == "TV Shows")
                                 added = any(str(x["id"]) == str(item_id) for x in st.session_state.db["shows" if is_tv else "movies"])
                                 
-                                bc1, bc2 = st.columns(2)
-                                with bc1:
-                                    if not added:
-                                        if st.button("➕ ADD", key=f"add_{item_id}_{i+j}", use_container_width=True):
-                                            details = fetch_api(f"https://api.themoviedb.org/3/{'tv' if is_tv else 'movie'}/{item_id}?api_key={TMDB_KEY}")
-                                            if is_tv:
-                                                st.session_state.db["shows"].append({
-                                                    "id": item_id, "name": title, "watched_episodes": [],
-                                                    "poster_path": details.get("poster_path", ""), "first_air_date": details.get("first_air_date", ""),
-                                                    "total_episodes": details.get("number_of_episodes", 1)
-                                                })
-                                            else:
-                                                st.session_state.db["movies"].append({
-                                                    "id": item_id, "name": title, "watched": False,
-                                                    "poster_path": details.get("poster_path", ""), "release_date": details.get("release_date", ""),
-                                                    "runtime": details.get("runtime", 0)
-                                                })
-                                            if save_db(): st.rerun()
-                                    else:
-                                        st.button("✔️ ADDED", key=f"dsb_{item_id}_{i+j}", disabled=True, use_container_width=True)
-                                
-                                with bc2:
-                                    if st.button("ℹ️ INFO", key=f"inf_{item_id}_{i+j}", use_container_width=True):
+                                if not added:
+                                    if st.button("➕ ADD", key=f"add_{item_id}_{i+j}", use_container_width=True):
                                         details = fetch_api(f"https://api.themoviedb.org/3/{'tv' if is_tv else 'movie'}/{item_id}?api_key={TMDB_KEY}")
-                                        if is_tv: manage_show_dialog(item_id, title, details)
-                                        else: show_movie_details(item_id, title, details, is_watched=False)
+                                        if is_tv:
+                                            st.session_state.db["shows"].append({
+                                                "id": item_id, "name": title, "watched_episodes": [],
+                                                "poster_path": details.get("poster_path", ""), "first_air_date": details.get("first_air_date", ""),
+                                                "total_episodes": details.get("number_of_episodes", 1)
+                                            })
+                                        else:
+                                            st.session_state.db["movies"].append({
+                                                "id": item_id, "name": title, "watched": False,
+                                                "poster_path": details.get("poster_path", ""), "release_date": details.get("release_date", ""),
+                                                "runtime": details.get("runtime", 0)
+                                            })
+                                        if save_db(): st.rerun()
+                                else:
+                                    st.button("✔️ ADDED", key=f"dsb_{item_id}_{i+j}", disabled=True, use_container_width=True)
+                                
+                                if st.button("ℹ️ INFO", key=f"inf_{item_id}_{i+j}", use_container_width=True):
+                                    details = fetch_api(f"https://api.themoviedb.org/3/{'tv' if is_tv else 'movie'}/{item_id}?api_key={TMDB_KEY}")
+                                    if is_tv: manage_show_dialog(item_id, title, details)
+                                    else: show_movie_details(item_id, title, details, is_watched=False)
                                 
                                 st.markdown('</div>', unsafe_allow_html=True)
     else:
@@ -918,6 +918,7 @@ with t_search:
                     st.markdown(f'<div class="grid-title" title="{i_title}">{i_title}</div>', unsafe_allow_html=True)
                     
                     st.markdown('<div class="movie-wall-btn">', unsafe_allow_html=True)
+                    
                     item_id = item["id"]
                     added = False
                     if c_type == "tv": added = any(str(s["id"]) == str(item_id) for s in st.session_state.db["shows"])
@@ -977,7 +978,7 @@ with t_search:
             if trend_mov.get("results"):
                 render_carousel("🎬 Trending Movies", trend_mov["results"], "movie")
 
-            current_date = datetime.today()
+            current_date = get_dubai_time()
             start_month = current_date.replace(day=1).strftime('%Y-%m-%d')
             last_day = calendar.monthrange(current_date.year, current_date.month)[1]
             end_month_str = current_date.replace(day=last_day).strftime('%Y-%m-%d')
@@ -1228,10 +1229,10 @@ with t_profile:
     last_12_months = []
     try:
         for i in range(11, -1, -1):
-            last_12_months.append(datetime.today() - pd.DateOffset(months=i))
+            last_12_months.append(get_dubai_time() - pd.DateOffset(months=i))
     except:
         for i in range(11, -1, -1):
-            last_12_months.append(datetime.today() - timedelta(days=30*i))
+            last_12_months.append(get_dubai_time() - timedelta(days=30*i))
             
     data_tv = []
     data_mov = []
@@ -1389,7 +1390,7 @@ with t_profile:
                                         })
                                         if is_watched:
                                             w_dt_raw = m.get("watched_at")
-                                            w_dt = parse_tvtime_date(w_dt_raw) if w_dt_raw else datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                                            w_dt = parse_tvtime_date(w_dt_raw) if w_dt_raw else get_dubai_time().strftime("%Y-%m-%d %H:%M:%S")
                                             m_key = datetime.strptime(w_dt, "%Y-%m-%d %H:%M:%S").strftime("%Y-%m")
                                             
                                             new_db["analytics"].setdefault(m_key, {"tv": 0, "movie": 0})
@@ -1440,7 +1441,7 @@ with t_profile:
                                                 e_code = f"S{s_num}E{ep.get('number')}"
                                                 watched_eps.append(e_code)
                                                 w_dt_raw = ep.get("watched_at")
-                                                w_dt = parse_tvtime_date(w_dt_raw) if w_dt_raw else datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                                                w_dt = parse_tvtime_date(w_dt_raw) if w_dt_raw else get_dubai_time().strftime("%Y-%m-%d %H:%M:%S")
                                                 m_key = datetime.strptime(w_dt, "%Y-%m-%d %H:%M:%S").strftime("%Y-%m")
                                                 
                                                 new_db["analytics"].setdefault(m_key, {"tv": 0, "movie": 0})
