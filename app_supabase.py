@@ -7,6 +7,7 @@ import re
 import calendar
 import random
 from datetime import datetime, timedelta
+from st_keyup import st_keyup
 
 # Mobile-friendly layout configuration
 st.set_page_config(page_title="My TV Time", layout="centered", initial_sidebar_state="collapsed")
@@ -324,7 +325,8 @@ HEADERS = {
 }
 TODAY = get_dubai_time().strftime('%Y-%m-%d')
 
-@st.cache_data(ttl=3600)
+# --- PERSISTENT DISK CACHING (12 HOURS) ---
+@st.cache_data(ttl=43200, persist="disk")
 def fetch_api(url):
     try:
         r = requests.get(url, timeout=5)
@@ -659,15 +661,32 @@ def show_movie_details(m_id, m_name, details=None, is_watched=False):
         st.rerun()
 
 # ==========================================
-# GLOBAL UNDO TOAST CONTROLLER (ALWAYS VISIBLE AT TOP)
+# GLOBAL UNDO TOAST CONTROLLER (AUTO-FADING)
 # ==========================================
 if st.session_state.last_action:
     la = st.session_state.last_action
-    st.success(f"Watched! ✅")
-    if st.button(f"↩️ Undo Last Action", use_container_width=True):
-        remove_watch(la["t"], la["i"], la["e"])
-        st.session_state.last_action = None
-        st.rerun()
+    
+    st.markdown("""
+    <style>
+        @keyframes fadeOutUndo {
+            0% { opacity: 1; max-height: 200px; transform: scaleY(1); }
+            80% { opacity: 1; max-height: 200px; transform: scaleY(1); }
+            100% { opacity: 0; max-height: 0px; margin: 0; padding: 0; overflow: hidden; pointer-events: none; transform: scaleY(0); border: none; }
+        }
+        div[data-testid="stVerticalBlock"]:has(#undo-wrapper) {
+            animation: fadeOutUndo 5s forwards !important;
+            transform-origin: top;
+        }
+    </style>
+    """, unsafe_allow_html=True)
+    
+    with st.container():
+        st.markdown('<span id="undo-wrapper"></span>', unsafe_allow_html=True)
+        st.success(f"Watched! ✅")
+        if st.button(f"↩️ Undo Last Action", use_container_width=True):
+            remove_watch(la["t"], la["i"], la["e"])
+            st.session_state.last_action = None
+            st.rerun()
 
 # --- APP NAVIGATION BAR ---
 t_next, t_soon, t_search, t_tv, t_movies, t_profile = st.tabs(["🔥 Next", "📅 Soon", "🔍 Search", "📺 TV", "🎬 Movies", "👤 Profile"])
@@ -950,7 +969,9 @@ with t_soon:
 # ==========================================
 with t_search:
     st.markdown("### Discover")
-    search_query = st.text_input("Search", key="search_query_input", placeholder="Search TV shows, movies, actors...", label_visibility="collapsed")
+    
+    # --- DYNAMIC SEARCH-AS-YOU-TYPE ENGINE ---
+    search_query = st_keyup("Search", debounce=2000, key="search_query_input", placeholder="Search TV shows, movies, actors...", label_visibility="collapsed")
 
     if search_query:
         # --- SEARCH MODE (3x3 GRID) ---
