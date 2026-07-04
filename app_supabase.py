@@ -438,6 +438,18 @@ if "db" not in st.session_state:
     if db_data is None: st.stop()
     st.session_state.db = db_data
 
+# --- HISTORY RECOVERY SYSTEM (PREVENTS DUPLICATE OR ORPHAN DATA) ---
+def get_watched_from_history(item_type, item_id):
+    t_flag = "s" if item_type == "tv" else "m"
+    watched = []
+    for h in st.session_state.db.get("history", []):
+        if h.get("t") == t_flag and str(h.get("i")) == str(item_id):
+            if item_type == "tv" and h.get("e"): 
+                watched.append(h.get("e"))
+            elif item_type == "movie": 
+                return True
+    return list(set(watched)) if item_type == "tv" else False
+
 # --- CENTRALIZED HISTORY LOGGER ---
 def log_watch(item_type, item_id, detail=""):
     now_str = get_dubai_time().strftime('%Y-%m-%d %H:%M:%S')
@@ -541,8 +553,14 @@ def show_episode_details(show_id, show_name, ep_code, ep_data=None, is_watched=F
     combined_cast = credits.get("cast", []) + ep_data.get("guest_stars", [])
     show_cast_horizontal(combined_cast, limit=15)
     st.divider()
+    
+    current_show = next((s for s in st.session_state.db["shows"] if str(s["id"]) == str(show_id)), None)
+    btn_disabled = (current_show is None)
+    if btn_disabled:
+        st.warning("➕ Add this show to your library to track episodes!")
+        
     btn_label = "❌ Unmark as Watched" if is_watched else "✅ Mark as Watched"
-    if st.button(btn_label, use_container_width=True, key=f"dlg_btn_tv_{show_id}_{ep_code}"):
+    if st.button(btn_label, use_container_width=True, key=f"dlg_btn_tv_{show_id}_{ep_code}", disabled=btn_disabled):
         for s in st.session_state.db["shows"]:
             if str(s["id"]) == str(show_id):
                 if is_watched and ep_code in s["watched_episodes"]: 
@@ -571,11 +589,15 @@ def manage_show_dialog(show_id, show_name, details):
             
     st.divider()
     st.markdown("#### Episodes")
+    
+    current_show = next((s for s in st.session_state.db["shows"] if str(s["id"]) == str(show_id)), None)
+    if not current_show:
+        st.warning("➕ Add this show to your library to track episodes!")
+        
     s_nums = [s["season_number"] for s in details.get("seasons", []) if s["season_number"] > 0]
     if s_nums:
         sel_s = st.selectbox("Select Season", s_nums, key=f"dlg_s_{show_id}")
         s_data = fetch_api(f"https://api.themoviedb.org/3/tv/{show_id}/season/{sel_s}?api_key={TMDB_KEY}")
-        current_show = next((s for s in st.session_state.db["shows"] if str(s["id"]) == str(show_id)), None)
         watched_list = current_show.get("watched_episodes", []) if current_show else []
         for ep in s_data.get("episodes", []):
             e_code = f"S{sel_s}E{ep['episode_number']}"
@@ -594,7 +616,7 @@ def manage_show_dialog(show_id, show_name, details):
                         break
             ep_col1, ep_col2 = st.columns([6, 1])
             with ep_col1:
-                st.checkbox(f"**E{ep['episode_number']}.** {ep.get('name', 'Episode')}", value=is_watched, key=f"chk_dlg_{show_id}_{e_code}", on_change=on_check)
+                st.checkbox(f"**E{ep['episode_number']}.** {ep.get('name', 'Episode')}", value=is_watched, key=f"chk_dlg_{show_id}_{e_code}", on_change=on_check, disabled=(current_show is None))
             if st.session_state.get(info_key, False):
                 with st.container(border=True):
                     display_poster(ep.get("still_path"), width=500)
@@ -620,8 +642,14 @@ def show_movie_details(m_id, m_name, details=None, is_watched=False):
     credits = fetch_api(f"https://api.themoviedb.org/3/movie/{m_id}/credits?api_key={TMDB_KEY}")
     show_cast_horizontal(credits.get("cast", []), limit=15)
     st.divider()
+    
+    current_movie = next((m for m in st.session_state.db["movies"] if str(m["id"]) == str(m_id)), None)
+    btn_disabled = (current_movie is None)
+    if btn_disabled:
+        st.warning("➕ Add this movie to your library to mark it as watched!")
+        
     btn_label = "❌ Unmark as Watched" if is_watched else "✅ Mark as Watched"
-    if st.button(btn_label, use_container_width=True, key=f"dlg_btn_mov_{m_id}"):
+    if st.button(btn_label, use_container_width=True, key=f"dlg_btn_mov_{m_id}", disabled=btn_disabled):
         for m in st.session_state.db["movies"]:
             if str(m["id"]) == str(m_id):
                 m["watched"] = not is_watched
@@ -929,13 +957,13 @@ with t_search:
                                         details = fetch_api(f"https://api.themoviedb.org/3/{'tv' if is_tv else 'movie'}/{item_id}?api_key={TMDB_KEY}")
                                         if is_tv:
                                             st.session_state.db["shows"].append({
-                                                "id": item_id, "name": title, "watched_episodes": [],
+                                                "id": item_id, "name": title, "watched_episodes": get_watched_from_history("tv", item_id),
                                                 "poster_path": details.get("poster_path", ""), "first_air_date": details.get("first_air_date", ""),
                                                 "total_episodes": details.get("number_of_episodes", 1)
                                             })
                                         else:
                                             st.session_state.db["movies"].append({
-                                                "id": item_id, "name": title, "watched": False,
+                                                "id": item_id, "name": title, "watched": get_watched_from_history("movie", item_id),
                                                 "poster_path": details.get("poster_path", ""), "release_date": details.get("release_date", ""),
                                                 "runtime": details.get("runtime", 0)
                                             })
@@ -985,13 +1013,13 @@ with t_search:
                             details = fetch_api(f"https://api.themoviedb.org/3/{c_type}/{item_id}?api_key={TMDB_KEY}")
                             if c_type == "tv":
                                 st.session_state.db["shows"].append({
-                                    "id": item_id, "name": i_title, "watched_episodes": [],
+                                    "id": item_id, "name": i_title, "watched_episodes": get_watched_from_history("tv", item_id),
                                     "poster_path": details.get("poster_path", ""), "first_air_date": details.get("first_air_date", ""),
                                     "total_episodes": details.get("number_of_episodes", 1)
                                 })
                             else:
                                 st.session_state.db["movies"].append({
-                                    "id": item_id, "name": i_title, "watched": False,
+                                    "id": item_id, "name": i_title, "watched": get_watched_from_history("movie", item_id),
                                     "poster_path": details.get("poster_path", ""), "release_date": details.get("release_date", ""),
                                     "runtime": details.get("runtime", 0)
                                 })
@@ -1331,9 +1359,15 @@ with t_profile:
                 st.markdown(f"<h4 style='color: #FFC107; margin-top: 1rem; margin-bottom: 0.5rem;'>{month_str}</h4>", unsafe_allow_html=True)
                 for h, dt, h_idx in items:
                     show = next((s for s in st.session_state.db["shows"] if str(s["id"]) == str(h.get("i"))), None)
-                    s_name = show["name"] if show else "Unknown Series"
+                    if show:
+                        s_name = show["name"]
+                        poster = show.get("poster_path", "")
+                    else:
+                        s_data = fetch_api(f"https://api.themoviedb.org/3/tv/{h.get('i')}?api_key={TMDB_KEY}")
+                        s_name = s_data.get("name", "Unknown Series")
+                        poster = s_data.get("poster_path", "")
+                        
                     ep_code = h.get('e', '')
-                    poster = show.get("poster_path", "") if show else ""
                     poster_url = f"https://image.tmdb.org/t/p/w92{poster}" if poster else "https://via.placeholder.com/92x138/222222/555555?text=No+Img"
                     
                     html = f"""
@@ -1368,8 +1402,14 @@ with t_profile:
                 st.markdown(f"<h4 style='color: #FFC107; margin-top: 1rem; margin-bottom: 0.5rem;'>{month_str}</h4>", unsafe_allow_html=True)
                 for h, dt, h_idx in items:
                     mov = next((m for m in st.session_state.db["movies"] if str(m["id"]) == str(h.get("i"))), None)
-                    m_name = mov["name"] if mov else "Unknown Movie"
-                    poster = mov.get("poster_path", "") if mov else ""
+                    if mov:
+                        m_name = mov["name"]
+                        poster = mov.get("poster_path", "")
+                    else:
+                        m_data = fetch_api(f"https://api.themoviedb.org/3/movie/{h.get('i')}?api_key={TMDB_KEY}")
+                        m_name = m_data.get("title", "Unknown Movie")
+                        poster = m_data.get("poster_path", "")
+                        
                     poster_url = f"https://image.tmdb.org/t/p/w92{poster}" if poster else "https://via.placeholder.com/92x138/222222/555555?text=No+Img"
                     
                     html = f"""
