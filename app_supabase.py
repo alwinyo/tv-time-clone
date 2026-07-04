@@ -700,24 +700,52 @@ with t_next:
             if w_eps >= t_eps and t_eps > 0: continue
             
             details = fetch_api(f"https://api.themoviedb.org/3/tv/{show['id']}?api_key={TMDB_KEY}")
-            found_next = False
             watched_set = set(show.get("watched_episodes", []))
-            seasons = [s for s in details.get("seasons", []) if s["season_number"] > 0]
             
-            for s_info in seasons:
-                if found_next: break
+            highest_s, highest_e = -1, -1
+            for code in watched_set:
+                try:
+                    s_num, e_num = int(code.split('E')[0].replace('S','')), int(code.split('E')[1])
+                    if s_num > highest_s or (s_num == highest_s and e_num > highest_e):
+                        highest_s, highest_e = s_num, e_num
+                except: pass
+
+            seasons = [s for s in details.get("seasons", []) if s["season_number"] > 0]
+            start_s = max(1, highest_s)
+            
+            candidate_after_max = None
+            for s_info in [s for s in seasons if s["season_number"] >= start_s]:
                 s_data = fetch_api(f"https://api.themoviedb.org/3/tv/{show['id']}/season/{s_info['season_number']}?api_key={TMDB_KEY}")
                 for ep in s_data.get("episodes", []):
                     ep_code = f"S{s_info['season_number']}E{ep['episode_number']}"
                     air_date = ep.get("air_date", "")
                     if ep_code not in watched_set and air_date and air_date <= TODAY:
-                        is_rec = ("s", str(show["id"])) in recent_active_ids
-                        up_next_tv.append({"item": show, "details": details, "ep": ep, "code": ep_code, "date": air_date, "is_rec": is_rec})
-                        found_next = True; break
+                        s_n, e_n = s_info['season_number'], ep['episode_number']
+                        if s_n > highest_s or (s_n == highest_s and e_n > highest_e):
+                            is_rec = ("s", str(show["id"])) in recent_active_ids
+                            candidate_after_max = {"item": show, "details": details, "ep": ep, "code": ep_code, "date": air_date, "is_rec": is_rec, "is_skipped": False}
+                            break
+                if candidate_after_max: break
+                
+            if candidate_after_max:
+                up_next_tv.append(candidate_after_max)
+            else:
+                candidate_skipped = None
+                for s_info in [s for s in seasons if s["season_number"] < start_s]:
+                    s_data = fetch_api(f"https://api.themoviedb.org/3/tv/{show['id']}/season/{s_info['season_number']}?api_key={TMDB_KEY}")
+                    for ep in s_data.get("episodes", []):
+                        ep_code = f"S{s_info['season_number']}E{ep['episode_number']}"
+                        air_date = ep.get("air_date", "")
+                        if ep_code not in watched_set and air_date and air_date <= TODAY:
+                            candidate_skipped = {"item": show, "details": details, "ep": ep, "code": ep_code, "date": air_date, "is_rec": False, "is_skipped": True}
+                            break
+                    if candidate_skipped: break
+                if candidate_skipped:
+                    up_next_tv.append(candidate_skipped)
 
         if next_sort == "Alphabetical": up_next_tv.sort(key=lambda x: x["item"]["name"].lower())
         elif next_sort == "Release Date": up_next_tv.sort(key=lambda x: x["date"] or "1900-01-01", reverse=True)
-        elif next_sort == "Smart Priority": up_next_tv.sort(key=lambda x: (x["is_rec"], x["date"] or "1900-01-01"), reverse=True)
+        elif next_sort == "Smart Priority": up_next_tv.sort(key=lambda x: (not x.get("is_skipped", False), x["is_rec"], x["date"] or "1900-01-01"), reverse=True)
 
         if not up_next_tv: 
             st.info("You are completely caught up on series! 🎉")
