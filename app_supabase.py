@@ -11,7 +11,7 @@ from datetime import datetime, timedelta
 # Mobile-friendly layout configuration
 st.set_page_config(page_title="My TV Time", layout="centered", initial_sidebar_state="collapsed")
 
-# --- MOBILE-FIRST TARGETED CSS OVERHAUL ---
+# --- MOBILE-FIRST TARGETED CSS OVERHAUL (PREMIUM GLASSMORPHISM) ---
 st.html("""
 <style>
     /* --- STREAMLIT UI ANNIHILATION --- */
@@ -26,6 +26,13 @@ st.html("""
     [data-testid="stStatusWidget"] {visibility: hidden !important; display: none !important;}
     [data-testid="stHeader"] {visibility: hidden !important; display: none !important;}
     
+    /* --- PREMIUM OLED BACKGROUND --- */
+    .stApp {
+        background-color: #050505 !important;
+        background-image: radial-gradient(circle at 50% 0%, #1A1D24 0%, #050505 80%) !important;
+        color: #EDEDED !important;
+    }
+    
     /* True Mobile Edge-to-Edge Layout */
     .block-container { 
         padding: 1rem 0.5rem 5rem 0.5rem !important; 
@@ -34,7 +41,7 @@ st.html("""
     }
     
     img { border-radius: 8px !important; }
-    [data-testid="stProgressBar"] > div > div { background-color: #FFC107 !important; }
+    [data-testid="stProgressBar"] > div > div { background: linear-gradient(135deg, #FFD54F 0%, #FFC107 100%) !important; }
     
     /* --- SLICK NATIVE iOS-STYLE FULL WIDTH CONTROLS --- */
     div[data-testid="stRadio"] { width: 100% !important; }
@@ -43,8 +50,10 @@ st.html("""
     div[role="radiogroup"] {
         display: flex !important;
         flex-direction: row !important;
-        background-color: rgba(255, 255, 255, 0.05) !important;
+        background-color: rgba(15, 17, 22, 0.8) !important;
         border-radius: 16px !important;
+        border: 1px solid rgba(255, 255, 255, 0.05) !important;
+        box-shadow: inset 0 2px 6px rgba(0,0,0,0.5) !important;
         padding: 4px !important;
         width: 100% !important;
         box-sizing: border-box !important;
@@ -56,17 +65,22 @@ st.html("""
         padding: 8px 0px !important;
         border-radius: 12px !important;
         margin: 0 !important;
-        transition: background-color 0.2s !important;
+        transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1) !important;
         min-width: 0 !important;
     }
     div[role="radiogroup"] > label > div:first-child { display: none !important; }
-    div[role="radiogroup"] > label[data-checked="true"] { background-color: #FFC107 !important; }
+    
+    /* Premium Gold Glowing Active State */
+    div[role="radiogroup"] > label[data-checked="true"] { 
+        background: linear-gradient(135deg, #FFD54F 0%, #FFC107 100%) !important; 
+        box-shadow: 0 4px 12px rgba(255, 193, 7, 0.25) !important;
+    }
     div[role="radiogroup"] > label[data-checked="true"] p { color: #000 !important; font-weight: 800 !important; }
     div[role="radiogroup"] > label p { 
         font-size: 0.8rem !important; 
         font-weight: 600 !important; 
         margin: 0 !important; 
-        color: #aaa !important; 
+        color: #888 !important; 
         white-space: nowrap !important;
         overflow: hidden !important;
         text-overflow: clip !important;
@@ -74,17 +88,20 @@ st.html("""
     
     /* Make standard Selectboxes match the Pill Design */
     div[data-baseweb="select"] > div {
-        background-color: rgba(255, 255, 255, 0.05) !important;
-        border-radius: 16px !important;
-        border: none !important;
+        background-color: rgba(15, 17, 22, 0.8) !important;
+        border-radius: 14px !important;
+        border: 1px solid rgba(255, 255, 255, 0.08) !important;
+        box-shadow: inset 0 2px 6px rgba(0,0,0,0.5) !important;
         padding: 4px !important;
     }
     
-    /* Sleek Native-App Cards */
+    /* --- PREMIUM GLASSMORPHISM CARDS --- */
     [data-testid="stVerticalBlockBorderWrapper"] {
+        background: linear-gradient(145deg, rgba(30, 32, 40, 0.4) 0%, rgba(15, 17, 22, 0.6) 100%) !important;
+        backdrop-filter: blur(10px) !important;
         border-radius: 12px !important; 
-        border: 1px solid rgba(200, 200, 200, 0.2) !important;
-        box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.05) !important; 
+        border: 1px solid rgba(255, 255, 255, 0.08) !important;
+        box-shadow: 0px 8px 24px rgba(0, 0, 0, 0.4) !important; 
         padding: 0.3rem !important;
     }
     
@@ -95,57 +112,63 @@ st.html("""
     
     /* --- PRIMARY ACTION OVERRIDE (Tabs & Standard Buttons) --- */
     button[data-testid="baseButton-primary"] { 
-        background-color: #FFC107 !important; 
+        background: linear-gradient(135deg, #FFD54F 0%, #FFC107 100%) !important; 
         color: #000 !important; 
         border: none !important; 
         border-radius: 20px !important;
-        font-weight: 600 !important;
+        font-weight: 700 !important;
+        box-shadow: 0 4px 12px rgba(255, 193, 7, 0.3) !important;
     }
     button[data-testid="baseButton-secondary"] { 
-        background-color: #222 !important; 
+        background-color: rgba(255, 255, 255, 0.05) !important; 
         color: #ccc !important; 
-        border: 1px solid #444 !important; 
+        border: 1px solid rgba(255, 255, 255, 0.1) !important; 
         border-radius: 20px !important;
         font-weight: 600 !important;
     }
     
     /* --- SLEEK FROSTED BLOCK BUTTONS (SCOPED TO POSTERS ONLY) --- */
     .movie-wall-btn div.stButton > button {
-        background-color: rgba(255, 255, 255, 0.08) !important;
-        border: 1px solid rgba(255, 255, 255, 0.05) !important;
+        background: rgba(255, 255, 255, 0.03) !important;
+        backdrop-filter: blur(5px) !important;
+        border: 1px solid rgba(255, 255, 255, 0.08) !important;
         border-radius: 6px !important; 
         color: #E0E0E0 !important;
-        font-size: 0.50rem !important; /* Shrunk slightly to guarantee fit */
+        font-size: 0.50rem !important;
         font-weight: 700 !important;
-        padding: 4px 1px !important; /* Ultra-tight padding */
+        padding: 4px 1px !important;
         margin: 0 !important;
         text-transform: uppercase;
-        letter-spacing: -0.2px !important; /* Pull letters together */
+        letter-spacing: -0.2px !important; 
         min-height: 1.8rem !important; 
         line-height: 1;
         width: 100% !important;
-        white-space: nowrap !important; /* Force tick marks on the same line */
+        white-space: nowrap !important;
         overflow: hidden !important;
         text-overflow: clip !important;
         transition: all 0.2s !important;
     }
     .movie-wall-btn div.stButton > button:active { 
         transform: scale(0.95); 
-        background-color: #FFC107 !important;
+        background: linear-gradient(135deg, #FFD54F 0%, #FFC107 100%) !important; 
         color: #000 !important;
         border-color: #FFC107 !important;
+        box-shadow: 0 0 10px rgba(255, 193, 7, 0.5) !important;
     }
     
-    /* --- SYMMETRICAL TOP NAVIGATION TABS (FORCED FIT) --- */
+    /* --- SYMMETRICAL TOP NAVIGATION TABS (PREMIUM HEADER) --- */
     div[data-testid="stTabs"] > div[data-baseweb="tab-list"],
     div[data-testid="stTabs"] > div[role="tablist"] {
         display: flex !important; 
         width: 100vw !important;
         max-width: 100% !important;
         margin-left: -0.5rem !important; 
-        padding: 0 !important;
+        padding: 0 0 5px 0 !important;
         gap: 0 !important; 
         overflow-x: hidden !important; 
+        background-color: rgba(8, 9, 12, 0.85) !important;
+        backdrop-filter: blur(12px) !important;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
     }
     
     div[data-testid="stTabs"] button[role="tab"] {
@@ -217,6 +240,9 @@ st.html("""
         /* Widescreen Pop-up Dialogs */
         div[role="dialog"] {
             width: 95vw !important; max-width: 95vw !important; margin: 0 auto !important; padding: 1rem !important;
+            background: rgba(15, 17, 22, 0.95) !important;
+            backdrop-filter: blur(20px) !important;
+            border: 1px solid rgba(255, 255, 255, 0.1) !important;
         }
     }
     
@@ -227,10 +253,15 @@ st.html("""
     }
     
     .badge {
-        display: inline-block; background-color: #333333; color: #FFFFFF; padding: 3px 8px;
+        display: inline-block; background-color: rgba(255,255,255,0.1); color: #FFFFFF; padding: 3px 8px;
         border-radius: 12px; font-size: 0.7rem; font-weight: 600; margin-right: 4px; margin-bottom: 6px;
+        border: 1px solid rgba(255,255,255,0.05);
     }
-    .badge-gold { background-color: #FFC107; color: #000000; }
+    .badge-gold { 
+        background: linear-gradient(135deg, #FFD54F 0%, #FFC107 100%); 
+        color: #000000; 
+        border: none;
+    }
     
     /* Edge-to-Edge Poster Magic */
     .movie-poster-sharp img { border-radius: 6px !important; aspect-ratio: 2/3; object-fit: cover; }
@@ -841,7 +872,7 @@ with t_search:
     search_query = st.text_input("Search", key="search_query_input", placeholder="Search TV shows, movies, actors...", label_visibility="collapsed")
 
     if search_query:
-        # --- SEARCH MODE (3x3 GRID) ---
+        # --- SEARCH MODE ---
         search_type = st.selectbox("Search in:", ["TV Shows", "Movies"], label_visibility="collapsed", key="search_filter_box")
         endpoint = "tv" if search_type == "TV Shows" else "movie"
         res = fetch_api(f"https://api.themoviedb.org/3/search/{endpoint}?api_key={TMDB_KEY}&query={search_query}")
