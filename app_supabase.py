@@ -36,42 +36,35 @@ st.html("""
     img { border-radius: 8px !important; }
     [data-testid="stProgressBar"] > div > div { background-color: #FFC107 !important; }
     
-    /* --- SLICK NATIVE iOS-STYLE SEGMENTED CONTROLS (RADIO BUTTONS) --- */
+    /* --- SLICK NATIVE iOS-STYLE FULL WIDTH CONTROLS --- */
     div[role="radiogroup"] {
         display: flex !important;
         flex-direction: row !important;
         background-color: rgba(255, 255, 255, 0.05) !important;
-        border-radius: 20px !important;
+        border-radius: 16px !important;
         padding: 4px !important;
-        gap: 0px !important;
-        justify-content: space-around !important;
+        width: 100% !important;
     }
     div[role="radiogroup"] > label {
         flex: 1 !important;
         display: flex !important;
         justify-content: center !important;
         padding: 8px 12px !important;
-        border-radius: 16px !important;
+        border-radius: 12px !important;
         margin: 0 !important;
         transition: background-color 0.2s !important;
     }
-    /* Hide the actual radio circle */
-    div[role="radiogroup"] > label > div:first-child {
-        display: none !important;
-    }
-    /* Style the checked state */
-    div[role="radiogroup"] > label[data-checked="true"] {
-        background-color: #FFC107 !important;
-    }
-    div[role="radiogroup"] > label[data-checked="true"] p {
-        color: #000 !important;
-        font-weight: 800 !important;
-    }
-    div[role="radiogroup"] > label p {
-        font-size: 0.75rem !important;
-        font-weight: 600 !important;
-        margin: 0 !important;
-        color: #aaa !important;
+    div[role="radiogroup"] > label > div:first-child { display: none !important; }
+    div[role="radiogroup"] > label[data-checked="true"] { background-color: #FFC107 !important; }
+    div[role="radiogroup"] > label[data-checked="true"] p { color: #000 !important; font-weight: 800 !important; }
+    div[role="radiogroup"] > label p { font-size: 0.8rem !important; font-weight: 600 !important; margin: 0 !important; color: #aaa !important; }
+    
+    /* Make standard Selectboxes match the Pill Design */
+    div[data-baseweb="select"] > div {
+        background-color: rgba(255, 255, 255, 0.05) !important;
+        border-radius: 16px !important;
+        border: none !important;
+        padding: 4px !important;
     }
     
     /* Sleek Native-App Cards */
@@ -160,16 +153,6 @@ st.html("""
         div[data-testid="stColumn"]:has(.grid-3-col) {
             width: 32% !important; flex: 1 1 32% !important; min-width: 0 !important; padding: 0 !important; display: block !important;
         }
-
-        /* STRICT 2-COLUMN LOCK (Toggles) */
-        div[data-testid="stHorizontalBlock"]:has(.grid-2-col),
-        div[data-testid="stColumns"]:has(.grid-2-col) {
-            display: flex !important; flex-direction: row !important; flex-wrap: nowrap !important; gap: 2% !important; 
-        }
-        div[data-testid="column"]:has(.grid-2-col),
-        div[data-testid="stColumn"]:has(.grid-2-col) {
-            width: 49% !important; flex: 1 1 49% !important; min-width: 0 !important; padding: 0 !important; display: block !important;
-        }
         
         /* Widescreen Pop-up Dialogs */
         div[role="dialog"] {
@@ -207,6 +190,9 @@ if "soon_tv_limit" not in st.session_state: st.session_state.soon_tv_limit = 30
 if "soon_mov_limit" not in st.session_state: st.session_state.soon_mov_limit = 30
 if "hist_tv_limit" not in st.session_state: st.session_state.hist_tv_limit = 20
 if "hist_mov_limit" not in st.session_state: st.session_state.hist_mov_limit = 20
+if "tv_lib_limit" not in st.session_state: st.session_state.tv_lib_limit = 50
+if "mov_lib_limit" not in st.session_state: st.session_state.mov_lib_limit = 50
+if "c_limits" not in st.session_state: st.session_state.c_limits = {}
 if "last_action" not in st.session_state: st.session_state.last_action = None
 
 # --- SUPABASE DATABASE PIPELINE ---
@@ -548,13 +534,9 @@ t_next, t_soon, t_search, t_tv, t_movies, t_profile = st.tabs(["🔥 Next", "�
 # ==========================================
 with t_next:
     st.markdown("### Up Next")
-    col1, col2 = st.columns([1, 1])
-    with col1:
-        st.markdown('<span class="grid-2-col"></span>', unsafe_allow_html=True)
-        next_filter = st.radio("Category", ["📺 Series", "🎬 Movies"], horizontal=True, label_visibility="collapsed", key="next_filter_radio")
-    with col2:
-        st.markdown('<span class="grid-2-col"></span>', unsafe_allow_html=True)
-        next_sort = st.selectbox("Sort", ["Smart Priority", "Release Date", "Alphabetical"], label_visibility="collapsed", key="next_sort_box")
+    next_filter = st.radio("Category", ["📺 Series", "🎬 Movies"], horizontal=True, label_visibility="collapsed", key="next_filter_radio")
+    st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
+    next_sort = st.selectbox("Sort", ["Smart Priority", "Release Date", "Alphabetical"], label_visibility="collapsed", key="next_sort_box")
     st.divider()
     
     try: fifteen_days_ago = datetime.now() - pd.DateOffset(days=15)
@@ -680,13 +662,9 @@ with t_next:
 # ==========================================
 with t_soon:
     st.markdown("### Upcoming Releases")
-    col1, col2 = st.columns([1, 1])
-    with col1:
-        st.markdown('<span class="grid-2-col"></span>', unsafe_allow_html=True)
-        soon_filter = st.radio("Category", ["📺 Series", "🎬 Movies"], horizontal=True, label_visibility="collapsed", key="soon_filter_radio")
-    with col2:
-        st.markdown('<span class="grid-2-col"></span>', unsafe_allow_html=True)
-        soon_sort = st.selectbox("Sort", ["Release Date", "Alphabetical"], label_visibility="collapsed", key="soon_sort_box")
+    soon_filter = st.radio("Category", ["📺 Series", "🎬 Movies"], horizontal=True, label_visibility="collapsed", key="soon_filter_radio")
+    st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
+    soon_sort = st.selectbox("Sort", ["Release Date", "Alphabetical"], label_visibility="collapsed", key="soon_sort_box")
     st.divider()
     
     if soon_filter == "📺 Series":
@@ -846,15 +824,22 @@ with t_search:
     else:
         # --- DISCOVER MODE (NETFLIX-STYLE FEED) ---
         genre_options = ["🔥 Trending", "🤣 Comedy", "💥 Action", "🐉 Sci-Fi/Fantasy", "🔪 Thriller", "👻 Horror"]
-        selected_genre = st.radio("Filters", genre_options, horizontal=True, label_visibility="collapsed")
+        selected_genre = st.selectbox("Filters", genre_options, label_visibility="collapsed")
         st.divider()
 
         def render_carousel(title, items, c_type):
             if not items: return
             st.markdown(f"<h5 style='margin-bottom:0;'>{title}</h5>", unsafe_allow_html=True)
-            # Create exact column count to prevent Streamlit from adding ghost spacing
-            cols = st.columns(len(items[:10]))
-            for idx, item in enumerate(items[:10]):
+            
+            limit = st.session_state.c_limits.get(title, 10)
+            render_items = items[:limit]
+            show_load_more = limit < len(items)
+            
+            # Create exact column count to force horizontal scroll without breaking
+            num_cols = len(render_items) + (1 if show_load_more else 0)
+            cols = st.columns(num_cols)
+            
+            for idx, item in enumerate(render_items):
                 with cols[idx]:
                     st.markdown('<span class="carousel-marker"></span>', unsafe_allow_html=True)
                     display_poster(item.get("poster_path"), width=154)
@@ -863,32 +848,46 @@ with t_search:
                     
                     st.markdown('<div class="movie-wall-btn">', unsafe_allow_html=True)
                     item_id = item["id"]
-                    if c_type == "tv":
-                        if not any(str(s["id"]) == str(item_id) for s in st.session_state.db["shows"]):
-                            if st.button("➕ Add", key=f"c_add_tv_{item_id}_{idx}", use_container_width=True):
-                                details = fetch_api(f"https://api.themoviedb.org/3/tv/{item_id}?api_key={TMDB_KEY}")
+                    
+                    added = False
+                    if c_type == "tv": added = any(str(s["id"]) == str(item_id) for s in st.session_state.db["shows"])
+                    else: added = any(str(m["id"]) == str(item_id) for m in st.session_state.db["movies"])
+                        
+                    if not added:
+                        if st.button("➕ Add", key=f"c_add_{c_type}_{item_id}_{idx}", use_container_width=True):
+                            details = fetch_api(f"https://api.themoviedb.org/3/{c_type}/{item_id}?api_key={TMDB_KEY}")
+                            if c_type == "tv":
                                 st.session_state.db["shows"].append({
                                     "id": item_id, "name": i_title, "watched_episodes": [],
                                     "poster_path": details.get("poster_path", ""), "first_air_date": details.get("first_air_date", ""),
                                     "total_episodes": details.get("number_of_episodes", 1)
                                 })
-                                if save_db(): st.rerun()
-                        else: st.button("✔️ Added", key=f"c_dsb_tv_{item_id}_{idx}", disabled=True, use_container_width=True)
-                    else:
-                        if not any(str(m["id"]) == str(item_id) for m in st.session_state.db["movies"]):
-                            if st.button("➕ Add", key=f"c_add_mov_{item_id}_{idx}", use_container_width=True):
-                                details = fetch_api(f"https://api.themoviedb.org/3/movie/{item_id}?api_key={TMDB_KEY}")
+                            else:
                                 st.session_state.db["movies"].append({
                                     "id": item_id, "name": i_title, "watched": False,
                                     "poster_path": details.get("poster_path", ""), "release_date": details.get("release_date", ""),
                                     "runtime": details.get("runtime", 0)
                                 })
-                                if save_db(): st.rerun()
-                        else: st.button("✔️ Added", key=f"c_dsb_mov_{item_id}_{idx}", disabled=True, use_container_width=True)
+                            if save_db(): st.rerun()
+                    else: 
+                        st.button("✔️ Added", key=f"c_dsb_{c_type}_{item_id}_{idx}", disabled=True, use_container_width=True)
+                    
+                    if st.button("ℹ️ Info", key=f"c_inf_{c_type}_{item_id}_{idx}", use_container_width=True):
+                        details = fetch_api(f"https://api.themoviedb.org/3/{c_type}/{item_id}?api_key={TMDB_KEY}")
+                        if c_type == "tv": manage_show_dialog(item_id, i_title, details)
+                        else: show_movie_details(item_id, i_title, details, is_watched=False)
+                            
                     st.markdown('</div>', unsafe_allow_html=True)
+            
+            if show_load_more:
+                with cols[-1]:
+                    st.markdown('<span class="carousel-marker"></span>', unsafe_allow_html=True)
+                    st.markdown('<div style="height: 60px;"></div>', unsafe_allow_html=True)
+                    if st.button("➕ More", key=f"c_more_{title}", use_container_width=True):
+                        st.session_state.c_limits[title] = limit + 10
+                        st.rerun()
 
         if selected_genre == "🔥 Trending":
-            # 1. "For You" Recommendation Engine
             watched_tv = [s for s in st.session_state.db.get("shows", []) if s.get("watched_episodes")]
             if watched_tv:
                 random_show = random.choice(watched_tv)
@@ -896,7 +895,6 @@ with t_search:
                 if recs.get("results"):
                     render_carousel(f"Because you watched {random_show['name']}", recs["results"], "tv")
 
-            # 2. Trending All
             trending = fetch_api(f"https://api.themoviedb.org/3/trending/all/day?api_key={TMDB_KEY}")
             if trending.get("results"):
                 trending_tv_shows = [i for i in trending["results"] if i.get("media_type") == "tv"]
@@ -904,7 +902,6 @@ with t_search:
                 render_carousel("🔥 Trending Series", trending_tv_shows, "tv")
                 render_carousel("🎬 Trending Movies", trending_movies, "movie")
 
-            # 3. Dedicated Korean Content Block (Current Month)
             current_date = datetime.today()
             start_month = current_date.replace(day=1).strftime('%Y-%m-%d')
             last_day = calendar.monthrange(current_date.year, current_date.month)[1]
@@ -919,7 +916,6 @@ with t_search:
                 render_carousel(f"🇰🇷 K-Movies ({current_date.strftime('%B %Y')})", k_mov["results"], "movie")
 
         else:
-            # 4. Genre Filter Feed (Replaced Romance with Horror)
             genre_map_tv = {"🤣 Comedy": 35, "💥 Action": 10759, "🐉 Sci-Fi/Fantasy": 10765, "🔪 Thriller": 9648, "👻 Horror": 9648} 
             genre_map_mov = {"🤣 Comedy": 35, "💥 Action": 28, "🐉 Sci-Fi/Fantasy": 878, "🔪 Thriller": 53, "👻 Horror": 27}
             
@@ -974,13 +970,16 @@ with t_tv:
                 
         if not display_shows: st.info(f"Your {st.session_state.tv_tab.lower()} is currently empty.")
         else:
-            for i in range(0, len(display_shows), 3):
+            total_tv_display = len(display_shows)
+            paginated_shows = display_shows[:st.session_state.tv_lib_limit]
+            
+            for i in range(0, len(paginated_shows), 3):
                 cols = st.columns(3)
                 for j in range(3):
                     with cols[j]:
                         st.markdown('<span class="grid-3-col"></span>', unsafe_allow_html=True)
-                        if i + j < len(display_shows):
-                            show, t_eps, w_eps = display_shows[i + j]
+                        if i + j < len(paginated_shows):
+                            show, t_eps, w_eps = paginated_shows[i + j]
                             with st.container(border=True):
                                 display_poster(show.get("poster_path"), width=185)
                                 st.markdown(f'<div class="grid-title" title="{show["name"]}">{show["name"]}</div>', unsafe_allow_html=True)
@@ -998,6 +997,11 @@ with t_tv:
                                     st.button("🗑️ REMOVE", key=f"s_del_{show['id']}", on_click=del_tv, use_container_width=True)
                                     
                                 st.markdown('</div>', unsafe_allow_html=True)
+                                
+            if total_tv_display > st.session_state.tv_lib_limit:
+                if st.button("Load 50 More", use_container_width=True, key="load_more_tv_lib"):
+                    st.session_state.tv_lib_limit += 50
+                    st.rerun()
 
 # ==========================================
 # TAB 5: MOVIE LIBRARY 
@@ -1041,13 +1045,16 @@ with t_movies:
                 
         if not display_movies: st.info(f"Your {st.session_state.mov_tab.lower()} is currently empty.")
         else:
-            for i in range(0, len(display_movies), 3):
+            total_mov_display = len(display_movies)
+            paginated_movies = display_movies[:st.session_state.mov_lib_limit]
+            
+            for i in range(0, len(paginated_movies), 3):
                 cols = st.columns(3)
                 for j in range(3):
                     with cols[j]:
                         st.markdown('<span class="grid-3-col"></span>', unsafe_allow_html=True)
-                        if i + j < len(display_movies):
-                            m, is_watched = display_movies[i + j]
+                        if i + j < len(paginated_movies):
+                            m, is_watched = paginated_movies[i + j]
                             with st.container(border=True):
                                 display_poster(m.get("poster_path"), width=185)
                                 st.markdown(f'<div class="grid-title" title="{m["name"]}">{m["name"]}</div>', unsafe_allow_html=True)
@@ -1064,6 +1071,11 @@ with t_movies:
                                     st.button("🗑️ REMOVE", key=f"m_del_{m['id']}", on_click=del_mov, use_container_width=True)
                                     
                                 st.markdown('</div>', unsafe_allow_html=True)
+                                
+            if total_mov_display > st.session_state.mov_lib_limit:
+                if st.button("Load 50 More", use_container_width=True, key="load_more_mov_lib"):
+                    st.session_state.mov_lib_limit += 50
+                    st.rerun()
 
 # ==========================================
 # TAB 6: PROFILE STATS, GRAPHS & IMPORT
