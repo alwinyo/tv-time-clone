@@ -36,48 +36,13 @@ st.html("""
     img { border-radius: 8px !important; }
     [data-testid="stProgressBar"] > div > div { background-color: #FFC107 !important; }
     
-    /* --- SLICK NATIVE iOS-STYLE FULL WIDTH CONTROLS --- */
-    div[data-testid="stRadio"] { width: 100% !important; }
-    div[data-testid="stRadio"] > div { width: 100% !important; }
-    
-    div[role="radiogroup"] {
-        display: flex !important;
-        flex-direction: row !important;
-        background-color: rgba(255, 255, 255, 0.05) !important;
-        border-radius: 16px !important;
-        padding: 4px !important;
-        width: 100% !important;
-        box-sizing: border-box !important;
-    }
-    div[role="radiogroup"] > label {
-        flex: 1 1 0px !important;
-        display: flex !important;
-        justify-content: center !important;
-        padding: 8px 0px !important;
-        border-radius: 12px !important;
-        margin: 0 !important;
-        transition: background-color 0.2s !important;
-        min-width: 0 !important;
-    }
-    div[role="radiogroup"] > label > div:first-child { display: none !important; }
-    div[role="radiogroup"] > label[data-checked="true"] { background-color: #FFC107 !important; }
-    div[role="radiogroup"] > label[data-checked="true"] p { color: #000 !important; font-weight: 800 !important; }
-    div[role="radiogroup"] > label p { 
-        font-size: 0.8rem !important; 
-        font-weight: 600 !important; 
-        margin: 0 !important; 
-        color: #aaa !important; 
-        white-space: nowrap !important;
-        overflow: hidden !important;
-        text-overflow: clip !important;
-    }
-    
-    /* Make standard Selectboxes match the Pill Design */
+    /* --- UNIFIED NATIVE DROPDOWNS --- */
+    /* Make standard Selectboxes perfectly match the iOS-style design */
     div[data-baseweb="select"] > div {
         background-color: rgba(255, 255, 255, 0.05) !important;
-        border-radius: 16px !important;
-        border: none !important;
-        padding: 4px !important;
+        border-radius: 12px !important;
+        border: 1px solid rgba(255, 255, 255, 0.1) !important;
+        padding: 2px !important;
     }
     
     /* Sleek Native-App Cards */
@@ -206,7 +171,7 @@ if "hist_mov_limit" not in st.session_state: st.session_state.hist_mov_limit = 2
 if "tv_lib_limit" not in st.session_state: st.session_state.tv_lib_limit = 50
 if "mov_lib_limit" not in st.session_state: st.session_state.mov_lib_limit = 50
 if "c_limits" not in st.session_state: st.session_state.c_limits = {}
-if "rec_show" not in st.session_state: st.session_state.rec_show = None  # Locks the recommendation
+if "rec_show" not in st.session_state: st.session_state.rec_show = None 
 if "last_action" not in st.session_state: st.session_state.last_action = None
 
 # --- SUPABASE DATABASE PIPELINE ---
@@ -548,9 +513,9 @@ t_next, t_soon, t_search, t_tv, t_movies, t_profile = st.tabs(["🔥 Next", "�
 # ==========================================
 with t_next:
     st.markdown("### Up Next")
-    next_filter = st.radio("Category", ["📺 Series", "🎬 Movies"], horizontal=True, label_visibility="collapsed", key="next_filter_radio")
-    st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
-    next_sort = st.selectbox("Sort", ["Smart Priority", "Release Date", "Alphabetical"], label_visibility="collapsed", key="next_sort_box")
+    next_filter = st.selectbox("Category:", ["📺 Series", "🎬 Movies"], label_visibility="collapsed", key="next_filter_box")
+    st.markdown("<div style='height: 5px;'></div>", unsafe_allow_html=True)
+    next_sort = st.selectbox("Sort by:", ["Smart Priority", "Release Date", "Alphabetical"], label_visibility="collapsed", key="next_sort_box")
     st.divider()
     
     try: fifteen_days_ago = datetime.now() - pd.DateOffset(days=15)
@@ -676,9 +641,9 @@ with t_next:
 # ==========================================
 with t_soon:
     st.markdown("### Upcoming Releases")
-    soon_filter = st.radio("Category", ["📺 Series", "🎬 Movies"], horizontal=True, label_visibility="collapsed", key="soon_filter_radio")
-    st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
-    soon_sort = st.selectbox("Sort", ["Release Date", "Alphabetical"], label_visibility="collapsed", key="soon_sort_box")
+    soon_filter = st.selectbox("Category:", ["📺 Series", "🎬 Movies"], label_visibility="collapsed", key="soon_filter_box")
+    st.markdown("<div style='height: 5px;'></div>", unsafe_allow_html=True)
+    soon_sort = st.selectbox("Sort by:", ["Release Date", "Alphabetical"], label_visibility="collapsed", key="soon_sort_box")
     st.divider()
     
     if soon_filter == "📺 Series":
@@ -797,7 +762,7 @@ with t_search:
 
     if search_query:
         # --- SEARCH MODE ---
-        search_type = st.radio("Category:", ["TV Shows", "Movies"], horizontal=True, key="search_filter_radio")
+        search_type = st.selectbox("Search in:", ["TV Shows", "Movies"], label_visibility="collapsed", key="search_filter_box")
         endpoint = "tv" if search_type == "TV Shows" else "movie"
         res = fetch_api(f"https://api.themoviedb.org/3/search/{endpoint}?api_key={TMDB_KEY}&query={search_query}")
         results = res.get("results", [])
