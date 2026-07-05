@@ -26,146 +26,147 @@ st.markdown("""
     .stDeployButton {display: none !important;}
     [data-testid="stStatusWidget"] {visibility: hidden !important; display: none !important;}
     
+    /* STRIP STREAMLIT HARDWARE LOCK SO FIXED BOTTOM NAV WORKS */
+    .stApp, .main, .block-container, div[data-testid="stAppViewContainer"] {
+        transform: none !important;
+    }
+    
     /* --- PREMIUM OLED BACKGROUND --- */
     .stApp, [data-testid="stAppViewContainer"], [data-testid="stHeader"] {
         background-color: #050505 !important;
-        background-image: radial-gradient(circle at 50% 0%, #1A1D24 0%, #050505 80%) !important;
+        background-image: radial-gradient(circle at 50% 0%, #12141A 0%, #050505 80%) !important;
         background-attachment: fixed !important;
         color: #EDEDED !important;
     }
     
-    /* True Mobile Edge-to-Edge Layout */
+    /* Extra bottom padding so scroll doesn't hide behind the floating dock */
     .block-container { 
-        padding: 0.5rem 0.3rem 110px 0.3rem !important; 
+        padding: 0.5rem 0.2rem 120px 0.2rem !important; 
         max-width: 100vw !important;
         overflow-x: hidden !important;
     }
     
     /* --- THE BULLETPROOF BOTTOM NAVIGATION DOCK --- */
-    div.stTabs:first-of-type > div > div[role="tablist"] {
+    /* Targets the exact Tablist following our hidden marker */
+    div[data-testid="stElementContainer"]:has(#bottom-nav-marker) + div[data-testid="stElementContainer"] > div[data-testid="stTabs"] > div:first-child {
         position: fixed !important;
         bottom: 0 !important;
+        top: auto !important;
         left: 0 !important;
         right: 0 !important;
         width: 100vw !important;
-        height: auto !important;
         z-index: 999999 !important;
-        padding: 8px 5px env(safe-area-inset-bottom, 20px) 5px !important;
-        background-color: rgba(10, 12, 16, 0.95) !important;
+        background: rgba(10, 12, 16, 0.95) !important;
         backdrop-filter: blur(25px) !important; -webkit-backdrop-filter: blur(25px) !important;
-        border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
-        display: flex !important;
-        flex-direction: row !important;
-        justify-content: space-evenly !important;
+        padding: 8px 5px env(safe-area-inset-bottom, 20px) 5px !important;
+        border-top: 1px solid rgba(255, 193, 7, 0.2) !important;
         box-shadow: 0px -10px 40px rgba(0,0,0,0.9) !important;
-        overflow-x: visible !important;
-        gap: 0 !important;
+        display: flex !important; flex-direction: row !important; justify-content: space-evenly !important;
+        margin: 0 !important;
     }
     
-    /* Force Streamlit Tab Containers to relinquish control */
-    div.stTabs:first-of-type > div[data-baseweb="tab-list"] {
-        position: fixed !important; bottom: 0 !important; z-index: 999999 !important; padding: 0 !important; margin: 0 !important;
-    }
-    div.stTabs:first-of-type > div[data-baseweb="tab-list"] > div { width: 100vw !important; }
-    
-    /* Tab Buttons */
-    div.stTabs:first-of-type button[role="tab"] {
-        flex: 1 1 0px !important; min-width: 0 !important; padding: 8px 0px !important; margin: 0 2px !important;
-        border-radius: 12px !important; background: transparent !important; border: none !important;
-        display: flex !important; justify-content: center !important; align-items: center !important;
-        transition: all 0.2s ease !important; height: auto !important;
-    }
-    
-    div.stTabs:first-of-type button[role="tab"] p {
-        font-size: 0.55rem !important; font-weight: 700 !important; text-align: center !important;
-        margin: 0 !important; white-space: nowrap !important; letter-spacing: -0.2px !important; 
-        color: #777 !important; transition: all 0.2s ease !important;
+    div[data-testid="stElementContainer"]:has(#bottom-nav-marker) + div[data-testid="stElementContainer"] > div[data-testid="stTabs"] > div:first-child > div {
+        flex: 1 1 0px !important; display: flex !important; justify-content: center !important;
     }
 
-    div.stTabs:first-of-type button[role="tab"][aria-selected="true"] { background: rgba(255, 193, 7, 0.1) !important; }
-    div.stTabs:first-of-type button[role="tab"][aria-selected="true"] p {
+    div[data-testid="stElementContainer"]:has(#bottom-nav-marker) + div[data-testid="stElementContainer"] > div[data-testid="stTabs"] button[role="tab"] {
+        flex: 1 1 100% !important; padding: 10px 0px !important; margin: 0 2px !important;
+        border-radius: 12px !important; background: transparent !important; border: none !important;
+        transition: all 0.2s ease !important;
+    }
+    
+    div[data-testid="stElementContainer"]:has(#bottom-nav-marker) + div[data-testid="stElementContainer"] > div[data-testid="stTabs"] button[kind="secondary"] { display: none !important; }
+    
+    div[data-testid="stElementContainer"]:has(#bottom-nav-marker) + div[data-testid="stElementContainer"] > div[data-testid="stTabs"] button[role="tab"] p {
+        font-size: 0.55rem !important; font-weight: 700 !important; text-align: center !important; margin: 0 !important; 
+        white-space: nowrap !important; color: #777 !important;
+    }
+
+    div[data-testid="stElementContainer"]:has(#bottom-nav-marker) + div[data-testid="stElementContainer"] > div[data-testid="stTabs"] button[role="tab"][aria-selected="true"] { 
+        background: rgba(255, 193, 7, 0.1) !important; border: 1px solid rgba(255, 193, 7, 0.25) !important;
+    }
+    div[data-testid="stElementContainer"]:has(#bottom-nav-marker) + div[data-testid="stElementContainer"] > div[data-testid="stTabs"] button[role="tab"][aria-selected="true"] p {
         color: #FFC107 !important; text-shadow: 0px 0px 10px rgba(255, 193, 7, 0.5) !important;
     }
-
-    /* Hide internal tab navigation arrows completely */
-    div.stTabs:first-of-type button[kind="secondary"], 
-    div.stTabs:first-of-type svg, 
-    div.stTabs:first-of-type [data-testid="stTabs"] > div:first-child > div:nth-child(1),
-    div.stTabs:first-of-type [data-testid="stTabs"] > div:first-child > div:nth-child(3) { display: none !important; }
     
-    /* --- FLUSH EDGE POSTER CARDS --- */
+    /* --- FLUSH EDGE POSTER CARDS (PREMIUM NETFLIX STYLE) --- */
     [data-testid="stVerticalBlockBorderWrapper"] {
         background: #0E1015 !important;
         border-radius: 10px !important; 
         border: 1px solid rgba(255, 255, 255, 0.05) !important;
-        border-top: 1px solid rgba(255, 193, 7, 0.2) !important; /* Subtle top highlight */
-        box-shadow: 0px 8px 20px rgba(0, 0, 0, 0.8) !important; 
-        padding: 0 !important; /* Forces images to the edge */
+        border-top: 1px solid rgba(255, 193, 7, 0.2) !important;
+        box-shadow: 0px 6px 15px rgba(0, 0, 0, 0.7) !important; 
+        padding: 0 !important; /* Forces edge-to-edge images */
         overflow: hidden !important;
-        display: flex; flex-direction: column;
     }
     
     [data-testid="stVerticalBlockBorderWrapper"] img {
-        border-radius: 0 !important; /* Let wrapper clip it */
-        width: 100% !important;
-        margin-bottom: 0 !important;
-        display: block !important;
+        border-radius: 10px 10px 0 0 !important; 
+        width: 100% !important; margin-bottom: 0 !important; display: block !important;
     }
     
-    div[data-testid="column"] > div[data-testid="stVerticalBlock"] { gap: 4px !important; }
+    /* Text & Button inner spacing */
+    .grid-title, .movie-wall-btn, [data-testid="stProgressBar"], .inner-progress-text {
+        padding-left: 6px !important; padding-right: 6px !important;
+    }
+    .movie-wall-btn { padding-bottom: 8px !important; }
     
-    /* --- SLEEK NATIVE BUTTONS --- */
-    .movie-wall-btn { padding: 4px 6px 8px 6px !important; }
+    div[data-testid="column"] > div[data-testid="stVerticalBlock"] { gap: 0 !important; }
     
+    /* --- GOLD TINTED BUTTONS --- */
     .movie-wall-btn div.stButton > button {
-        background: rgba(255, 255, 255, 0.08) !important;
-        border: none !important; border-radius: 8px !important; 
-        color: #E0E0E0 !important; font-size: 0.55rem !important; font-weight: 800 !important;
-        padding: 0 !important; margin: 0 !important; text-transform: uppercase;
-        letter-spacing: 0.5px !important; height: 30px !important; min-height: 30px !important; line-height: 30px !important;
-        width: 100% !important; transition: all 0.15s !important;
+        background: rgba(255, 193, 7, 0.08) !important;
+        border: 1px solid rgba(255, 193, 7, 0.2) !important; border-radius: 6px !important; 
+        color: #FFD54F !important; font-size: 0.55rem !important; font-weight: 700 !important;
+        padding: 6px 2px !important; margin-top: 4px !important; text-transform: uppercase;
+        width: 100% !important; transition: all 0.15s !important; line-height: 1;
     }
-    .movie-wall-btn div.stButton > button:hover { background: rgba(255, 255, 255, 0.15) !important; }
     .movie-wall-btn div.stButton > button:active { 
-        transform: scale(0.92) !important; background: #FFC107 !important; 
-        color: #000 !important; box-shadow: 0 0 15px rgba(255, 193, 7, 0.6) !important;
+        transform: scale(0.92) !important; background: linear-gradient(135deg, #FFD54F 0%, #FFC107 100%) !important; 
+        color: #000 !important; box-shadow: 0 0 10px rgba(255, 193, 7, 0.5) !important;
     }
     
-    /* TIGHT FILTERS */
+    /* Deep Recessed Selectboxes (Tightened) */
     div[data-baseweb="select"] > div:first-child {
-        background-color: rgba(0, 0, 0, 0.7) !important; border-radius: 10px !important;
-        border: 1px solid rgba(255, 255, 255, 0.05) !important; padding: 2px !important; min-height: 32px !important;
+        background-color: rgba(0, 0, 0, 0.7) !important; border-radius: 8px !important;
+        border: 1px solid rgba(255, 255, 255, 0.05) !important; padding: 0px 4px !important; min-height: 28px !important;
     }
     div[data-baseweb="select"] div[class*="singleValue"] { font-size: 0.75rem !important; font-weight: 600 !important; }
     
-    /* GRADIENT PROGRESS BAR */
-    [data-testid="stProgressBar"] > div { height: 4px !important; border-radius: 10px !important; background-color: rgba(255, 255, 255, 0.1) !important; }
-    [data-testid="stProgressBar"] > div > div { background: linear-gradient(90deg, #FFD54F 0%, #FFC107 100%) !important; border-radius: 10px !important; }
+    /* PROGRESS BAR */
+    [data-testid="stProgressBar"] > div { height: 4px !important; background-color: rgba(255, 255, 255, 0.1) !important; margin-bottom: 6px; }
+    [data-testid="stProgressBar"] > div > div { background: linear-gradient(90deg, #FFD54F 0%, #FFC107 100%) !important; }
     
-    /* --- TIGHT GRID LOCK FOR SCREENS --- */
+    /* --- TIGHT 3x3 GRID MATH (STRICT LOCK) --- */
     @media (max-width: 992px) {
         div[data-testid="stHorizontalBlock"]:has(.grid-3-col), div[data-testid="stColumns"]:has(.grid-3-col) {
-            display: flex !important; flex-direction: row !important; flex-wrap: nowrap !important; gap: 6px !important; 
+            display: flex !important; flex-direction: row !important; flex-wrap: nowrap !important; gap: 8px !important; 
         }
         div[data-testid="column"]:has(.grid-3-col), div[data-testid="stColumn"]:has(.grid-3-col) {
-            width: calc(33.33% - 4px) !important; flex: 1 1 calc(33.33% - 4px) !important; padding: 0 !important; display: block !important;
+            width: calc(33.33% - 5px) !important; flex: 1 1 calc(33.33% - 5px) !important; padding: 0 !important; display: block !important;
+        }
+        div[data-testid="stHorizontalBlock"]:has(.grid-2-col), div[data-testid="stColumns"]:has(.grid-2-col) {
+            display: flex !important; flex-direction: row !important; flex-wrap: nowrap !important; gap: 6px !important; 
+        }
+        div[data-testid="column"]:has(.grid-2-col), div[data-testid="stColumn"]:has(.grid-2-col) {
+            width: 48% !important; flex: 1 1 48% !important; padding: 0 !important; display: block !important;
         }
         div[role="dialog"] {
             width: 95vw !important; max-width: 95vw !important; margin: 0 auto !important; padding: 1rem !important;
-            background: rgba(15, 17, 22, 0.95) !important; backdrop-filter: blur(20px) !important; -webkit-backdrop-filter: blur(20px) !important;
+            background: rgba(15, 17, 22, 0.95) !important; backdrop-filter: blur(20px) !important;
             border: 1px solid rgba(255, 255, 255, 0.1) !important;
         }
     }
     
     .grid-title {
         font-size: 0.65rem !important; font-weight: 700; white-space: nowrap; overflow: hidden;
-        text-overflow: ellipsis; text-align: center; margin: 6px 4px 4px 4px !important; line-height: 1.2; color: #ddd;
+        text-overflow: ellipsis; text-align: center; margin: 6px 0 2px 0 !important; line-height: 1.2; color: #ddd;
     }
-    .badge {
-        display: inline-block; background-color: rgba(255,255,255,0.1); color: #FFFFFF; padding: 3px 8px;
-        border-radius: 12px; font-size: 0.7rem; font-weight: 600; margin-right: 4px; margin-bottom: 6px; border: 1px solid rgba(255,255,255,0.05);
+    
+    .badge-gold { 
+        display: inline-block; padding: 3px 8px; border-radius: 12px; font-size: 0.7rem; font-weight: 600; margin-right: 4px; margin-bottom: 6px;
+        background: linear-gradient(135deg, #FFD54F 0%, #FFC107 100%); color: #000000; box-shadow: 0 2px 6px rgba(255, 193, 7, 0.3); 
     }
-    .badge-gold { background: linear-gradient(135deg, #FFD54F 0%, #FFC107 100%); color: #000000; border: none; box-shadow: 0 2px 6px rgba(255, 193, 7, 0.3); }
 </style>
 """, unsafe_allow_html=True)
 
@@ -376,6 +377,7 @@ def display_poster(path, width=185):
     if path and str(path).lower() not in ["none", "null", ""]: st.image(f"https://image.tmdb.org/t/p/w{width}{path}", use_container_width=True)
     else: st.markdown(f'<div style="background-color: rgba(255,255,255,0.05); width:100%; aspect-ratio: 2/3; display:flex; align-items:center; justify-content:center; color:#555; font-size:0.8rem; text-align:center;">No Image</div>', unsafe_allow_html=True)
 
+# --- REWORKED: CHARACTER NAMES IN BOLD GOLD ---
 def show_cast_horizontal(cast_list, limit=12):
     if not cast_list: return
     html = '<div style="display: flex; overflow-x: auto; gap: 12px; padding-bottom: 10px; scrollbar-width: none; -ms-overflow-style: none;">'
@@ -389,7 +391,7 @@ def show_cast_horizontal(cast_list, limit=12):
         <div style="flex: 0 0 85px; width: 85px; text-align: center;">
             <a href="{imdb_url}" target="_blank" style="text-decoration: none; color: inherit;">
                 <img src="{img_url}" style="width: 85px; height: 127px; border-radius: 8px; object-fit: cover; box-shadow: 0 4px 6px rgba(0,0,0,0.3); margin-bottom: 6px;">
-                <div style="font-size: 0.60rem; font-weight: 700; color: #FFD54F; line-height: 1.1; margin-bottom: 2px; white-space: pre-wrap;">{safe_char}</div>
+                <div style="font-size: 0.65rem; font-weight: 800; color: #FFC107; line-height: 1.1; margin-bottom: 2px; white-space: pre-wrap;">{safe_char}</div>
                 <div style="font-size: 0.55rem; font-weight: 500; color: #aaa; line-height: 1.1; white-space: pre-wrap;">{safe_actor}</div>
             </a>
         </div>
@@ -567,7 +569,8 @@ def show_monthly_recap_dialog(month_key, month_title, stats, recap_id):
     
     show_counts = {}
     for h in st.session_state.db.get("history", []):
-        if h.get("t") == "s" and str(h.get("d", "")).startswith(month_key): show_counts[h["i"]] = show_counts.get(h["i"], 0) + 1
+        if h.get("t") == "s" and str(h.get("d", "")).startswith(month_key):
+            show_counts[h["i"]] = show_counts.get(h["i"], 0) + 1
             
     if show_counts:
         top_show_id = max(show_counts, key=show_counts.get)
@@ -575,7 +578,8 @@ def show_monthly_recap_dialog(month_key, month_title, stats, recap_id):
         if show: st.markdown(f"🔥 **Top Binge Focus:** *{show['name']}* ({show_counts[top_show_id]} episodes)")
             
     st.divider()
-    if st.button("Sweet!", use_container_width=True): st.session_state.db.setdefault("seen_recaps", []).append(recap_id); save_db(); st.rerun()
+    if st.button("Sweet!", use_container_width=True):
+        st.session_state.db.setdefault("seen_recaps", []).append(recap_id); save_db(); st.rerun()
 
 @st.dialog("🏆 Your Cinematic Wrapped")
 def show_yearly_recap_dialog(year, y_tv, y_mov, recap_id):
@@ -636,6 +640,7 @@ if st.session_state.last_action:
             st.session_state.last_action = None; st.rerun()
 
 # --- APP NAVIGATION BAR ---
+st.markdown('<div id="bottom-nav-marker" style="display:none;"></div>', unsafe_allow_html=True)
 t_next, t_soon, t_search, t_tv, t_movies, t_profile = st.tabs(["🔥 Next", "📅 Soon", "🔍 Search", "📺 TV", "🎬 Movies", "👤 Profile"])
 
 # ==========================================
@@ -645,7 +650,7 @@ with t_next:
     f_col1, f_col2 = st.columns(2)
     with f_col1: next_filter = st.selectbox("Category:", ["📺 Series", "🎬 Movies"], label_visibility="collapsed", key="next_filter_box")
     with f_col2: next_sort = st.selectbox("Sort by:", ["Smart Priority", "Release Date", "Alphabetical"], label_visibility="collapsed", key="next_sort_box")
-    st.markdown("<div style='margin-bottom:12px;'></div>", unsafe_allow_html=True)
+    st.markdown("<div style='margin-bottom:8px;'></div>", unsafe_allow_html=True)
     
     try: fifteen_days_ago = get_dubai_time() - pd.DateOffset(days=15)
     except: fifteen_days_ago = get_dubai_time() - timedelta(days=15)
@@ -784,7 +789,7 @@ with t_soon:
     f_col1, f_col2 = st.columns(2)
     with f_col1: soon_filter = st.selectbox("Category:", ["📺 Series", "🎬 Movies"], label_visibility="collapsed", key="soon_filter_box")
     with f_col2: soon_sort = st.selectbox("Sort by:", ["Release Date", "Alphabetical"], label_visibility="collapsed", key="soon_sort_box")
-    st.markdown("<div style='margin-bottom:12px;'></div>", unsafe_allow_html=True)
+    st.markdown("<div style='margin-bottom:8px;'></div>", unsafe_allow_html=True)
     
     if soon_filter == "📺 Series":
         soon_tv = []
@@ -885,9 +890,11 @@ with t_soon:
 # ==========================================
 with t_search:
     search_query = st_keyup("Search", debounce=2000, key="search_query_input", placeholder="Search TV shows, movies, actors...", label_visibility="collapsed")
+    st.markdown("<div style='margin-bottom:8px;'></div>", unsafe_allow_html=True)
 
     if search_query:
         search_type = st.selectbox("Search in:", ["TV Shows", "Movies"], label_visibility="collapsed", key="search_filter_box")
+        st.markdown("<div style='margin-bottom:8px;'></div>", unsafe_allow_html=True)
         endpoint = "tv" if search_type == "TV Shows" else "movie"
         res = fetch_api(f"https://api.themoviedb.org/3/search/{endpoint}?api_key={TMDB_KEY}&query={search_query}")
         results = res.get("results", [])
@@ -1013,7 +1020,7 @@ with t_tv:
     if c3.button("Watched", type="primary" if st.session_state.tv_tab == "WATCHED" else "secondary", use_container_width=True, key="tv_wd"): st.session_state.tv_tab = "WATCHED"; st.rerun()
         
     tv_sort = st.selectbox("Sort Library by:", ["Release Date", "Alphabetical", "Recently Added"], label_visibility="collapsed", key="sort_tv_lib")
-    st.markdown("<div style='margin-bottom:12px;'></div>", unsafe_allow_html=True)
+    st.markdown("<div style='margin-bottom:8px;'></div>", unsafe_allow_html=True)
     
     shows = st.session_state.db.get("shows", [])
     if not shows: st.info("Your TV library is empty.")
@@ -1053,10 +1060,8 @@ with t_tv:
                                 display_poster(show.get("poster_path"), width=185)
                                 st.markdown(f'<div class="grid-title" title="{show["name"]}">{show["name"]}</div>', unsafe_allow_html=True)
                                 perc = min(w_eps / t_eps, 1.0) if t_eps > 0 else 0.0
-                                st.markdown(f'<div style="padding:0 6px;"><div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:2px;"><div style="font-size:0.55rem; color:#888;">PROGRESS</div><div style="font-size:0.55rem; color:#FFC107; font-weight:bold;">{int(perc*100)}%</div></div></div>', unsafe_allow_html=True)
-                                st.markdown('<div style="padding:0 6px 4px 6px;">', unsafe_allow_html=True)
+                                st.markdown(f'<div class="inner-progress-text" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:2px;"><div style="font-size:0.55rem; color:#888;">PROGRESS</div><div style="font-size:0.55rem; color:#FFC107; font-weight:bold;">{int(perc*100)}%</div></div>', unsafe_allow_html=True)
                                 st.progress(perc)
-                                st.markdown('</div>', unsafe_allow_html=True)
                                 
                                 st.markdown('<div class="movie-wall-btn">', unsafe_allow_html=True)
                                 if st.session_state.tv_tab == "WATCHLIST":
@@ -1089,7 +1094,7 @@ with t_movies:
     if c3.button("Watched", type="primary" if st.session_state.mov_tab == "WATCHED" else "secondary", use_container_width=True, key="m_wd"): st.session_state.mov_tab = "WATCHED"; st.rerun()
         
     mov_sort = st.selectbox("Sort Library by:", ["Release Date", "Alphabetical", "Recently Added"], label_visibility="collapsed", key="sort_mov_lib")
-    st.markdown("<div style='margin-bottom:12px;'></div>", unsafe_allow_html=True)
+    st.markdown("<div style='margin-bottom:8px;'></div>", unsafe_allow_html=True)
     
     movies = st.session_state.db.get("movies", [])
     if not movies: st.info("Your Movie library is empty.")
