@@ -548,6 +548,43 @@ def calc_time_remaining(date_str):
         else: return "Today"
     except: return "Soon"
 
+# --- TOP-LEVEL GLOBAL CALLBACKS (CRASH PREVENTION) ---
+def cb_watch_tv(sid, ecode):
+    for s in st.session_state.db["shows"]:
+        if str(s["id"]) == str(sid):
+            if ecode not in s["watched_episodes"]:
+                s["watched_episodes"].append(ecode)
+                log_watch("tv", sid, ecode)
+            break
+
+def cb_watch_mov(mid):
+    for mv in st.session_state.db["movies"]:
+        if str(mv["id"]) == str(mid):
+            if not mv.get("watched"):
+                mv["watched"] = True
+                log_watch("movie", mid)
+            break
+            
+def cb_delete_tv(sid):
+    st.session_state.db["shows"] = [s for s in st.session_state.db["shows"] if str(s["id"]) != str(sid)]
+    save_db()
+    
+def cb_delete_mov(mid):
+    st.session_state.db["movies"] = [mv for mv in st.session_state.db["movies"] if str(mv["id"]) != str(mid)]
+    save_db()
+    
+def cb_toggle_episode(sid, ecode):
+    chkd = st.session_state.get(f"chk_dlg_{sid}_{ecode}", False)
+    for s in st.session_state.db["shows"]:
+        if str(s["id"]) == str(sid):
+            if chkd and ecode not in s["watched_episodes"]: 
+                s["watched_episodes"].append(ecode)
+                log_watch("tv", sid, ecode)
+            elif not chkd and ecode in s["watched_episodes"]: 
+                s["watched_episodes"].remove(ecode)
+                remove_watch("tv", sid, ecode)
+            break
+
 # --- AUTOMATED POP-UP RECAP ENGINE (MONTHLY & YEARLY AUTOMATION) ---
 @st.dialog("🌙 Monthly Wrap-Up")
 def show_monthly_recap_dialog(month_key, month_title, stats, recap_id):
@@ -661,7 +698,6 @@ def evaluate_and_trigger_recaps():
         stats = db.get("analytics", {}).get(prev_month_key, {"tv": 0, "movie": 0})
         if stats["tv"] > 0 or stats["movie"] > 0:
             show_monthly_recap_dialog(prev_month_key, prev_month_name, stats, month_recap_id)
-            return
             
     prev_year_num = now.year - 1
     year_recap_id = f"yearly-{prev_year_num}"
@@ -673,7 +709,6 @@ def evaluate_and_trigger_recaps():
                 y_mov += v.get("movie", 0)
         if y_tv > 0 or y_mov > 0:
             show_yearly_recap_dialog(prev_year_num, y_tv, y_mov, year_recap_id)
-            return
 
 evaluate_and_trigger_recaps()
 
@@ -731,7 +766,7 @@ def show_episode_details(show_id, show_name, ep_code, ep_data=None, is_watched=F
             except: pass
             
             st.markdown("#### Journal & Review")
-            platforms = ["None", "Netflix", "OSN+", "Amazon Prime", "Apple TV+", "Disney+", "Starzplay", "Cinema", "Downloaded", "Other"]
+            platforms = ["None", "Stremio", "Netflix", "OSN+", "Amazon Prime", "Apple TV+", "Disney+", "Starzplay", "Cinema", "Downloaded", "Other"]
             curr_p = h_log.get("p", "")
             p_idx = platforms.index(curr_p) if curr_p in platforms else 0
             new_p = st.selectbox("Watched On:", platforms, index=p_idx, key=f"p_s_{show_id}_{ep_code}")
@@ -807,20 +842,10 @@ def manage_show_dialog(show_id, show_name, details):
             e_code = f"S{sel_s}E{ep['episode_number']}"
             is_watched = e_code in watched_list
             info_key = f"view_info_{show_id}_{e_code}"
-            def on_check(sid=show_id, sname=show_name, ecode=e_code):
-                chkd = st.session_state[f"chk_dlg_{sid}_{ecode}"]
-                for s in st.session_state.db["shows"]:
-                    if str(s["id"]) == str(sid):
-                        if chkd and ecode not in s["watched_episodes"]: 
-                            s["watched_episodes"].append(ecode)
-                            log_watch("tv", sid, ecode)
-                        elif not chkd and ecode in s["watched_episodes"]: 
-                            s["watched_episodes"].remove(ecode)
-                            remove_watch("tv", sid, ecode)
-                        break
+            
             ep_col1, ep_col2 = st.columns([6, 1])
             with ep_col1:
-                st.checkbox(f"**E{ep['episode_number']}.** {ep.get('name', 'Episode')}", value=is_watched, key=f"chk_dlg_{show_id}_{e_code}", on_change=on_check, disabled=(current_show is None))
+                st.checkbox(f"**E{ep['episode_number']}.** {ep.get('name', 'Episode')}", value=is_watched, key=f"chk_dlg_{show_id}_{e_code}", on_change=cb_toggle_episode, args=(show_id, e_code), disabled=(current_show is None))
             if st.session_state.get(info_key, False):
                 with st.container(border=True):
                     display_poster(ep.get("still_path"), width=500)
@@ -854,7 +879,7 @@ def show_movie_details(m_id, m_name, details=None, is_watched=False):
             except: pass
             
             st.markdown("#### Journal & Review")
-            platforms = ["None", "Netflix", "OSN+", "Amazon Prime", "Apple TV+", "Disney+", "Starzplay", "Cinema", "Downloaded", "Other"]
+            platforms = ["None", "Stremio", "Netflix", "OSN+", "Amazon Prime", "Apple TV+", "Disney+", "Starzplay", "Cinema", "Downloaded", "Other"]
             curr_p = h_log.get("p", "")
             p_idx = platforms.index(curr_p) if curr_p in platforms else 0
             new_p = st.selectbox("Watched On:", platforms, index=p_idx, key=f"p_m_{m_id}")
@@ -1020,13 +1045,7 @@ with t_next:
                                 st.markdown(f'<div style="text-align:center; font-size:0.7rem; color:#aaa; margin-bottom:5px; font-weight:600;">{ep_code}</div>', unsafe_allow_html=True)
                                 
                                 st.markdown('<div class="movie-wall-btn">', unsafe_allow_html=True)
-                                def f_w_tv(sid=show['id'], sname=show['name'], ecode=ep_code):
-                                    for s in st.session_state.db["shows"]:
-                                        if str(s["id"]) == str(sid):
-                                            s["watched_episodes"].append(ecode)
-                                            log_watch("tv", sid, ecode)
-                                            break
-                                st.button("✔️ Watch", key=f"n_w_tv_{show['id']}_{ep_code}_{idx}", on_click=f_w_tv, use_container_width=True)
+                                st.button("✔️ Watch", key=f"n_w_tv_{show['id']}_{ep_code}_{idx}", on_click=cb_watch_tv, args=(show['id'], ep_code), use_container_width=True)
                                 if st.button("ℹ️ Info", key=f"n_i_tv_{show['id']}_{ep_code}_{idx}", use_container_width=True):
                                     show_episode_details(show['id'], show['name'], ep_code, ep, is_watched=False)
                                 st.markdown('</div>', unsafe_allow_html=True)
@@ -1066,13 +1085,7 @@ with t_next:
                                 st.markdown(f'<div class="grid-title" title="{m["name"]}">{m["name"]}</div>', unsafe_allow_html=True)
                                 
                                 st.markdown('<div class="movie-wall-btn">', unsafe_allow_html=True)
-                                def f_w_mov(mid=m['id']):
-                                    for mv in st.session_state.db["movies"]:
-                                        if str(mv["id"]) == str(mid):
-                                            mv["watched"] = True
-                                            log_watch("movie", mid)
-                                            break
-                                st.button("✔️ Watch", key=f"n_w_mov_{m['id']}_{idx}", on_click=f_w_mov, use_container_width=True)
+                                st.button("✔️ Watch", key=f"n_w_mov_{m['id']}_{idx}", on_click=cb_watch_mov, args=(m['id'],), use_container_width=True)
                                 if st.button("ℹ️ Info", key=f"n_i_mov_{m['id']}_{idx}", use_container_width=True):
                                     show_movie_details(m['id'], m['name'], details=None, is_watched=False)
                                 st.markdown('</div>', unsafe_allow_html=True)
@@ -1136,13 +1149,7 @@ with t_soon:
                                 st.markdown(f'<div style="text-align:center; font-size:0.65rem; color:#FFC107; margin-bottom:5px; font-weight:600;">{ep_code} • {time_rem}</div>', unsafe_allow_html=True)
                                 
                                 st.markdown('<div class="movie-wall-btn">', unsafe_allow_html=True)
-                                def f_w_s_tv(sid=show['id'], sname=show['name'], ecode=ep_code):
-                                    for s in st.session_state.db["shows"]:
-                                        if str(s["id"]) == str(sid):
-                                            s["watched_episodes"].append(ecode)
-                                            log_watch("tv", sid, ecode)
-                                            break
-                                st.button("✔️ Watch", key=f"s_w_tv_{show['id']}_{ep_code}_{idx}", on_click=f_w_s_tv, use_container_width=True)
+                                st.button("✔️ Watch", key=f"s_w_tv_{show['id']}_{ep_code}_{idx}", on_click=cb_watch_tv, args=(show['id'], ep_code), use_container_width=True)
                                 if st.button("ℹ️ Info", key=f"s_i_tv_{show['id']}_{ep_code}_{idx}", use_container_width=True):
                                     show_episode_details(show['id'], show['name'], ep_code, ep, is_watched=False)
                                 st.markdown('</div>', unsafe_allow_html=True)
@@ -1183,13 +1190,7 @@ with t_soon:
                                 st.markdown(f'<div style="text-align:center; font-size:0.65rem; color:#FFC107; margin-bottom:5px; font-weight:600;">{time_rem}</div>', unsafe_allow_html=True)
                                 
                                 st.markdown('<div class="movie-wall-btn">', unsafe_allow_html=True)
-                                def f_w_s_mov(mid=m['id']):
-                                    for mv in st.session_state.db["movies"]:
-                                        if str(mv["id"]) == str(mid):
-                                            mv["watched"] = True
-                                            log_watch("movie", mid)
-                                            break
-                                st.button("✔️ Watch", key=f"s_w_mov_{m['id']}_{idx}", on_click=f_w_s_mov, use_container_width=True)
+                                st.button("✔️ Watch", key=f"s_w_mov_{m['id']}_{idx}", on_click=cb_watch_mov, args=(m['id'],), use_container_width=True)
                                 if st.button("ℹ️ Info", key=f"s_i_mov_{m['id']}_{idx}", use_container_width=True):
                                     show_movie_details(m['id'], m['name'], details=None, is_watched=False)
                                 st.markdown('</div>', unsafe_allow_html=True)
@@ -1440,10 +1441,7 @@ with t_tv:
                                             details = fetch_api(f"https://api.themoviedb.org/3/tv/{show['id']}?api_key={TMDB_KEY}")
                                             manage_show_dialog(show['id'], show['name'], details)
                                     with bc2:
-                                        def del_tv(s_id=show['id']):
-                                            st.session_state.db["shows"] = [s for s in st.session_state.db["shows"] if str(s["id"]) != str(s_id)]
-                                            save_db()
-                                        st.button("🗑️ DEL", key=f"s_del_{show['id']}", on_click=del_tv, use_container_width=True)
+                                        st.button("🗑️ DEL", key=f"s_del_{show['id']}", on_click=cb_delete_tv, args=(show['id'],), use_container_width=True)
                                 else:
                                     if st.button("ℹ️ INFO", key=f"s_mgr_{show['id']}", use_container_width=True):
                                         details = fetch_api(f"https://api.themoviedb.org/3/tv/{show['id']}?api_key={TMDB_KEY}")
@@ -1522,10 +1520,7 @@ with t_movies:
                                         if st.button("ℹ️ INFO", key=f"m_mgr_{m['id']}", use_container_width=True):
                                             show_movie_details(m['id'], m['name'], details=None, is_watched=is_watched)
                                     with bc2:
-                                        def del_mov(m_id=m['id']):
-                                            st.session_state.db["movies"] = [mv for mv in st.session_state.db["movies"] if str(mv["id"]) != str(m_id)]
-                                            save_db()
-                                        st.button("🗑️ DEL", key=f"m_del_{m['id']}", on_click=del_mov, use_container_width=True)
+                                        st.button("🗑️ DEL", key=f"m_del_{m['id']}", on_click=cb_delete_mov, args=(m['id'],), use_container_width=True)
                                 else:
                                     if st.button("ℹ️ INFO", key=f"m_mgr_{m['id']}", use_container_width=True):
                                         show_movie_details(m['id'], m['name'], details=None, is_watched=is_watched)
