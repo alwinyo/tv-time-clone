@@ -58,6 +58,12 @@ st.markdown("""
         letter-spacing: -0.5px !important;
     }
     
+    /* Pull the specific tab headers up into the empty space */
+    h3.tab-title {
+        margin-top: -0.8rem !important;
+        padding-top: 0 !important;
+    }
+    
     /* --- SQUEEZE EMPTY SPACE OUT OF POSTER GRIDS ONLY --- */
     div[data-testid="column"] > div[data-testid="stVerticalBlock"] {
         gap: 0.25rem !important; 
@@ -848,7 +854,7 @@ t_next, t_soon, t_search, t_tv, t_movies, t_profile = st.tabs(["🔥 Next", "�
 # TAB 1: UP NEXT DASHBOARD
 # ==========================================
 with t_next:
-    st.markdown("### Up Next")
+    st.markdown("<h3 class='tab-title'>Up Next</h3>", unsafe_allow_html=True)
     next_filter = st.selectbox("Category:", ["📺 Series", "🎬 Movies"], label_visibility="collapsed", key="next_filter_box")
     st.markdown("<div style='height: 5px;'></div>", unsafe_allow_html=True)
     next_sort = st.selectbox("Sort by:", ["Smart Priority", "Release Date", "Alphabetical"], label_visibility="collapsed", key="next_sort_box")
@@ -1004,7 +1010,7 @@ with t_next:
 # TAB 2: UPCOMING CALENDAR
 # ==========================================
 with t_soon:
-    st.markdown("### Upcoming Releases")
+    st.markdown("<h3 class='tab-title'>Upcoming Releases</h3>", unsafe_allow_html=True)
     soon_filter = st.selectbox("Category:", ["📺 Series", "🎬 Movies"], label_visibility="collapsed", key="soon_filter_box")
     st.markdown("<div style='height: 5px;'></div>", unsafe_allow_html=True)
     soon_sort = st.selectbox("Sort by:", ["Release Date", "Alphabetical"], label_visibility="collapsed", key="soon_sort_box")
@@ -1121,7 +1127,7 @@ with t_soon:
 # TAB 3: GLOBAL SEARCH / DISCOVER FEED
 # ==========================================
 with t_search:
-    st.markdown("### Discover")
+    st.markdown("<h3 class='tab-title'>Discover</h3>", unsafe_allow_html=True)
     
     # --- DYNAMIC SEARCH-AS-YOU-TYPE ENGINE ---
     search_query = st_keyup("Search", debounce=2000, key="search_query_input", placeholder="Search TV shows, movies, actors...", label_visibility="collapsed")
@@ -1291,7 +1297,7 @@ with t_search:
 # TAB 4: TV LIBRARY 
 # ==========================================
 with t_tv:
-    st.markdown("### My TV Collection")
+    st.markdown("<h3 class='tab-title'>My TV Collection</h3>", unsafe_allow_html=True)
     if "tv_tab" not in st.session_state: st.session_state.tv_tab = "WATCHLIST"
         
     c1, c2, c3 = st.columns(3)
@@ -1378,7 +1384,7 @@ with t_tv:
 # TAB 5: MOVIE LIBRARY 
 # ==========================================
 with t_movies:
-    st.markdown("### My Movies")
+    st.markdown("<h3 class='tab-title'>My Movies</h3>", unsafe_allow_html=True)
     if "mov_tab" not in st.session_state: st.session_state.mov_tab = "WATCHLIST"
         
     c1, c2, c3 = st.columns(3)
@@ -1459,7 +1465,7 @@ with t_movies:
 # TAB 6: PROFILE STATS, GRAPHS & IMPORT
 # ==========================================
 with t_profile:
-    st.markdown("### Lifetime Stats")
+    st.markdown("<h3 class='tab-title'>Lifetime Stats</h3>", unsafe_allow_html=True)
     
     total_tv_mins = 0; total_episodes_watched = 0
     total_mov_mins = 0; total_movies_watched = 0
@@ -1508,7 +1514,7 @@ with t_profile:
     st.divider()
     
     # --- CHRONOLOGICAL TIMELINE SLER DATA MAP ---
-    st.markdown("### 📊 Watch Activity")
+    st.markdown("<h3 class='tab-title'>📊 Watch Activity</h3>", unsafe_allow_html=True)
     chart_tab1, chart_tab2 = st.tabs(["📺 Series Activity", "🎬 Movie Activity"])
     analytics = st.session_state.db.get("analytics", {})
     
@@ -1562,7 +1568,7 @@ with t_profile:
     st.divider()
     
     # --- PURE NATIVE TV TIME WATCH HISTORY FEED ---
-    st.markdown("### 📜 Watch History Journal")
+    st.markdown("<h3 class='tab-title'>📜 Watch History Journal</h3>", unsafe_allow_html=True)
     h_tv, h_mov = st.tabs(["📺 Series", "🎬 Movies"])
     
     history_sorted = sorted(st.session_state.db.get("history", []), key=lambda x: x.get("d", "2000-01-01 12:00:00"), reverse=True)
