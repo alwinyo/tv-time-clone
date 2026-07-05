@@ -21,7 +21,6 @@ st.markdown("""
     header {visibility: hidden !important; background: transparent !important;}
     footer {visibility: hidden !important; display: none !important;}
     
-    /* THE BOTTOM-RIGHT POPUP KILLER */
     [data-testid="stAppViewContainer"] ~ div { display: none !important; visibility: hidden !important; opacity: 0 !important; pointer-events: none !important; }
     .viewerBadge_container, .viewerBadge_link, div[class^="viewerBadge"] {display: none !important; visibility: hidden !important;}
     .stDeployButton {display: none !important;}
@@ -37,7 +36,7 @@ st.markdown("""
     
     /* True Mobile Edge-to-Edge Layout - Extra bottom padding for floating dock */
     .block-container { 
-        padding: 1rem 0.5rem 100px 0.5rem !important; 
+        padding: 1rem 0.2rem 100px 0.2rem !important; /* Ultra-tight side padding */
         max-width: 100vw !important;
         overflow-x: hidden !important;
     }
@@ -60,216 +59,156 @@ st.markdown("""
     div[data-testid="stRadio"] > div { width: 100% !important; }
     
     div[role="radiogroup"] {
-        display: flex !important;
-        flex-direction: row !important;
+        display: flex !important; flex-direction: row !important;
         background-color: rgba(0, 0, 0, 0.7) !important;
-        border-radius: 16px !important;
-        border: 1px solid rgba(255, 255, 255, 0.05) !important;
+        border-radius: 16px !important; border: 1px solid rgba(255, 255, 255, 0.05) !important;
         box-shadow: inset 0px 4px 10px rgba(0,0,0,0.8) !important;
-        padding: 4px !important;
-        width: 100% !important;
-        box-sizing: border-box !important;
+        padding: 4px !important; width: 100% !important; box-sizing: border-box !important;
     }
     div[role="radiogroup"] > label {
-        flex: 1 1 0px !important;
-        display: flex !important;
-        justify-content: center !important;
-        padding: 8px 0px !important;
-        border-radius: 12px !important;
-        margin: 0 !important;
-        transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1) !important;
-        min-width: 0 !important;
+        flex: 1 1 0px !important; display: flex !important; justify-content: center !important;
+        padding: 6px 0px !important; border-radius: 12px !important; margin: 0 !important;
+        transition: all 0.3s !important; min-width: 0 !important;
     }
     div[role="radiogroup"] > label > div:first-child { display: none !important; }
     
     div[role="radiogroup"] > label:has(input:checked) { 
         background: linear-gradient(135deg, #FFD54F 0%, #FFC107 100%) !important; 
-        box-shadow: 0 4px 15px rgba(255, 193, 7, 0.4) !important;
-        border: none !important;
+        box-shadow: 0 4px 15px rgba(255, 193, 7, 0.4) !important; border: none !important;
     }
-    div[role="radiogroup"] > label:has(input:checked) p { 
-        color: #000 !important; 
-        font-weight: 800 !important; 
-        text-shadow: none !important;
-    }
+    div[role="radiogroup"] > label:has(input:checked) p { color: #000 !important; font-weight: 800 !important; }
     div[role="radiogroup"] > label p { 
-        font-size: 0.8rem !important; 
-        font-weight: 600 !important; 
-        margin: 0 !important; 
-        color: #888 !important; 
-        white-space: nowrap !important;
-        overflow: hidden !important;
-        text-overflow: clip !important;
+        font-size: 0.75rem !important; font-weight: 600 !important; margin: 0 !important; 
+        color: #888 !important; white-space: nowrap !important; overflow: hidden !important; text-overflow: clip !important;
     }
     
+    /* Tighten Selectboxes to save space */
     div[data-baseweb="select"] > div:first-child {
         background-color: rgba(0, 0, 0, 0.7) !important;
-        border-radius: 14px !important;
+        border-radius: 10px !important;
         border: 1px solid rgba(255, 255, 255, 0.05) !important;
         box-shadow: inset 0px 4px 10px rgba(0,0,0,0.8) !important;
-        padding: 4px !important;
+        padding: 2px !important;
+        min-height: 32px !important;
     }
+    div[data-baseweb="select"] div[class*="singleValue"] { font-size: 0.8rem !important; }
     
-    /* --- UI UPGRADE 2: AMBIENT POSTER GLOW & GLASSMORPHISM CARDS --- */
+    /* --- AMBIENT POSTER GLOW & TIGHT CARDS --- */
     [data-testid="stVerticalBlockBorderWrapper"] {
         background: linear-gradient(145deg, rgba(30, 32, 40, 0.6) 0%, rgba(15, 17, 22, 0.8) 100%) !important;
-        backdrop-filter: blur(12px) !important;
-        -webkit-backdrop-filter: blur(12px) !important;
-        border-radius: 12px !important; 
+        backdrop-filter: blur(12px) !important; -webkit-backdrop-filter: blur(12px) !important;
+        border-radius: 10px !important; 
         border: 1px solid rgba(255, 193, 7, 0.15) !important;
-        box-shadow: 0px 8px 24px rgba(0, 0, 0, 0.6), 0px 0px 15px rgba(255, 193, 7, 0.1) !important; 
-        padding: 0.3rem !important;
+        box-shadow: 0px 6px 18px rgba(0, 0, 0, 0.6), 0px 0px 12px rgba(255, 193, 7, 0.1) !important; 
+        padding: 0.2rem !important; /* Aggressive squeeze */
     }
     
-    div[data-testid="column"] > div[data-testid="stVerticalBlock"] {
-        gap: 0.25rem !important; 
-    }
+    div[data-testid="column"] > div[data-testid="stVerticalBlock"] { gap: 0.1rem !important; }
     
-    /* --- PRIMARY ACTION OVERRIDE & ELASTIC TAP FEEDBACK --- */
+    /* --- ELASTIC TAP FEEDBACK --- */
     button[kind="primary"] { 
         background: linear-gradient(135deg, #FFD54F 0%, #FFC107 100%) !important; 
-        color: #000 !important; 
-        border: none !important; 
-        border-radius: 20px !important;
-        font-weight: 700 !important;
-        box-shadow: 0 4px 15px rgba(255, 193, 7, 0.4) !important;
+        color: #000 !important; border: none !important; border-radius: 12px !important;
+        font-weight: 700 !important; box-shadow: 0 4px 15px rgba(255, 193, 7, 0.4) !important;
         transition: transform 0.1s ease !important;
     }
     button[kind="secondary"] { 
-        background-color: rgba(255, 255, 255, 0.05) !important; 
-        color: #ccc !important; 
-        border: 1px solid rgba(255, 255, 255, 0.1) !important; 
-        border-radius: 20px !important;
-        font-weight: 600 !important;
-        transition: transform 0.1s ease !important;
+        background-color: rgba(255, 255, 255, 0.05) !important; color: #ccc !important; 
+        border: 1px solid rgba(255, 255, 255, 0.1) !important; border-radius: 12px !important;
+        font-weight: 600 !important; transition: transform 0.1s ease !important;
     }
-    button:active { transform: scale(0.96) !important; }
+    button:active { transform: scale(0.94) !important; }
     
+    /* Poster Buttons */
     .movie-wall-btn div.stButton > button {
-        background: rgba(255, 255, 255, 0.05) !important;
-        backdrop-filter: blur(5px) !important;
-        -webkit-backdrop-filter: blur(5px) !important;
-        border: 1px solid rgba(255, 255, 255, 0.08) !important;
-        border-radius: 6px !important; 
-        color: #E0E0E0 !important;
-        font-size: 0.50rem !important; 
-        font-weight: 700 !important;
-        padding: 4px 1px !important; 
-        margin: 0 !important;
-        text-transform: uppercase;
-        letter-spacing: -0.2px !important; 
-        min-height: 1.8rem !important; 
-        line-height: 1;
-        width: 100% !important;
-        white-space: nowrap !important; 
-        overflow: hidden !important;
-        text-overflow: clip !important;
-        transition: all 0.2s !important;
+        background: rgba(255, 255, 255, 0.05) !important; backdrop-filter: blur(5px) !important;
+        border: 1px solid rgba(255, 255, 255, 0.08) !important; border-radius: 6px !important; 
+        color: #E0E0E0 !important; font-size: 0.50rem !important; font-weight: 700 !important;
+        padding: 4px 1px !important; margin: 0 !important; text-transform: uppercase;
+        letter-spacing: -0.2px !important; min-height: 1.6rem !important; line-height: 1;
+        width: 100% !important; white-space: nowrap !important; overflow: hidden !important; transition: all 0.1s !important;
     }
     .movie-wall-btn div.stButton > button:active { 
-        transform: scale(0.95); 
-        background: linear-gradient(135deg, #FFD54F 0%, #FFC107 100%) !important; 
-        color: #000 !important;
-        border-color: #FFC107 !important;
-        box-shadow: 0 0 10px rgba(255, 193, 7, 0.5) !important;
+        transform: scale(0.92) !important; background: linear-gradient(135deg, #FFD54F 0%, #FFC107 100%) !important; 
+        color: #000 !important; border-color: #FFC107 !important; box-shadow: 0 0 10px rgba(255, 193, 7, 0.5) !important;
     }
     
-    /* --- UI UPGRADE 1: PINNED FLOATING BOTTOM NAVIGATION DOCK (FIXED CSS) --- */
-    /* By explicitly targeting tablists with exactly 6 tabs, we guarantee this only hits the main nav bar! */
-    div[data-testid="stTabs"] > div[role="tablist"]:has(button:nth-child(6)):not(:has(button:nth-child(7))) {
+    /* --- UI UPGRADE 1: BULLETPROOF PINNED DOCK --- */
+    .main-nav-marker + div[data-testid="stTabs"] > div[data-baseweb="tab-list"],
+    .main-nav-marker + div[data-testid="stTabs"] > div[role="tablist"] {
         position: fixed !important;
         bottom: 0 !important;
         top: auto !important;
         left: 0 !important;
+        right: 0 !important;
         width: 100vw !important;
-        z-index: 99999 !important;
-        padding: 10px 5px max(20px, env(safe-area-inset-bottom)) 5px !important;
+        z-index: 999999 !important;
+        padding: 8px 5px env(safe-area-inset-bottom, 15px) 5px !important;
         margin: 0 !important;
-        background-color: rgba(8, 9, 12, 0.85) !important;
-        backdrop-filter: blur(20px) !important;
-        -webkit-backdrop-filter: blur(20px) !important;
-        border-top: 1px solid rgba(255, 255, 255, 0.1) !important;
-        border-bottom: none !important;
-        display: flex !important;
-        justify-content: space-around !important;
-        box-shadow: 0px -10px 30px rgba(0,0,0,0.6) !important;
+        background-color: rgba(8, 9, 12, 0.95) !important;
+        backdrop-filter: blur(25px) !important; -webkit-backdrop-filter: blur(25px) !important;
+        border-top: 1px solid rgba(255, 255, 255, 0.1) !important; border-bottom: none !important;
+        display: flex !important; justify-content: space-around !important;
+        box-shadow: 0px -10px 40px rgba(0,0,0,0.8) !important;
+        gap: 2px !important; overflow-x: visible !important;
     }
     
-    div[data-testid="stTabs"] > div[role="tablist"]:has(button:nth-child(6)):not(:has(button:nth-child(7))) button[role="tab"] {
-        flex: 1 1 0px !important; 
-        min-width: 0 !important; 
-        padding: 5px 0px !important;
-        margin: 0 !important;
-        border-radius: 12px !important;
-        background: transparent !important;
-        transition: all 0.3s ease !important;
-        border-bottom: none !important;
-    }
-    
-    div[data-testid="stTabs"] > div[role="tablist"]:has(button:nth-child(6)):not(:has(button:nth-child(7))) button[role="tab"] p {
-        font-size: 0.55rem !important; 
-        font-weight: 700 !important;
-        text-align: center !important;
-        margin: 0 auto !important;
-        white-space: nowrap !important;
-        letter-spacing: -0.4px !important; 
-        color: #888 !important;
-        transition: all 0.3s ease !important;
+    .main-nav-marker + div[data-testid="stTabs"] > div[role="tablist"] > div {
+        flex: 1 1 0px !important; min-width: 0 !important; display: flex !important; justify-content: center !important;
     }
 
-    div[data-testid="stTabs"] > div[role="tablist"]:has(button:nth-child(6)):not(:has(button:nth-child(7))) button[role="tab"][aria-selected="true"] {
-        background: rgba(255, 193, 7, 0.1) !important;
-        border: 1px solid rgba(255, 193, 7, 0.3) !important;
+    .main-nav-marker + div[data-testid="stTabs"] button[role="tab"] {
+        flex: 1 1 100% !important; min-width: 0 !important; padding: 8px 0px !important; margin: 0 !important;
+        border-radius: 12px !important; background: transparent !important; border: 1px solid transparent !important;
+        transition: all 0.2s ease !important;
     }
-    div[data-testid="stTabs"] > div[role="tablist"]:has(button:nth-child(6)):not(:has(button:nth-child(7))) button[role="tab"][aria-selected="true"] p {
-        color: #FFC107 !important;
-        text-shadow: 0px 0px 10px rgba(255, 193, 7, 0.5) !important;
+    
+    /* Hide Streamlit Native Scroll Arrows */
+    .main-nav-marker + div[data-testid="stTabs"] button[kind="secondary"] { display: none !important; }
+    
+    .main-nav-marker + div[data-testid="stTabs"] button[role="tab"] p {
+        font-size: 0.55rem !important; font-weight: 700 !important; text-align: center !important;
+        margin: 0 auto !important; white-space: nowrap !important; letter-spacing: -0.4px !important; 
+        color: #888 !important; transition: all 0.2s ease !important;
+    }
+
+    .main-nav-marker + div[data-testid="stTabs"] button[role="tab"][aria-selected="true"] {
+        background: rgba(255, 193, 7, 0.1) !important; border: 1px solid rgba(255, 193, 7, 0.3) !important;
+    }
+    .main-nav-marker + div[data-testid="stTabs"] button[role="tab"][aria-selected="true"] p {
+        color: #FFC107 !important; text-shadow: 0px 0px 10px rgba(255, 193, 7, 0.5) !important;
     }
     
     /* --- DISCOVER FEED: HORIZONTAL CAROUSEL HACK --- */
     div[data-testid="stHorizontalBlock"]:has(.carousel-marker),
     div[data-testid="stColumns"]:has(.carousel-marker) {
-        display: flex !important;
-        flex-direction: row !important;
-        overflow-x: auto !important;
-        flex-wrap: nowrap !important;
-        scrollbar-width: none;
-        -ms-overflow-style: none;
-        padding-bottom: 15px !important;
-        gap: 12px !important;
+        display: flex !important; flex-direction: row !important; overflow-x: auto !important; flex-wrap: nowrap !important;
+        scrollbar-width: none; -ms-overflow-style: none; padding-bottom: 10px !important; gap: 8px !important;
     }
-    div[data-testid="stHorizontalBlock"]:has(.carousel-marker)::-webkit-scrollbar,
-    div[data-testid="stColumns"]:has(.carousel-marker)::-webkit-scrollbar { display: none; }
-    div[data-testid="column"]:has(.carousel-marker),
-    div[data-testid="stColumn"]:has(.carousel-marker) {
-        flex: 0 0 110px !important; width: 110px !important; min-width: 110px !important;
-        padding: 0 !important; display: block !important;
+    div[data-testid="stHorizontalBlock"]:has(.carousel-marker)::-webkit-scrollbar, div[data-testid="stColumns"]:has(.carousel-marker)::-webkit-scrollbar { display: none; }
+    div[data-testid="column"]:has(.carousel-marker), div[data-testid="stColumn"]:has(.carousel-marker) {
+        flex: 0 0 110px !important; width: 110px !important; min-width: 110px !important; padding: 0 !important; display: block !important;
     }
     
-    /* --- GRID LOCK FOR HIGH-DPI SCREENS --- */
+    /* --- TIGHT GRID LOCK FOR SCREENS --- */
     @media (max-width: 992px) {
-        div[data-testid="stHorizontalBlock"]:has(.grid-3-col),
-        div[data-testid="stColumns"]:has(.grid-3-col) {
-            display: flex !important; flex-direction: row !important; flex-wrap: nowrap !important; gap: 2% !important; 
+        div[data-testid="stHorizontalBlock"]:has(.grid-3-col), div[data-testid="stColumns"]:has(.grid-3-col) {
+            display: flex !important; flex-direction: row !important; flex-wrap: nowrap !important; gap: 1.5% !important; 
         }
-        div[data-testid="column"]:has(.grid-3-col),
-        div[data-testid="stColumn"]:has(.grid-3-col) {
-            width: 32% !important; flex: 1 1 32% !important; min-width: 0 !important; padding: 0 !important; display: block !important;
+        div[data-testid="column"]:has(.grid-3-col), div[data-testid="stColumn"]:has(.grid-3-col) {
+            width: 32.33% !important; flex: 1 1 32.33% !important; min-width: 0 !important; padding: 0 !important; display: block !important;
         }
         
-        div[data-testid="stHorizontalBlock"]:has(.grid-2-col),
-        div[data-testid="stColumns"]:has(.grid-2-col) {
+        div[data-testid="stHorizontalBlock"]:has(.grid-2-col), div[data-testid="stColumns"]:has(.grid-2-col) {
             display: flex !important; flex-direction: row !important; flex-wrap: nowrap !important; gap: 4% !important; 
         }
-        div[data-testid="column"]:has(.grid-2-col),
-        div[data-testid="stColumn"]:has(.grid-2-col) {
+        div[data-testid="column"]:has(.grid-2-col), div[data-testid="stColumn"]:has(.grid-2-col) {
             width: 48% !important; flex: 1 1 48% !important; min-width: 0 !important; padding: 0 !important; display: block !important;
         }
         
         div[role="dialog"] {
             width: 95vw !important; max-width: 95vw !important; margin: 0 auto !important; padding: 1rem !important;
-            background: rgba(15, 17, 22, 0.95) !important;
-            backdrop-filter: blur(20px) !important; -webkit-backdrop-filter: blur(20px) !important;
+            background: rgba(15, 17, 22, 0.95) !important; backdrop-filter: blur(20px) !important; -webkit-backdrop-filter: blur(20px) !important;
             border: 1px solid rgba(255, 255, 255, 0.1) !important;
         }
     }
@@ -281,14 +220,9 @@ st.markdown("""
     
     .badge {
         display: inline-block; background-color: rgba(255,255,255,0.1); color: #FFFFFF; padding: 3px 8px;
-        border-radius: 12px; font-size: 0.7rem; font-weight: 600; margin-right: 4px; margin-bottom: 6px;
-        border: 1px solid rgba(255,255,255,0.05);
+        border-radius: 12px; font-size: 0.7rem; font-weight: 600; margin-right: 4px; margin-bottom: 6px; border: 1px solid rgba(255,255,255,0.05);
     }
-    .badge-gold { 
-        background: linear-gradient(135deg, #FFD54F 0%, #FFC107 100%); 
-        color: #000000; border: none; box-shadow: 0 2px 6px rgba(255, 193, 7, 0.3);
-    }
-    
+    .badge-gold { background: linear-gradient(135deg, #FFD54F 0%, #FFC107 100%); color: #000000; border: none; box-shadow: 0 2px 6px rgba(255, 193, 7, 0.3); }
     .movie-poster-sharp img { border-radius: 6px !important; aspect-ratio: 2/3; object-fit: cover; }
 </style>
 """, unsafe_allow_html=True)
@@ -317,10 +251,8 @@ SUPABASE_KEY = st.secrets["SUPABASE_KEY"]
 DB_ENDPOINT = f"{SUPABASE_URL}/rest/v1/tv_time_data?id=eq.1"
 
 HEADERS = {
-    "apikey": SUPABASE_KEY,
-    "Authorization": f"Bearer {SUPABASE_KEY}",
-    "Content-Type": "application/json",
-    "Prefer": "return=representation"
+    "apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}",
+    "Content-Type": "application/json", "Prefer": "return=representation"
 }
 TODAY = get_dubai_time().strftime('%Y-%m-%d')
 
@@ -336,11 +268,8 @@ def fetch_robust(url):
     for _ in range(3):
         try:
             r = requests.get(url, timeout=5)
-            if r.status_code == 429:
-                time.sleep(1.5)
-                continue
-            if r.status_code == 200:
-                return r.json()
+            if r.status_code == 429: time.sleep(1.5); continue
+            if r.status_code == 200: return r.json()
             return {}
         except: time.sleep(1)
     return {}
@@ -388,8 +317,7 @@ def pack_db(db):
         packed["s"].append([s["id"], s["name"], encode_eps(s.get("watched_episodes", [])), s.get("poster_path", ""), s.get("first_air_date", ""), s.get("total_episodes", 1)])
     for h in db.get("history", []):
         packed["h"].append([1 if h.get("t") == "s" else 0, h.get("i"), h.get("e", ""), h.get("d")])
-    for k, v in db.get("analytics", {}).items():
-        packed["a"][k] = [v.get("tv", 0), v.get("movie", 0)]
+    for k, v in db.get("analytics", {}).items(): packed["a"][k] = [v.get("tv", 0), v.get("movie", 0)]
     packed["r"] = db.get("seen_recaps", [])
     return packed
 
@@ -401,8 +329,7 @@ def unpack_db(packed):
         db["shows"].append({"id": s[0], "name": s[1], "watched_episodes": decode_eps(s[2]), "poster_path": s[3], "first_air_date": s[4], "total_episodes": s[5]})
     for h in packed.get("h", []):
         db["history"].append({"t": "s" if h[0]==1 else "m", "i": h[1], "e": h[2], "d": h[3]})
-    for k, v in packed.get("a", {}).items():
-        db["analytics"][k] = {"tv": v[0], "movie": v[1]}
+    for k, v in packed.get("a", {}).items(): db["analytics"][k] = {"tv": v[0], "movie": v[1]}
     db["seen_recaps"] = packed.get("r", [])
     return db
 
@@ -413,8 +340,7 @@ def load_db():
             data = res.json()
             if len(data) > 0:
                 payload = data[0].get("payload", {})
-                if "m" in payload and "s" in payload:
-                    return unpack_db(payload)
+                if "m" in payload and "s" in payload: return unpack_db(payload)
             return {"shows": [], "movies": [], "history": [], "analytics": {}, "seen_recaps": []}
         return None
     except: return None
@@ -495,8 +421,7 @@ def remove_watch(item_type, item_id, detail=""):
     else:
         for m in db.get("movies", []):
             if str(m.get("id")) == str(item_id):
-                m["watched"] = False
-                break
+                m["watched"] = False; break
     save_db()
 
 # --- INLINE HELPERS ---
@@ -506,26 +431,32 @@ def render_badges(items, is_gold=False):
     st.markdown(html, unsafe_allow_html=True)
 
 def display_poster(path, width=185):
-    if path and str(path).lower() not in ["none", "null", ""]:
-        st.image(f"https://image.tmdb.org/t/p/w{width}{path}", use_container_width=True)
-    else:
-        st.markdown(f'<div style="background-color: rgba(255,255,255,0.05); border-radius:8px; width:100%; aspect-ratio: 2/3; display:flex; align-items:center; justify-content:center; color:#555; font-size:0.8rem; text-align:center; margin-bottom:5px;">No Image</div>', unsafe_allow_html=True)
+    if path and str(path).lower() not in ["none", "null", ""]: st.image(f"https://image.tmdb.org/t/p/w{width}{path}", use_container_width=True)
+    else: st.markdown(f'<div style="background-color: rgba(255,255,255,0.05); border-radius:8px; width:100%; aspect-ratio: 2/3; display:flex; align-items:center; justify-content:center; color:#555; font-size:0.8rem; text-align:center; margin-bottom:5px;">No Image</div>', unsafe_allow_html=True)
 
-# --- REWORKED: NO NESTED DIALOGS, USING INLINE EXPANDER FOR CAST SEARCH ---
+# --- REWORKED: CHARACTER NAMES + INLINE EXPANDER FOR CAST SEARCH ---
 def show_cast_horizontal(cast_list, limit=12):
     if not cast_list: return
-    html = '<div style="display: flex; overflow-x: auto; gap: 14px; padding-bottom: 10px; scrollbar-width: none; -ms-overflow-style: none;">'
+    html = '<div style="display: flex; overflow-x: auto; gap: 12px; padding-bottom: 10px; scrollbar-width: none; -ms-overflow-style: none;">'
     for actor in cast_list[:limit]:
         img_url = f"https://image.tmdb.org/t/p/w185{actor['profile_path']}" if actor.get("profile_path") else "https://via.placeholder.com/185x278/222222/888888?text=No+Photo"
-        safe_name = str(actor.get('name', '')).replace('"', '&quot;').replace("'", "&#39;")
+        safe_actor = str(actor.get('name', '')).replace('"', '&quot;').replace("'", "&#39;")
+        safe_char = str(actor.get('character', '')).replace('"', '&quot;').replace("'", "&#39;")
         encoded_name = str(actor.get('name', '')).replace(" ", "+")
         imdb_url = f"https://www.imdb.com/find/?q={encoded_name}"
-        html += f'<div style="flex: 0 0 85px; width: 85px; text-align: center;"><a href="{imdb_url}" target="_blank" style="text-decoration: none; color: inherit;"><img src="{img_url}" style="width: 85px; height: 127px; border-radius: 8px; object-fit: cover; box-shadow: 0 4px 6px rgba(0,0,0,0.3); margin-bottom: 6px;"><div style="font-size: 0.65rem; font-weight: 600; color: #E0E0E0; line-height: 1.2; white-space: pre-wrap;">{safe_name}</div></a></div>'
+        html += f'''
+        <div style="flex: 0 0 85px; width: 85px; text-align: center;">
+            <a href="{imdb_url}" target="_blank" style="text-decoration: none; color: inherit;">
+                <img src="{img_url}" style="width: 85px; height: 127px; border-radius: 8px; object-fit: cover; box-shadow: 0 4px 6px rgba(0,0,0,0.3); margin-bottom: 6px;">
+                <div style="font-size: 0.60rem; font-weight: 700; color: #FFD54F; line-height: 1.1; margin-bottom: 2px; white-space: pre-wrap;">{safe_char}</div>
+                <div style="font-size: 0.55rem; font-weight: 500; color: #aaa; line-height: 1.1; white-space: pre-wrap;">{safe_actor}</div>
+            </a>
+        </div>
+        '''
     html += '</div>'
     html = html.replace('\n', '')
     st.markdown(html, unsafe_allow_html=True)
     
-    # Nested Dialog Fix: Drops down gracefully inside the current dialog
     with st.expander("🔍 Cross-Reference Cast in Your Library"):
         st.write("See where else you know an actor from.")
         actor_names = [a["name"] for a in cast_list]
@@ -534,10 +465,8 @@ def show_cast_horizontal(cast_list, limit=12):
         
         with st.spinner(f"Scanning library for {actor['name']}..."):
             credits = fetch_api(f"https://api.themoviedb.org/3/person/{actor['id']}/combined_credits?api_key={TMDB_KEY}")
-            
             actor_movie_ids = {str(c["id"]) for c in credits.get("cast", []) if c.get("media_type") == "movie"}
             actor_tv_ids = {str(c["id"]) for c in credits.get("cast", []) if c.get("media_type") == "tv"}
-            
             user_movies = [m["name"] for m in st.session_state.db["movies"] if str(m["id"]) in actor_movie_ids]
             user_shows = [s["name"] for s in st.session_state.db["shows"] if str(s["id"]) in actor_tv_ids]
         
@@ -546,8 +475,7 @@ def show_cast_horizontal(cast_list, limit=12):
         c1, c2 = st.columns([1,3])
         with c1: st.image(img_url, use_container_width=True)
         with c2:
-            if not user_movies and not user_shows:
-                st.info(f"You don't have any other titles starring **{actor['name']}** in your library.")
+            if not user_movies and not user_shows: st.info(f"You don't have any other titles starring **{actor['name']}** in your library.")
             else:
                 st.success(f"**Found {len(user_movies) + len(user_shows)} matching titles in your database!**")
                 for m in user_movies: st.markdown(f"🎬 {m}")
@@ -616,8 +544,7 @@ def manage_show_dialog(show_id, show_name, details):
     s_nums = [s["season_number"] for s in details.get("seasons", []) if s["season_number"] > 0]
     if s_nums:
         c1, c2 = st.columns([1,1])
-        with c1:
-            sel_s = st.selectbox("Select Season", s_nums, key=f"dlg_s_{show_id}", label_visibility="collapsed")
+        with c1: sel_s = st.selectbox("Select Season", s_nums, key=f"dlg_s_{show_id}", label_visibility="collapsed")
             
         s_data = fetch_api(f"https://api.themoviedb.org/3/tv/{show_id}/season/{sel_s}?api_key={TMDB_KEY}")
         watched_list = current_show.get("watched_episodes", []) if current_show else []
@@ -648,8 +575,7 @@ def manage_show_dialog(show_id, show_name, details):
                             remove_watch("tv", sid, ecode)
                         break
             ep_col1, ep_col2 = st.columns([6, 1])
-            with ep_col1:
-                st.checkbox(f"**E{ep['episode_number']}.** {ep.get('name', 'Episode')}", value=is_watched, key=f"chk_dlg_{show_id}_{e_code}", on_change=on_check, disabled=(current_show is None))
+            with ep_col1: st.checkbox(f"**E{ep['episode_number']}.** {ep.get('name', 'Episode')}", value=is_watched, key=f"chk_dlg_{show_id}_{e_code}", on_change=on_check, disabled=(current_show is None))
             if st.session_state.get(info_key, False):
                 with st.container(border=True):
                     display_poster(ep.get("still_path"), width=500)
@@ -662,9 +588,7 @@ def manage_show_dialog(show_id, show_name, details):
 
 @st.dialog("Movie Details")
 def show_movie_details(m_id, m_name, details=None, is_watched=False):
-    if not details:
-        details = fetch_api(f"https://api.themoviedb.org/3/movie/{m_id}?api_key={TMDB_KEY}")
-        
+    if not details: details = fetch_api(f"https://api.themoviedb.org/3/movie/{m_id}?api_key={TMDB_KEY}")
     display_poster(details.get("backdrop_path"), width=500)
     st.markdown(f"### {m_name}")
     genres = [g["name"] for g in details.get("genres", [])]
@@ -756,20 +680,15 @@ def evaluate_and_trigger_recaps():
     month_recap_id = f"monthly-{prev_month_key}"
     if month_recap_id not in seen:
         stats = db.get("analytics", {}).get(prev_month_key, {"tv": 0, "movie": 0})
-        if stats["tv"] > 0 or stats["movie"] > 0:
-            show_monthly_recap_dialog(prev_month_key, prev_month_name, stats, month_recap_id)
-            return
+        if stats["tv"] > 0 or stats["movie"] > 0: show_monthly_recap_dialog(prev_month_key, prev_month_name, stats, month_recap_id); return
             
     prev_year_num = now.year - 1
     year_recap_id = f"yearly-{prev_year_num}"
     if year_recap_id not in seen:
         y_tv, y_mov = 0, 0
         for k, v in db.get("analytics", {}).items():
-            if k.startswith(str(prev_year_num)):
-                y_tv += v.get("tv", 0); y_mov += v.get("movie", 0)
-        if y_tv > 0 or y_mov > 0:
-            show_yearly_recap_dialog(prev_year_num, y_tv, y_mov, year_recap_id)
-            return
+            if k.startswith(str(prev_year_num)): y_tv += v.get("tv", 0); y_mov += v.get("movie", 0)
+        if y_tv > 0 or y_mov > 0: show_yearly_recap_dialog(prev_year_num, y_tv, y_mov, year_recap_id); return
 
 evaluate_and_trigger_recaps()
 
@@ -784,7 +703,7 @@ if st.session_state.last_action:
             st.session_state.last_action = None; st.rerun()
 
 # --- APP NAVIGATION BAR ---
-st.markdown('<span class="main-nav-marker"></span>', unsafe_allow_html=True)
+st.markdown('<span class="main-nav-marker" style="display:none;"></span>', unsafe_allow_html=True)
 t_next, t_soon, t_search, t_tv, t_movies, t_profile = st.tabs(["🔥 Next", "📅 Soon", "🔍 Search", "📺 TV", "🎬 Movies", "👤 Profile"])
 
 # ==========================================
@@ -792,10 +711,11 @@ t_next, t_soon, t_search, t_tv, t_movies, t_profile = st.tabs(["🔥 Next", "�
 # ==========================================
 with t_next:
     st.markdown("### Up Next")
-    next_filter = st.selectbox("Category:", ["📺 Series", "🎬 Movies"], label_visibility="collapsed", key="next_filter_box")
-    st.markdown("<div style='height: 5px;'></div>", unsafe_allow_html=True)
-    next_sort = st.selectbox("Sort by:", ["Smart Priority", "Release Date", "Alphabetical"], label_visibility="collapsed", key="next_sort_box")
-    st.divider()
+    # --- UI UPGRADE: SIDE-BY-SIDE TIGHT FILTERS ---
+    f_col1, f_col2 = st.columns(2)
+    with f_col1: next_filter = st.selectbox("Category:", ["📺 Series", "🎬 Movies"], label_visibility="collapsed", key="next_filter_box")
+    with f_col2: next_sort = st.selectbox("Sort by:", ["Smart Priority", "Release Date", "Alphabetical"], label_visibility="collapsed", key="next_sort_box")
+    st.markdown("<div style='margin-top:-10px; margin-bottom:10px; border-bottom:1px solid rgba(255,255,255,0.05);'></div>", unsafe_allow_html=True)
     
     try: fifteen_days_ago = get_dubai_time() - pd.DateOffset(days=15)
     except: fifteen_days_ago = get_dubai_time() - timedelta(days=15)
@@ -816,19 +736,17 @@ with t_next:
             
             details = fetch_api(f"https://api.themoviedb.org/3/tv/{show['id']}?api_key={TMDB_KEY}")
             watched_set = set(show.get("watched_episodes", []))
-            
             highest_s, highest_e = -1, -1
             for code in watched_set:
                 try:
                     s_num, e_num = int(code.split('E')[0].replace('S','')), int(code.split('E')[1])
-                    if s_num > highest_s or (s_num == highest_s and e_num > highest_e):
-                        highest_s, highest_e = s_num, e_num
+                    if s_num > highest_s or (s_num == highest_s and e_num > highest_e): highest_s, highest_e = s_num, e_num
                 except: pass
 
             seasons = [s for s in details.get("seasons", []) if s["season_number"] > 0]
             start_s = max(1, highest_s)
-            
             candidate_after_max = None
+            
             for s_info in [s for s in seasons if s["season_number"] >= start_s]:
                 s_data = fetch_api(f"https://api.themoviedb.org/3/tv/{show['id']}/season/{s_info['season_number']}?api_key={TMDB_KEY}")
                 for ep in s_data.get("episodes", []):
@@ -842,8 +760,7 @@ with t_next:
                             break
                 if candidate_after_max: break
                 
-            if candidate_after_max:
-                up_next_tv.append(candidate_after_max)
+            if candidate_after_max: up_next_tv.append(candidate_after_max)
             else:
                 candidate_skipped = None
                 for s_info in [s for s in seasons if s["season_number"] < start_s]:
@@ -855,15 +772,13 @@ with t_next:
                             candidate_skipped = {"item": show, "details": details, "ep": ep, "code": ep_code, "date": air_date, "is_rec": False, "is_skipped": True}
                             break
                     if candidate_skipped: break
-                if candidate_skipped:
-                    up_next_tv.append(candidate_skipped)
+                if candidate_skipped: up_next_tv.append(candidate_skipped)
 
         if next_sort == "Alphabetical": up_next_tv.sort(key=lambda x: x["item"]["name"].lower())
         elif next_sort == "Release Date": up_next_tv.sort(key=lambda x: x["date"] or "1900-01-01", reverse=True)
         elif next_sort == "Smart Priority": up_next_tv.sort(key=lambda x: (not x.get("is_skipped", False), x["is_rec"], x["date"] or "1900-01-01"), reverse=True)
 
-        if not up_next_tv: 
-            st.info("You are completely caught up on series! 🎉")
+        if not up_next_tv: st.info("You are completely caught up on series! 🎉")
         else:
             limit = st.session_state.next_tv_limit
             for i in range(0, len(up_next_tv[:limit]), 3):
@@ -884,18 +799,14 @@ with t_next:
                                 def f_w_tv(sid=show['id'], sname=show['name'], ecode=ep_code):
                                     for s in st.session_state.db["shows"]:
                                         if str(s["id"]) == str(sid):
-                                            s["watched_episodes"].append(ecode)
-                                            log_watch("tv", sid, ecode)
-                                            break
+                                            s["watched_episodes"].append(ecode); log_watch("tv", sid, ecode); break
                                 st.button("✔️ Watch", key=f"n_w_tv_{show['id']}_{ep_code}_{idx}", on_click=f_w_tv, use_container_width=True)
-                                if st.button("ℹ️ Info", key=f"n_i_tv_{show['id']}_{ep_code}_{idx}", use_container_width=True):
-                                    show_episode_details(show['id'], show['name'], ep_code, ep, is_watched=False)
+                                if st.button("ℹ️ Info", key=f"n_i_tv_{show['id']}_{ep_code}_{idx}", use_container_width=True): show_episode_details(show['id'], show['name'], ep_code, ep, is_watched=False)
                                 st.markdown('</div>', unsafe_allow_html=True)
                                 
             if len(up_next_tv) > st.session_state.next_tv_limit:
                 if st.button("Load More Series", use_container_width=True, key="load_more_next_tv"):
-                    st.session_state.next_tv_limit += 30
-                    st.rerun()
+                    st.session_state.next_tv_limit += 30; st.rerun()
 
     else:
         up_next_mov = []
@@ -910,8 +821,7 @@ with t_next:
         elif next_sort == "Release Date": up_next_mov.sort(key=lambda x: x["date"] or "1900-01-01", reverse=True)
         elif next_sort == "Smart Priority": up_next_mov.sort(key=lambda x: (x["is_rec"], x["date"] or "1900-01-01"), reverse=True)
 
-        if not up_next_mov: 
-            st.info("You have no unwatched movies left! 🎉")
+        if not up_next_mov: st.info("You have no unwatched movies left! 🎉")
         else:
             limit = st.session_state.next_mov_limit
             for i in range(0, len(up_next_mov[:limit]), 3):
@@ -929,29 +839,24 @@ with t_next:
                                 st.markdown('<div class="movie-wall-btn">', unsafe_allow_html=True)
                                 def f_w_mov(mid=m['id']):
                                     for mv in st.session_state.db["movies"]:
-                                        if str(mv["id"]) == str(mid):
-                                            mv["watched"] = True
-                                            log_watch("movie", mid)
-                                            break
+                                        if str(mv["id"]) == str(mid): mv["watched"] = True; log_watch("movie", mid); break
                                 st.button("✔️ Watch", key=f"n_w_mov_{m['id']}_{idx}", on_click=f_w_mov, use_container_width=True)
-                                if st.button("ℹ️ Info", key=f"n_i_mov_{m['id']}_{idx}", use_container_width=True):
-                                    show_movie_details(m['id'], m['name'], details=None, is_watched=False)
+                                if st.button("ℹ️ Info", key=f"n_i_mov_{m['id']}_{idx}", use_container_width=True): show_movie_details(m['id'], m['name'], details=None, is_watched=False)
                                 st.markdown('</div>', unsafe_allow_html=True)
                         
             if len(up_next_mov) > st.session_state.next_mov_limit:
                 if st.button("Load More Movies", use_container_width=True, key="load_more_next_mov"):
-                    st.session_state.next_mov_limit += 30
-                    st.rerun()
+                    st.session_state.next_mov_limit += 30; st.rerun()
 
 # ==========================================
 # TAB 2: UPCOMING CALENDAR
 # ==========================================
 with t_soon:
     st.markdown("### Upcoming Releases")
-    soon_filter = st.selectbox("Category:", ["📺 Series", "🎬 Movies"], label_visibility="collapsed", key="soon_filter_box")
-    st.markdown("<div style='height: 5px;'></div>", unsafe_allow_html=True)
-    soon_sort = st.selectbox("Sort by:", ["Release Date", "Alphabetical"], label_visibility="collapsed", key="soon_sort_box")
-    st.divider()
+    f_col1, f_col2 = st.columns(2)
+    with f_col1: soon_filter = st.selectbox("Category:", ["📺 Series", "🎬 Movies"], label_visibility="collapsed", key="soon_filter_box")
+    with f_col2: soon_sort = st.selectbox("Sort by:", ["Release Date", "Alphabetical"], label_visibility="collapsed", key="soon_sort_box")
+    st.markdown("<div style='margin-top:-10px; margin-bottom:10px; border-bottom:1px solid rgba(255,255,255,0.05);'></div>", unsafe_allow_html=True)
     
     if soon_filter == "📺 Series":
         soon_tv = []
@@ -977,8 +882,7 @@ with t_soon:
         if soon_sort == "Alphabetical": soon_tv.sort(key=lambda x: x["item"]["name"].lower())
         else: soon_tv.sort(key=lambda x: x["date"] or "2099-01-01", reverse=False)
 
-        if not soon_tv: 
-            st.info("No upcoming episodes scheduled yet.")
+        if not soon_tv: st.info("No upcoming episodes scheduled yet.")
         else:
             limit = st.session_state.soon_tv_limit
             for i in range(0, len(soon_tv[:limit]), 3):
@@ -1000,32 +904,26 @@ with t_soon:
                                 def f_w_s_tv(sid=show['id'], sname=show['name'], ecode=ep_code):
                                     for s in st.session_state.db["shows"]:
                                         if str(s["id"]) == str(sid):
-                                            s["watched_episodes"].append(ecode)
-                                            log_watch("tv", sid, ecode)
-                                            break
+                                            s["watched_episodes"].append(ecode); log_watch("tv", sid, ecode); break
                                 st.button("✔️ Watch", key=f"s_w_tv_{show['id']}_{ep_code}_{idx}", on_click=f_w_s_tv, use_container_width=True)
-                                if st.button("ℹ️ Info", key=f"s_i_tv_{show['id']}_{ep_code}_{idx}", use_container_width=True):
-                                    show_episode_details(show['id'], show['name'], ep_code, ep, is_watched=False)
+                                if st.button("ℹ️ Info", key=f"s_i_tv_{show['id']}_{ep_code}_{idx}", use_container_width=True): show_episode_details(show['id'], show['name'], ep_code, ep, is_watched=False)
                                 st.markdown('</div>', unsafe_allow_html=True)
 
             if len(soon_tv) > st.session_state.soon_tv_limit:
                 if st.button("Load More Upcoming Series", use_container_width=True, key="load_more_soon_tv"):
-                    st.session_state.soon_tv_limit += 30
-                    st.rerun()
+                    st.session_state.soon_tv_limit += 30; st.rerun()
 
     else:
         soon_mov = []
         for m in st.session_state.db["movies"]:
             if not m.get("watched"):
                 r_date = m.get("release_date", "")
-                if r_date and r_date > TODAY:
-                    soon_mov.append({"item": m, "date": r_date})
+                if r_date and r_date > TODAY: soon_mov.append({"item": m, "date": r_date})
 
         if soon_sort == "Alphabetical": soon_mov.sort(key=lambda x: x["item"]["name"].lower())
         else: soon_mov.sort(key=lambda x: x["date"] or "2099-01-01", reverse=False)
 
-        if not soon_mov: 
-            st.info("No upcoming movies scheduled yet.")
+        if not soon_mov: st.info("No upcoming movies scheduled yet.")
         else:
             limit = st.session_state.soon_mov_limit
             for i in range(0, len(soon_mov[:limit]), 3):
@@ -1035,8 +933,7 @@ with t_soon:
                     with cols[j]:
                         st.markdown('<span class="grid-3-col"></span>', unsafe_allow_html=True)
                         if idx < len(soon_mov[:limit]):
-                            item = soon_mov[idx]
-                            m = item["item"]
+                            item = soon_mov[idx]; m = item["item"]
                             days_left = (datetime.strptime(item["date"], '%Y-%m-%d') - get_dubai_time()).days
                             with st.container(border=True):
                                 display_poster(m.get('poster_path'), width=185)
@@ -1046,26 +943,20 @@ with t_soon:
                                 st.markdown('<div class="movie-wall-btn">', unsafe_allow_html=True)
                                 def f_w_s_mov(mid=m['id']):
                                     for mv in st.session_state.db["movies"]:
-                                        if str(mv["id"]) == str(mid):
-                                            mv["watched"] = True
-                                            log_watch("movie", mid)
-                                            break
+                                        if str(mv["id"]) == str(mid): mv["watched"] = True; log_watch("movie", mid); break
                                 st.button("✔️ Watch", key=f"s_w_mov_{m['id']}_{idx}", on_click=f_w_s_mov, use_container_width=True)
-                                if st.button("ℹ️ Info", key=f"s_i_mov_{m['id']}_{idx}", use_container_width=True):
-                                    show_movie_details(m['id'], m['name'], details=None, is_watched=False)
+                                if st.button("ℹ️ Info", key=f"s_i_mov_{m['id']}_{idx}", use_container_width=True): show_movie_details(m['id'], m['name'], details=None, is_watched=False)
                                 st.markdown('</div>', unsafe_allow_html=True)
 
             if len(soon_mov) > st.session_state.soon_mov_limit:
                 if st.button("Load More Upcoming Movies", use_container_width=True, key="load_more_soon_mov"):
-                    st.session_state.soon_mov_limit += 30
-                    st.rerun()
+                    st.session_state.soon_mov_limit += 30; st.rerun()
 
 # ==========================================
 # TAB 3: GLOBAL SEARCH / DISCOVER FEED
 # ==========================================
 with t_search:
     st.markdown("### Discover")
-    
     search_query = st_keyup("Search", debounce=2000, key="search_query_input", placeholder="Search TV shows, movies, actors...", label_visibility="collapsed")
 
     if search_query:
@@ -1082,16 +973,12 @@ with t_search:
                     with cols[j]:
                         st.markdown('<span class="grid-3-col"></span>', unsafe_allow_html=True)
                         if i + j < len(search_results):
-                            item = search_results[i + j]
-                            item_id = item["id"]
+                            item = search_results[i + j]; item_id = item["id"]
                             title = item.get("name") if search_type == "TV Shows" else item.get("title")
-                            
                             with st.container(border=True):
                                 display_poster(item.get("poster_path"), width=185)
                                 st.markdown(f'<div class="grid-title" title="{title}">{title}</div>', unsafe_allow_html=True)
-                                
                                 st.markdown('<div class="movie-wall-btn">', unsafe_allow_html=True)
-                                
                                 is_tv = (search_type == "TV Shows")
                                 added = any(str(x["id"]) == str(item_id) for x in st.session_state.db["shows" if is_tv else "movies"])
                                 
@@ -1099,40 +986,27 @@ with t_search:
                                     if st.button("➕ ADD", key=f"add_{item_id}_{i+j}", use_container_width=True):
                                         details = fetch_api(f"https://api.themoviedb.org/3/{'tv' if is_tv else 'movie'}/{item_id}?api_key={TMDB_KEY}")
                                         if is_tv:
-                                            st.session_state.db["shows"].append({
-                                                "id": item_id, "name": title, "watched_episodes": get_watched_from_history("tv", item_id),
-                                                "poster_path": details.get("poster_path", ""), "first_air_date": details.get("first_air_date", ""),
-                                                "total_episodes": details.get("number_of_episodes", 1)
-                                            })
+                                            st.session_state.db["shows"].append({"id": item_id, "name": title, "watched_episodes": get_watched_from_history("tv", item_id), "poster_path": details.get("poster_path", ""), "first_air_date": details.get("first_air_date", ""), "total_episodes": details.get("number_of_episodes", 1)})
                                         else:
-                                            st.session_state.db["movies"].append({
-                                                "id": item_id, "name": title, "watched": get_watched_from_history("movie", item_id),
-                                                "poster_path": details.get("poster_path", ""), "release_date": details.get("release_date", ""),
-                                                "runtime": details.get("runtime", 0)
-                                            })
+                                            st.session_state.db["movies"].append({"id": item_id, "name": title, "watched": get_watched_from_history("movie", item_id), "poster_path": details.get("poster_path", ""), "release_date": details.get("release_date", ""), "runtime": details.get("runtime", 0)})
                                         if save_db(): st.rerun()
-                                else:
-                                    st.button("✔️ ADDED", key=f"dsb_{item_id}_{i+j}", disabled=True, use_container_width=True)
+                                else: st.button("✔️ ADDED", key=f"dsb_{item_id}_{i+j}", disabled=True, use_container_width=True)
                                 
                                 if st.button("ℹ️ INFO", key=f"inf_{item_id}_{i+j}", use_container_width=True):
                                     details = fetch_api(f"https://api.themoviedb.org/3/{'tv' if is_tv else 'movie'}/{item_id}?api_key={TMDB_KEY}")
                                     if is_tv: manage_show_dialog(item_id, title, details)
                                     else: show_movie_details(item_id, title, details, is_watched=False)
-                                
                                 st.markdown('</div>', unsafe_allow_html=True)
     else:
         genre_options = ["🔥 Trending", "🤣 Comedy", "💥 Action", "🐉 Sci-Fi/Fantasy", "🔪 Thriller", "👻 Horror"]
         selected_genre = st.selectbox("Filters", genre_options, label_visibility="collapsed")
-        st.divider()
+        st.markdown("<div style='margin-top:-10px; margin-bottom:10px; border-bottom:1px solid rgba(255,255,255,0.05);'></div>", unsafe_allow_html=True)
 
         def render_carousel(title, items, c_type):
             if not items: return
             st.markdown(f"<h5 style='margin-bottom:0;'>{title}</h5>", unsafe_allow_html=True)
-            
             limit = st.session_state.c_limits.get(title, 10)
-            render_items = items[:limit]
-            show_load_more = limit < len(items)
-            
+            render_items = items[:limit]; show_load_more = limit < len(items)
             num_cols = len(render_items) + (1 if show_load_more else 0)
             cols = st.columns(num_cols)
             
@@ -1142,38 +1016,24 @@ with t_search:
                     display_poster(item.get("poster_path"), width=154)
                     i_title = item.get("name") if c_type == "tv" else item.get("title")
                     st.markdown(f'<div class="grid-title" title="{i_title}">{i_title}</div>', unsafe_allow_html=True)
-                    
                     st.markdown('<div class="movie-wall-btn">', unsafe_allow_html=True)
                     
-                    item_id = item["id"]
-                    added = False
+                    item_id = item["id"]; added = False
                     if c_type == "tv": added = any(str(s["id"]) == str(item_id) for s in st.session_state.db["shows"])
                     else: added = any(str(m["id"]) == str(item_id) for m in st.session_state.db["movies"])
                         
                     if not added:
                         if st.button("➕ ADD", key=f"c_add_{c_type}_{item_id}_{idx}", use_container_width=True):
                             details = fetch_api(f"https://api.themoviedb.org/3/{c_type}/{item_id}?api_key={TMDB_KEY}")
-                            if c_type == "tv":
-                                st.session_state.db["shows"].append({
-                                    "id": item_id, "name": i_title, "watched_episodes": get_watched_from_history("tv", item_id),
-                                    "poster_path": details.get("poster_path", ""), "first_air_date": details.get("first_air_date", ""),
-                                    "total_episodes": details.get("number_of_episodes", 1)
-                                })
-                            else:
-                                st.session_state.db["movies"].append({
-                                    "id": item_id, "name": i_title, "watched": get_watched_from_history("movie", item_id),
-                                    "poster_path": details.get("poster_path", ""), "release_date": details.get("release_date", ""),
-                                    "runtime": details.get("runtime", 0)
-                                })
+                            if c_type == "tv": st.session_state.db["shows"].append({"id": item_id, "name": i_title, "watched_episodes": get_watched_from_history("tv", item_id), "poster_path": details.get("poster_path", ""), "first_air_date": details.get("first_air_date", ""), "total_episodes": details.get("number_of_episodes", 1)})
+                            else: st.session_state.db["movies"].append({"id": item_id, "name": i_title, "watched": get_watched_from_history("movie", item_id), "poster_path": details.get("poster_path", ""), "release_date": details.get("release_date", ""), "runtime": details.get("runtime", 0)})
                             if save_db(): st.rerun()
-                    else: 
-                        st.button("✔️ ADDED", key=f"c_dsb_{c_type}_{item_id}_{idx}", disabled=True, use_container_width=True)
+                    else: st.button("✔️ ADDED", key=f"c_dsb_{c_type}_{item_id}_{idx}", disabled=True, use_container_width=True)
                     
                     if st.button("ℹ️ INFO", key=f"c_inf_{c_type}_{item_id}_{idx}", use_container_width=True):
                         details = fetch_api(f"https://api.themoviedb.org/3/{c_type}/{item_id}?api_key={TMDB_KEY}")
                         if c_type == "tv": manage_show_dialog(item_id, i_title, details)
                         else: show_movie_details(item_id, i_title, details, is_watched=False)
-                            
                     st.markdown('</div>', unsafe_allow_html=True)
             
             if show_load_more:
@@ -1181,20 +1041,16 @@ with t_search:
                     st.markdown('<span class="carousel-marker"></span>', unsafe_allow_html=True)
                     st.markdown('<div style="height: 60px;"></div>', unsafe_allow_html=True)
                     if st.button("➕ More", key=f"c_more_{title}", use_container_width=True):
-                        st.session_state.c_limits[title] = limit + 10
-                        st.rerun()
+                        st.session_state.c_limits[title] = limit + 10; st.rerun()
 
         if selected_genre == "🔥 Trending":
             if not st.session_state.rec_show:
                 watched_tv = [s for s in st.session_state.db.get("shows", []) if s.get("watched_episodes")]
-                if watched_tv:
-                    st.session_state.rec_show = random.choice(watched_tv)
-            
+                if watched_tv: st.session_state.rec_show = random.choice(watched_tv)
             if st.session_state.rec_show:
                 random_show = st.session_state.rec_show
                 recs = fetch_api(f"https://api.themoviedb.org/3/tv/{random_show['id']}/recommendations?api_key={TMDB_KEY}")
-                if recs.get("results"):
-                    render_carousel(f"Because you watched {random_show['name']}", recs["results"], "tv")
+                if recs.get("results"): render_carousel(f"Because you watched {random_show['name']}", recs["results"], "tv")
 
             trend_tv = fetch_api(f"https://api.themoviedb.org/3/trending/tv/day?api_key={TMDB_KEY}")
             trend_mov = fetch_api(f"https://api.themoviedb.org/3/trending/movie/day?api_key={TMDB_KEY}")
@@ -1216,10 +1072,8 @@ with t_search:
         else:
             genre_map_tv = {"🤣 Comedy": 35, "💥 Action": 10759, "🐉 Sci-Fi/Fantasy": 10765, "🔪 Thriller": 9648, "👻 Horror": 9648} 
             genre_map_mov = {"🤣 Comedy": 35, "💥 Action": 28, "🐉 Sci-Fi/Fantasy": 878, "🔪 Thriller": 53, "👻 Horror": 27}
-            
             tv_g = fetch_api(f"https://api.themoviedb.org/3/discover/tv?api_key={TMDB_KEY}&with_genres={genre_map_tv[selected_genre]}&sort_by=popularity.desc")
             mov_g = fetch_api(f"https://api.themoviedb.org/3/discover/movie?api_key={TMDB_KEY}&with_genres={genre_map_mov[selected_genre]}&sort_by=popularity.desc")
-            
             render_carousel(f"Top {selected_genre} Series", tv_g.get("results", []), "tv")
             render_carousel(f"Top {selected_genre} Movies", mov_g.get("results", []), "movie")
 
@@ -1231,16 +1085,12 @@ with t_tv:
     if "tv_tab" not in st.session_state: st.session_state.tv_tab = "WATCHLIST"
         
     c1, c2, c3 = st.columns(3)
-    if c1.button("Watchlist", type="primary" if st.session_state.tv_tab == "WATCHLIST" else "secondary", use_container_width=True, key="tv_wl"):
-        st.session_state.tv_tab = "WATCHLIST"; st.rerun()
-    if c2.button("Upcoming", type="primary" if st.session_state.tv_tab == "UPCOMING" else "secondary", use_container_width=True, key="tv_up"):
-        st.session_state.tv_tab = "UPCOMING"; st.rerun()
-    if c3.button("Watched", type="primary" if st.session_state.tv_tab == "WATCHED" else "secondary", use_container_width=True, key="tv_wd"):
-        st.session_state.tv_tab = "WATCHED"; st.rerun()
+    if c1.button("Watchlist", type="primary" if st.session_state.tv_tab == "WATCHLIST" else "secondary", use_container_width=True, key="tv_wl"): st.session_state.tv_tab = "WATCHLIST"; st.rerun()
+    if c2.button("Upcoming", type="primary" if st.session_state.tv_tab == "UPCOMING" else "secondary", use_container_width=True, key="tv_up"): st.session_state.tv_tab = "UPCOMING"; st.rerun()
+    if c3.button("Watched", type="primary" if st.session_state.tv_tab == "WATCHED" else "secondary", use_container_width=True, key="tv_wd"): st.session_state.tv_tab = "WATCHED"; st.rerun()
         
-    st.markdown("<div style='height: 5px;'></div>", unsafe_allow_html=True)
     tv_sort = st.selectbox("Sort Library by:", ["Release Date", "Alphabetical", "Recently Added"], label_visibility="collapsed", key="sort_tv_lib")
-    st.divider()
+    st.markdown("<div style='margin-top:-10px; margin-bottom:10px; border-bottom:1px solid rgba(255,255,255,0.05);'></div>", unsafe_allow_html=True)
     
     shows = st.session_state.db.get("shows", [])
     if not shows: st.info("Your TV library is empty.")
@@ -1279,30 +1129,24 @@ with t_tv:
                             with st.container(border=True):
                                 display_poster(show.get("poster_path"), width=185)
                                 st.markdown(f'<div class="grid-title" title="{show["name"]}">{show["name"]}</div>', unsafe_allow_html=True)
-                                
                                 perc = min(w_eps / t_eps, 1.0) if t_eps > 0 else 0.0
                                 st.markdown(f'<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:2px;"><div style="font-size:0.55rem; color:#888;">PROGRESS</div><div style="font-size:0.55rem; color:#FFC107; font-weight:bold;">{int(perc*100)}%</div></div>', unsafe_allow_html=True)
                                 st.progress(perc)
                                 
                                 st.markdown('<div class="movie-wall-btn">', unsafe_allow_html=True)
-                                
                                 if st.session_state.tv_tab == "WATCHLIST":
                                     st.markdown('<span class="grid-2-col"></span>', unsafe_allow_html=True)
                                     bc1, bc2 = st.columns(2)
                                     with bc1:
                                         if st.button("ℹ️ INFO", key=f"s_mgr_{show['id']}", use_container_width=True):
-                                            details = fetch_api(f"https://api.themoviedb.org/3/tv/{show['id']}?api_key={TMDB_KEY}")
-                                            manage_show_dialog(show['id'], show['name'], details)
+                                            details = fetch_api(f"https://api.themoviedb.org/3/tv/{show['id']}?api_key={TMDB_KEY}"); manage_show_dialog(show['id'], show['name'], details)
                                     with bc2:
                                         def del_tv(s_id=show['id']):
-                                            st.session_state.db["shows"] = [s for s in st.session_state.db["shows"] if str(s["id"]) != str(s_id)]
-                                            save_db()
+                                            st.session_state.db["shows"] = [s for s in st.session_state.db["shows"] if str(s["id"]) != str(s_id)]; save_db()
                                         st.button("🗑️ DEL", key=f"s_del_{show['id']}", on_click=del_tv, use_container_width=True)
                                 else:
                                     if st.button("ℹ️ INFO", key=f"s_mgr_{show['id']}", use_container_width=True):
-                                        details = fetch_api(f"https://api.themoviedb.org/3/tv/{show['id']}?api_key={TMDB_KEY}")
-                                        manage_show_dialog(show['id'], show['name'], details)
-                                    
+                                        details = fetch_api(f"https://api.themoviedb.org/3/tv/{show['id']}?api_key={TMDB_KEY}"); manage_show_dialog(show['id'], show['name'], details)
                                 st.markdown('</div>', unsafe_allow_html=True)
                                 
             if total_tv_display > st.session_state.tv_lib_limit:
@@ -1317,16 +1161,12 @@ with t_movies:
     if "mov_tab" not in st.session_state: st.session_state.mov_tab = "WATCHLIST"
         
     c1, c2, c3 = st.columns(3)
-    if c1.button("Watchlist", type="primary" if st.session_state.mov_tab == "WATCHLIST" else "secondary", use_container_width=True, key="m_wl"):
-        st.session_state.mov_tab = "WATCHLIST"; st.rerun()
-    if c2.button("Upcoming", type="primary" if st.session_state.mov_tab == "UPCOMING" else "secondary", use_container_width=True, key="m_up"):
-        st.session_state.mov_tab = "UPCOMING"; st.rerun()
-    if c3.button("Watched", type="primary" if st.session_state.mov_tab == "WATCHED" else "secondary", use_container_width=True, key="m_wd"):
-        st.session_state.mov_tab = "WATCHED"; st.rerun()
+    if c1.button("Watchlist", type="primary" if st.session_state.mov_tab == "WATCHLIST" else "secondary", use_container_width=True, key="m_wl"): st.session_state.mov_tab = "WATCHLIST"; st.rerun()
+    if c2.button("Upcoming", type="primary" if st.session_state.mov_tab == "UPCOMING" else "secondary", use_container_width=True, key="m_up"): st.session_state.mov_tab = "UPCOMING"; st.rerun()
+    if c3.button("Watched", type="primary" if st.session_state.mov_tab == "WATCHED" else "secondary", use_container_width=True, key="m_wd"): st.session_state.mov_tab = "WATCHED"; st.rerun()
         
-    st.markdown("<div style='height: 5px;'></div>", unsafe_allow_html=True)
     mov_sort = st.selectbox("Sort Library by:", ["Release Date", "Alphabetical", "Recently Added"], label_visibility="collapsed", key="sort_mov_lib")
-    st.divider()
+    st.markdown("<div style='margin-top:-10px; margin-bottom:10px; border-bottom:1px solid rgba(255,255,255,0.05);'></div>", unsafe_allow_html=True)
     
     movies = st.session_state.db.get("movies", [])
     if not movies: st.info("Your Movie library is empty.")
@@ -1364,22 +1204,17 @@ with t_movies:
                                 st.markdown(f'<div class="grid-title" title="{m["name"]}">{m["name"]}</div>', unsafe_allow_html=True)
                                 
                                 st.markdown('<div class="movie-wall-btn">', unsafe_allow_html=True)
-                                
                                 if st.session_state.mov_tab == "WATCHLIST":
                                     st.markdown('<span class="grid-2-col"></span>', unsafe_allow_html=True)
                                     bc1, bc2 = st.columns(2)
                                     with bc1:
-                                        if st.button("ℹ️ INFO", key=f"m_mgr_{m['id']}", use_container_width=True):
-                                            show_movie_details(m['id'], m['name'], details=None, is_watched=is_watched)
+                                        if st.button("ℹ️ INFO", key=f"m_mgr_{m['id']}", use_container_width=True): show_movie_details(m['id'], m['name'], details=None, is_watched=is_watched)
                                     with bc2:
                                         def del_mov(m_id=m['id']):
-                                            st.session_state.db["movies"] = [mv for mv in st.session_state.db["movies"] if str(mv["id"]) != str(m_id)]
-                                            save_db()
+                                            st.session_state.db["movies"] = [mv for mv in st.session_state.db["movies"] if str(mv["id"]) != str(m_id)]; save_db()
                                         st.button("🗑️ DEL", key=f"m_del_{m['id']}", on_click=del_mov, use_container_width=True)
                                 else:
-                                    if st.button("ℹ️ INFO", key=f"m_mgr_{m['id']}", use_container_width=True):
-                                        show_movie_details(m['id'], m['name'], details=None, is_watched=is_watched)
-                                    
+                                    if st.button("ℹ️ INFO", key=f"m_mgr_{m['id']}", use_container_width=True): show_movie_details(m['id'], m['name'], details=None, is_watched=is_watched)
                                 st.markdown('</div>', unsafe_allow_html=True)
                                 
             if total_mov_display > st.session_state.mov_lib_limit:
@@ -1393,14 +1228,10 @@ with t_profile:
     st.markdown("### Lifetime Stats")
     
     total_tv_mins = 0; total_episodes_watched = 0; total_mov_mins = 0; total_movies_watched = 0
-    
     for show in st.session_state.db["shows"]:
-        w_eps = len(show.get("watched_episodes", []))
-        total_episodes_watched += w_eps; total_tv_mins += (w_eps * 45) 
-        
+        w_eps = len(show.get("watched_episodes", [])); total_episodes_watched += w_eps; total_tv_mins += (w_eps * 45) 
     for m in st.session_state.db["movies"]:
-        if m.get("watched", False):
-            total_mov_mins += m.get("runtime", 120); total_movies_watched += 1
+        if m.get("watched", False): total_mov_mins += m.get("runtime", 120); total_movies_watched += 1
             
     total_mins = total_tv_mins + total_mov_mins
     months = total_mins // 43800; days = (total_mins % 43800) // 1440; hours = (total_mins % 1440) // 60
@@ -1432,7 +1263,6 @@ with t_profile:
     </div>
     """
     st.markdown(html_stats, unsafe_allow_html=True)
-    st.divider()
     
     st.markdown("### 📊 Watch Activity")
     chart_tab1, chart_tab2 = st.tabs(["📺 Series Activity", "🎬 Movie Activity"])
@@ -1444,18 +1274,14 @@ with t_profile:
     except:
         for i in range(11, -1, -1): last_12_months.append(get_dubai_time() - timedelta(days=30*i))
             
-    data_tv = []
-    data_mov = []
+    data_tv = []; data_mov = []
     for dt in last_12_months:
         m_key = dt.strftime('%Y-%m'); label = dt.strftime('%Y-%m')
         stats = analytics.get(m_key, {"tv": 0, "movie": 0})
-        data_tv.append({"Month": label, "Episodes": stats["tv"]})
-        data_mov.append({"Month": label, "Movies": stats["movie"]})
+        data_tv.append({"Month": label, "Episodes": stats["tv"]}); data_mov.append({"Month": label, "Movies": stats["movie"]})
         
-    df_tv = pd.DataFrame(data_tv).sort_values("Month")
-    df_mov = pd.DataFrame(data_mov).sort_values("Month")
+    df_tv = pd.DataFrame(data_tv).sort_values("Month"); df_mov = pd.DataFrame(data_mov).sort_values("Month")
     
-    # --- ALTAIR GRAPH FIX: EXACT 90-DEGREE ROTATION, NO LABEL OVERLAPPING ---
     with chart_tab1:
         if not df_tv.empty and df_tv["Episodes"].sum() > 0:
             chart_tv = alt.Chart(df_tv).mark_bar(color="#FFC107", cornerRadiusTopLeft=6, cornerRadiusTopRight=6).encode(
@@ -1476,11 +1302,10 @@ with t_profile:
             st.altair_chart((chart_mov + text_mov).properties(height=260), use_container_width=True)
         else: st.info("No movie log history available for the last 12 months.")
 
-    st.divider()
+    st.markdown("<div style='margin-top:-10px; margin-bottom:10px; border-bottom:1px solid rgba(255,255,255,0.05);'></div>", unsafe_allow_html=True)
     
     st.markdown("### 📜 Watch History Journal")
     h_tv, h_mov = st.tabs(["📺 Series", "🎬 Movies"])
-    
     history_sorted = sorted(st.session_state.db.get("history", []), key=lambda x: x.get("d", "2000-01-01 12:00:00"), reverse=True)
     
     with h_tv:
@@ -1498,21 +1323,14 @@ with t_profile:
                 st.markdown(f"<h4 style='color: #FFC107; margin-top: 1rem; margin-bottom: 0.5rem;'>{month_str}</h4>", unsafe_allow_html=True)
                 for h, dt, h_idx in items:
                     show = next((s for s in st.session_state.db["shows"] if str(s["id"]) == str(h.get("i"))), None)
-                    if show:
-                        s_name = show["name"]; poster = show.get("poster_path", "")
+                    if show: s_name = show["name"]; poster = show.get("poster_path", "")
                     else:
-                        s_data = fetch_api(f"https://api.themoviedb.org/3/tv/{h.get('i')}?api_key={TMDB_KEY}")
-                        s_name = s_data.get("name", "Unknown Series"); poster = s_data.get("poster_path", "")
-                        
-                    ep_code = h.get('e', '')
-                    poster_url = f"https://image.tmdb.org/t/p/w92{poster}" if poster else "https://via.placeholder.com/92x138/222222/555555?text=No+Img"
-                    
+                        s_data = fetch_api(f"https://api.themoviedb.org/3/tv/{h.get('i')}?api_key={TMDB_KEY}"); s_name = s_data.get("name", "Unknown Series"); poster = s_data.get("poster_path", "")
+                    ep_code = h.get('e', ''); poster_url = f"https://image.tmdb.org/t/p/w92{poster}" if poster else "https://via.placeholder.com/92x138/222222/555555?text=No+Img"
                     html = f"""<div style="display: flex; align-items: center; margin-bottom: 12px; background-color: transparent; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 8px;"><img src="{poster_url}" style="width: 45px; height: 68px; border-radius: 4px; object-fit: cover; margin-right: 14px; box-shadow: 0 2px 4px rgba(0,0,0,0.5);"><div style="display: flex; flex-direction: column; justify-content: center;"><div style="font-size: 0.95rem; font-weight: 700; color: #FFFFFF; margin-bottom: 2px; line-height: 1.2;">{s_name}</div><div style="font-size: 0.75rem; font-weight: 600; color: #FFC107; margin-bottom: 2px;">{ep_code}</div><div style="font-size: 0.7rem; color: #888888;">{dt.strftime('%b %d, %Y • %I:%M %p')}</div></div></div>"""
                     st.markdown(html, unsafe_allow_html=True)
-                                
             if len(tv_hist) > st.session_state.hist_tv_limit:
-                if st.button("Load More Series", use_container_width=True, key="load_more_tv_hist"):
-                    st.session_state.hist_tv_limit += 20; st.rerun()
+                if st.button("Load More Series", use_container_width=True, key="load_more_tv_hist"): st.session_state.hist_tv_limit += 20; st.rerun()
                     
     with h_mov:
         mov_hist = [h for h in history_sorted if h.get("t") == "m"]
@@ -1529,22 +1347,16 @@ with t_profile:
                 st.markdown(f"<h4 style='color: #FFC107; margin-top: 1rem; margin-bottom: 0.5rem;'>{month_str}</h4>", unsafe_allow_html=True)
                 for h, dt, h_idx in items:
                     mov = next((m for m in st.session_state.db["movies"] if str(m["id"]) == str(h.get("i"))), None)
-                    if mov:
-                        m_name = mov["name"]; poster = mov.get("poster_path", "")
+                    if mov: m_name = mov["name"]; poster = mov.get("poster_path", "")
                     else:
-                        m_data = fetch_api(f"https://api.themoviedb.org/3/movie/{h.get('i')}?api_key={TMDB_KEY}")
-                        m_name = m_data.get("title", "Unknown Movie"); poster = m_data.get("poster_path", "")
-                        
+                        m_data = fetch_api(f"https://api.themoviedb.org/3/movie/{h.get('i')}?api_key={TMDB_KEY}"); m_name = m_data.get("title", "Unknown Movie"); poster = m_data.get("poster_path", "")
                     poster_url = f"https://image.tmdb.org/t/p/w92{poster}" if poster else "https://via.placeholder.com/92x138/222222/555555?text=No+Img"
-                    
                     html = f"""<div style="display: flex; align-items: center; margin-bottom: 12px; background-color: transparent; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 8px;"><img src="{poster_url}" style="width: 45px; height: 68px; border-radius: 4px; object-fit: cover; margin-right: 14px; box-shadow: 0 2px 4px rgba(0,0,0,0.5);"><div style="display: flex; flex-direction: column; justify-content: center;"><div style="font-size: 0.95rem; font-weight: 700; color: #FFFFFF; margin-bottom: 2px; line-height: 1.2;">{m_name}</div><div style="font-size: 0.75rem; font-weight: 600; color: #FFC107; margin-bottom: 2px;">Movie</div><div style="font-size: 0.7rem; color: #888888;">{dt.strftime('%b %d, %Y • %I:%M %p')}</div></div></div>"""
                     st.markdown(html, unsafe_allow_html=True)
-
             if len(mov_hist) > st.session_state.hist_mov_limit:
-                if st.button("Load More Movies", use_container_width=True, key="load_more_mov_hist"):
-                    st.session_state.hist_mov_limit += 20; st.rerun()
+                if st.button("Load More Movies", use_container_width=True, key="load_more_mov_hist"): st.session_state.hist_mov_limit += 20; st.rerun()
 
-    st.divider()
+    st.markdown("<div style='margin-top:-10px; margin-bottom:10px; border-bottom:1px solid rgba(255,255,255,0.05);'></div>", unsafe_allow_html=True)
     
     with st.expander("⚙️ Import TV Time Data"):
         st.warning("Ensure you keep the app open until the progress bar reaches 100%.")
@@ -1555,13 +1367,7 @@ with t_profile:
         if st.button("Start Safe Import", key="start_import_btn"):
             if m_file or t_file:
                 prog = st.progress(0); stat_txt = st.empty()
-                new_db = {
-                    "movies": [] if wipe_db else st.session_state.db.get("movies", []),
-                    "shows": [] if wipe_db else st.session_state.db.get("shows", []),
-                    "analytics": {} if wipe_db else st.session_state.db.get("analytics", {}),
-                    "history": [] if wipe_db else st.session_state.db.get("history", []),
-                    "seen_recaps": [] if wipe_db else st.session_state.db.get("seen_recaps", [])
-                }
+                new_db = {"movies": [] if wipe_db else st.session_state.db.get("movies", []), "shows": [] if wipe_db else st.session_state.db.get("shows", []), "analytics": {} if wipe_db else st.session_state.db.get("analytics", {}), "history": [] if wipe_db else st.session_state.db.get("history", []), "seen_recaps": [] if wipe_db else st.session_state.db.get("seen_recaps", [])}
                 
                 if m_file:
                     stat_txt.text("Processing Movies... fetching data safely.")
@@ -1570,21 +1376,16 @@ with t_profile:
                         for idx, m in enumerate(m_data):
                             prog.progress((idx + 1) / len(m_data))
                             try:
-                                raw_title = m.get("title") or ""
-                                imdb_id = m.get("id", {}).get("imdb") if m.get("id") else None
+                                raw_title = m.get("title") or ""; imdb_id = m.get("id", {}).get("imdb") if m.get("id") else None
                                 if not imdb_id and not raw_title: continue 
-                                
                                 res = fetch_robust(f"https://api.themoviedb.org/3/find/{imdb_id}?api_key={TMDB_KEY}&external_source=imdb_id") if imdb_id else {}
-                                    
                                 if not res.get("movie_results") and raw_title:
                                     title_query = raw_title.replace(" ", "+")
                                     res = fetch_robust(f"https://api.themoviedb.org/3/search/movie?api_key={TMDB_KEY}&query={title_query}&year={m.get('year', '')}")
                                     if res.get("results"): res["movie_results"] = [res["results"][0]]
                                     
                                 if res.get("movie_results"):
-                                    match = res["movie_results"][0]; tmdb_id = match["id"]; title = match.get("title", raw_title)
-                                    poster = match.get("poster_path", ""); release_date = match.get("release_date", ""); is_watched = m.get("is_watched", False)
-                                    
+                                    match = res["movie_results"][0]; tmdb_id = match["id"]; title = match.get("title", raw_title); poster = match.get("poster_path", ""); release_date = match.get("release_date", ""); is_watched = m.get("is_watched", False)
                                     if not any(str(movie["id"]) == str(tmdb_id) for movie in new_db["movies"]):
                                         new_db["movies"].append({"id": tmdb_id, "name": title, "watched": is_watched, "poster_path": poster if poster else "", "release_date": release_date if release_date else "", "runtime": 120})
                                         if is_watched:
@@ -1605,25 +1406,19 @@ with t_profile:
                         for idx, s in enumerate(t_data):
                             prog.progress((idx + 1) / len(t_data))
                             try:
-                                raw_title = s.get("title") or ""
-                                tvdb_id = s.get("id", {}).get("tvdb") if s.get("id") else None
+                                raw_title = s.get("title") or ""; tvdb_id = s.get("id", {}).get("tvdb") if s.get("id") else None
                                 if not tvdb_id and not raw_title: continue 
-                                    
                                 res = fetch_robust(f"https://api.themoviedb.org/3/find/{tvdb_id}?api_key={TMDB_KEY}&external_source=tvdb_id") if tvdb_id else {}
-                                
                                 if not res.get("tv_results") and raw_title:
                                     title_query = re.sub(r'\(\d{4}\)', '', raw_title).strip().replace(" ", "+")
                                     res = fetch_robust(f"https://api.themoviedb.org/3/search/tv?api_key={TMDB_KEY}&query={title_query}")
                                     if res.get("results"): res["tv_results"] = [res["results"][0]]
                                     
                                 if res.get("tv_results"):
-                                    match = res["tv_results"][0]; tmdb_id = match["id"]; title = match.get("name", raw_title)
-                                    poster = match.get("poster_path", ""); first_air_date = match.get("first_air_date", ""); watched_eps = []
-                                    
+                                    match = res["tv_results"][0]; tmdb_id = match["id"]; title = match.get("name", raw_title); poster = match.get("poster_path", ""); first_air_date = match.get("first_air_date", ""); watched_eps = []
                                     is_new_show = not any(str(show["id"]) == str(tmdb_id) for show in new_db["shows"])
                                     if is_new_show:
-                                        full_s = fetch_robust(f"https://api.themoviedb.org/3/tv/{tmdb_id}?api_key={TMDB_KEY}")
-                                        t_eps = full_s.get("number_of_episodes", 1) if full_s else 1
+                                        full_s = fetch_robust(f"https://api.themoviedb.org/3/tv/{tmdb_id}?api_key={TMDB_KEY}"); t_eps = full_s.get("number_of_episodes", 1) if full_s else 1
                                     else: t_eps = 1
                                     
                                     for season in s.get("seasons", []):
@@ -1634,12 +1429,10 @@ with t_profile:
                                                 w_dt_raw = ep.get("watched_at")
                                                 w_dt = parse_tvtime_date(w_dt_raw) if w_dt_raw else get_dubai_time().strftime("%Y-%m-%d %H:%M:%S")
                                                 m_key = datetime.strptime(w_dt, "%Y-%m-%d %H:%M:%S").strftime("%Y-%m")
-                                                
                                                 new_db["analytics"].setdefault(m_key, {"tv": 0, "movie": 0}); new_db["analytics"][m_key]["tv"] += 1
                                                 new_db["history"].append({"t": "s", "i": tmdb_id, "e": e_code, "d": w_dt})
                                                 
-                                    if is_new_show:
-                                        new_db["shows"].append({"id": tmdb_id, "name": title, "watched_episodes": watched_eps, "poster_path": poster if poster else "", "first_air_date": first_air_date if first_air_date else "", "total_episodes": t_eps})
+                                    if is_new_show: new_db["shows"].append({"id": tmdb_id, "name": title, "watched_episodes": watched_eps, "poster_path": poster if poster else "", "first_air_date": first_air_date if first_air_date else "", "total_episodes": t_eps})
                                     else:
                                         for show in new_db["shows"]:
                                             if str(show["id"]) == str(tmdb_id): show["watched_episodes"] = list(set(show["watched_episodes"] + watched_eps)); break
@@ -1650,10 +1443,8 @@ with t_profile:
                 tv_h = [h for h in new_db["history"] if h.get("t") == "s"][:100]; mov_h = [h for h in new_db["history"] if h.get("t") == "m"][:100]
                 new_db["history"] = tv_h + mov_h
                 st.session_state.db = new_db
-                
                 if save_db():
-                    stat_txt.text("✅ Mass Import & Supabase Sync Complete!")
-                    st.toast("Library successfully imported.")
+                    stat_txt.text("✅ Mass Import & Supabase Sync Complete!"); st.toast("Library successfully imported.")
                     time.sleep(1.5); st.rerun()
                 else: stat_txt.text("🛑 Import finished, but the cloud save failed. See error above.")
             else: st.error("Please upload at least one JSON file first.")
