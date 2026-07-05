@@ -37,7 +37,7 @@ st.markdown("""
     
     /* True Mobile Edge-to-Edge Layout - Extra bottom padding for floating dock */
     .block-container { 
-        padding: 1rem 0.5rem 80px 0.5rem !important; 
+        padding: 1rem 0.5rem 100px 0.5rem !important; 
         max-width: 100vw !important;
         overflow-x: hidden !important;
     }
@@ -116,7 +116,6 @@ st.markdown("""
         backdrop-filter: blur(12px) !important;
         -webkit-backdrop-filter: blur(12px) !important;
         border-radius: 12px !important; 
-        /* The Ambient Amber Glow */
         border: 1px solid rgba(255, 193, 7, 0.15) !important;
         box-shadow: 0px 8px 24px rgba(0, 0, 0, 0.6), 0px 0px 15px rgba(255, 193, 7, 0.1) !important; 
         padding: 0.3rem !important;
@@ -175,9 +174,9 @@ st.markdown("""
         box-shadow: 0 0 10px rgba(255, 193, 7, 0.5) !important;
     }
     
-    /* --- UI UPGRADE 1: PINNED FLOATING BOTTOM NAVIGATION DOCK --- */
-    div[data-testid="stTabs"] > div[data-baseweb="tab-list"],
-    div[data-testid="stTabs"] > div[role="tablist"] {
+    /* --- UI UPGRADE 1: PINNED FLOATING BOTTOM NAVIGATION DOCK (FIXED CSS) --- */
+    /* By explicitly targeting tablists with exactly 6 tabs, we guarantee this only hits the main nav bar! */
+    div[data-testid="stTabs"] > div[role="tablist"]:has(button:nth-child(6)):not(:has(button:nth-child(7))) {
         position: fixed !important;
         bottom: 0 !important;
         top: auto !important;
@@ -196,7 +195,7 @@ st.markdown("""
         box-shadow: 0px -10px 30px rgba(0,0,0,0.6) !important;
     }
     
-    div[data-testid="stTabs"] button[role="tab"] {
+    div[data-testid="stTabs"] > div[role="tablist"]:has(button:nth-child(6)):not(:has(button:nth-child(7))) button[role="tab"] {
         flex: 1 1 0px !important; 
         min-width: 0 !important; 
         padding: 5px 0px !important;
@@ -204,9 +203,10 @@ st.markdown("""
         border-radius: 12px !important;
         background: transparent !important;
         transition: all 0.3s ease !important;
+        border-bottom: none !important;
     }
     
-    div[data-testid="stTabs"] button[role="tab"] p {
+    div[data-testid="stTabs"] > div[role="tablist"]:has(button:nth-child(6)):not(:has(button:nth-child(7))) button[role="tab"] p {
         font-size: 0.55rem !important; 
         font-weight: 700 !important;
         text-align: center !important;
@@ -217,11 +217,11 @@ st.markdown("""
         transition: all 0.3s ease !important;
     }
 
-    div[data-testid="stTabs"] button[role="tab"][aria-selected="true"] {
+    div[data-testid="stTabs"] > div[role="tablist"]:has(button:nth-child(6)):not(:has(button:nth-child(7))) button[role="tab"][aria-selected="true"] {
         background: rgba(255, 193, 7, 0.1) !important;
         border: 1px solid rgba(255, 193, 7, 0.3) !important;
     }
-    div[data-testid="stTabs"] button[role="tab"][aria-selected="true"] p {
+    div[data-testid="stTabs"] > div[role="tablist"]:has(button:nth-child(6)):not(:has(button:nth-child(7))) button[role="tab"][aria-selected="true"] p {
         color: #FFC107 !important;
         text-shadow: 0px 0px 10px rgba(255, 193, 7, 0.5) !important;
     }
@@ -499,35 +499,7 @@ def remove_watch(item_type, item_id, detail=""):
                 break
     save_db()
 
-# --- DIALOGS (ACTOR CROSS-REF) ---
-@st.dialog("Cast Connections")
-def show_actor_connections(cast_list):
-    st.write("Scan your library to see where else you know this actor from.")
-    actor_names = [a["name"] for a in cast_list]
-    sel_name = st.selectbox("Select Actor", actor_names, label_visibility="collapsed")
-    actor = next(a for a in cast_list if a["name"] == sel_name)
-    
-    with st.spinner(f"Scanning library for {actor['name']}..."):
-        credits = fetch_api(f"https://api.themoviedb.org/3/person/{actor['id']}/combined_credits?api_key={TMDB_KEY}")
-        
-        actor_movie_ids = {str(c["id"]) for c in credits.get("cast", []) if c.get("media_type") == "movie"}
-        actor_tv_ids = {str(c["id"]) for c in credits.get("cast", []) if c.get("media_type") == "tv"}
-        
-        user_movies = [m["name"] for m in st.session_state.db["movies"] if str(m["id"]) in actor_movie_ids]
-        user_shows = [s["name"] for s in st.session_state.db["shows"] if str(s["id"]) in actor_tv_ids]
-    
-    st.divider()
-    img_url = f"https://image.tmdb.org/t/p/w185{actor['profile_path']}" if actor.get("profile_path") else "https://via.placeholder.com/185x278/222222/888888?text=No+Photo"
-    c1, c2 = st.columns([1,3])
-    with c1: st.image(img_url, use_container_width=True)
-    with c2:
-        if not user_movies and not user_shows:
-            st.info(f"You don't have any other titles starring **{actor['name']}** in your library.")
-        else:
-            st.success(f"**Found {len(user_movies) + len(user_shows)} matching titles in your database!**")
-            for m in user_movies: st.markdown(f"🎬 {m}")
-            for s in user_shows: st.markdown(f"📺 {s}")
-
+# --- INLINE HELPERS ---
 def render_badges(items, is_gold=False):
     css_class = "badge badge-gold" if is_gold else "badge"
     html = "".join([f'<span class="{css_class}">{item}</span>' for item in items])
@@ -539,6 +511,7 @@ def display_poster(path, width=185):
     else:
         st.markdown(f'<div style="background-color: rgba(255,255,255,0.05); border-radius:8px; width:100%; aspect-ratio: 2/3; display:flex; align-items:center; justify-content:center; color:#555; font-size:0.8rem; text-align:center; margin-bottom:5px;">No Image</div>', unsafe_allow_html=True)
 
+# --- REWORKED: NO NESTED DIALOGS, USING INLINE EXPANDER FOR CAST SEARCH ---
 def show_cast_horizontal(cast_list, limit=12):
     if not cast_list: return
     html = '<div style="display: flex; overflow-x: auto; gap: 14px; padding-bottom: 10px; scrollbar-width: none; -ms-overflow-style: none;">'
@@ -552,9 +525,35 @@ def show_cast_horizontal(cast_list, limit=12):
     html = html.replace('\n', '')
     st.markdown(html, unsafe_allow_html=True)
     
-    if st.button("🔍 Cross-Reference Cast", use_container_width=True):
-        show_actor_connections(cast_list)
+    # Nested Dialog Fix: Drops down gracefully inside the current dialog
+    with st.expander("🔍 Cross-Reference Cast in Your Library"):
+        st.write("See where else you know an actor from.")
+        actor_names = [a["name"] for a in cast_list]
+        sel_name = st.selectbox("Select Actor", actor_names, label_visibility="collapsed")
+        actor = next(a for a in cast_list if a["name"] == sel_name)
+        
+        with st.spinner(f"Scanning library for {actor['name']}..."):
+            credits = fetch_api(f"https://api.themoviedb.org/3/person/{actor['id']}/combined_credits?api_key={TMDB_KEY}")
+            
+            actor_movie_ids = {str(c["id"]) for c in credits.get("cast", []) if c.get("media_type") == "movie"}
+            actor_tv_ids = {str(c["id"]) for c in credits.get("cast", []) if c.get("media_type") == "tv"}
+            
+            user_movies = [m["name"] for m in st.session_state.db["movies"] if str(m["id"]) in actor_movie_ids]
+            user_shows = [s["name"] for s in st.session_state.db["shows"] if str(s["id"]) in actor_tv_ids]
+        
+        st.divider()
+        img_url = f"https://image.tmdb.org/t/p/w185{actor['profile_path']}" if actor.get("profile_path") else "https://via.placeholder.com/185x278/222222/888888?text=No+Photo"
+        c1, c2 = st.columns([1,3])
+        with c1: st.image(img_url, use_container_width=True)
+        with c2:
+            if not user_movies and not user_shows:
+                st.info(f"You don't have any other titles starring **{actor['name']}** in your library.")
+            else:
+                st.success(f"**Found {len(user_movies) + len(user_shows)} matching titles in your database!**")
+                for m in user_movies: st.markdown(f"🎬 {m}")
+                for s in user_shows: st.markdown(f"📺 {s}")
 
+# --- DIALOGS ---
 @st.dialog("Episode Details")
 def show_episode_details(show_id, show_name, ep_code, ep_data=None, is_watched=False):
     if not ep_data:
@@ -616,7 +615,6 @@ def manage_show_dialog(show_id, show_name, details):
         
     s_nums = [s["season_number"] for s in details.get("seasons", []) if s["season_number"] > 0]
     if s_nums:
-        # --- UI UPGRADE: THE BINGE CLEAR NUKE BUTTON ---
         c1, c2 = st.columns([1,1])
         with c1:
             sel_s = st.selectbox("Select Season", s_nums, key=f"dlg_s_{show_id}", label_visibility="collapsed")
@@ -786,6 +784,7 @@ if st.session_state.last_action:
             st.session_state.last_action = None; st.rerun()
 
 # --- APP NAVIGATION BAR ---
+st.markdown('<span class="main-nav-marker"></span>', unsafe_allow_html=True)
 t_next, t_soon, t_search, t_tv, t_movies, t_profile = st.tabs(["🔥 Next", "📅 Soon", "🔍 Search", "📺 TV", "🎬 Movies", "👤 Profile"])
 
 # ==========================================
@@ -1067,11 +1066,9 @@ with t_soon:
 with t_search:
     st.markdown("### Discover")
     
-    # --- DYNAMIC SEARCH-AS-YOU-TYPE ENGINE ---
     search_query = st_keyup("Search", debounce=2000, key="search_query_input", placeholder="Search TV shows, movies, actors...", label_visibility="collapsed")
 
     if search_query:
-        # --- SEARCH MODE (3x3 GRID) ---
         search_type = st.selectbox("Search in:", ["TV Shows", "Movies"], label_visibility="collapsed", key="search_filter_box")
         endpoint = "tv" if search_type == "TV Shows" else "movie"
         res = fetch_api(f"https://api.themoviedb.org/3/search/{endpoint}?api_key={TMDB_KEY}&query={search_query}")
@@ -1124,7 +1121,6 @@ with t_search:
                                 
                                 st.markdown('</div>', unsafe_allow_html=True)
     else:
-        # --- DISCOVER MODE (NETFLIX-STYLE FEED) ---
         genre_options = ["🔥 Trending", "🤣 Comedy", "💥 Action", "🐉 Sci-Fi/Fantasy", "🔪 Thriller", "👻 Horror"]
         selected_genre = st.selectbox("Filters", genre_options, label_visibility="collapsed")
         st.divider()
@@ -1203,10 +1199,8 @@ with t_search:
             trend_tv = fetch_api(f"https://api.themoviedb.org/3/trending/tv/day?api_key={TMDB_KEY}")
             trend_mov = fetch_api(f"https://api.themoviedb.org/3/trending/movie/day?api_key={TMDB_KEY}")
             
-            if trend_tv.get("results"):
-                render_carousel("🔥 Trending Series", trend_tv["results"], "tv")
-            if trend_mov.get("results"):
-                render_carousel("🎬 Trending Movies", trend_mov["results"], "movie")
+            if trend_tv.get("results"): render_carousel("🔥 Trending Series", trend_tv["results"], "tv")
+            if trend_mov.get("results"): render_carousel("🎬 Trending Movies", trend_mov["results"], "movie")
 
             current_date = get_dubai_time()
             start_month = current_date.replace(day=1).strftime('%Y-%m-%d')
@@ -1214,12 +1208,10 @@ with t_search:
             end_month_str = current_date.replace(day=last_day).strftime('%Y-%m-%d')
             
             k_tv = fetch_api(f"https://api.themoviedb.org/3/discover/tv?api_key={TMDB_KEY}&with_original_language=ko&first_air_date.gte={start_month}&first_air_date.lte={end_month_str}&sort_by=popularity.desc")
-            if k_tv.get("results"):
-                render_carousel(f"🇰🇷 K-Dramas ({current_date.strftime('%B %Y')})", k_tv["results"], "tv")
+            if k_tv.get("results"): render_carousel(f"🇰🇷 K-Dramas ({current_date.strftime('%B %Y')})", k_tv["results"], "tv")
                 
             k_mov = fetch_api(f"https://api.themoviedb.org/3/discover/movie?api_key={TMDB_KEY}&with_original_language=ko&primary_release_date.gte={start_month}&primary_release_date.lte={end_month_str}&sort_by=popularity.desc")
-            if k_mov.get("results"):
-                render_carousel(f"🇰🇷 K-Movies ({current_date.strftime('%B %Y')})", k_mov["results"], "movie")
+            if k_mov.get("results"): render_carousel(f"🇰🇷 K-Movies ({current_date.strftime('%B %Y')})", k_mov["results"], "movie")
 
         else:
             genre_map_tv = {"🤣 Comedy": 35, "💥 Action": 10759, "🐉 Sci-Fi/Fantasy": 10765, "🔪 Thriller": 9648, "👻 Horror": 9648} 
@@ -1266,14 +1258,11 @@ with t_tv:
             elif st.session_state.tv_tab == "UPCOMING" and is_upcoming and not is_completed: display_shows.append((show, t_eps, w_eps))
             elif st.session_state.tv_tab == "WATCHLIST" and not is_upcoming and not is_completed: display_shows.append((show, t_eps, w_eps))
                 
-        if tv_sort == "Alphabetical": 
-            display_shows.sort(key=lambda x: x[0]['name'].lower())
+        if tv_sort == "Alphabetical": display_shows.sort(key=lambda x: x[0]['name'].lower())
         elif tv_sort == "Release Date":
-            is_upc = (st.session_state.tv_tab == "UPCOMING")
-            def_date = '2099-01-01' if is_upc else '1900-01-01'
+            is_upc = (st.session_state.tv_tab == "UPCOMING"); def_date = '2099-01-01' if is_upc else '1900-01-01'
             display_shows.sort(key=lambda x: x[0].get('first_air_date', def_date) or def_date, reverse=not is_upc)
-        elif tv_sort == "Recently Added":
-            display_shows.reverse()
+        elif tv_sort == "Recently Added": display_shows.reverse()
                 
         if not display_shows: st.info(f"Your {st.session_state.tv_tab.lower()} is currently empty.")
         else:
@@ -1291,7 +1280,6 @@ with t_tv:
                                 display_poster(show.get("poster_path"), width=185)
                                 st.markdown(f'<div class="grid-title" title="{show["name"]}">{show["name"]}</div>', unsafe_allow_html=True)
                                 
-                                # --- UI UPGRADE: INLINE PERCENTAGE PROGRESS BAR ---
                                 perc = min(w_eps / t_eps, 1.0) if t_eps > 0 else 0.0
                                 st.markdown(f'<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:2px;"><div style="font-size:0.55rem; color:#888;">PROGRESS</div><div style="font-size:0.55rem; color:#FFC107; font-weight:bold;">{int(perc*100)}%</div></div>', unsafe_allow_html=True)
                                 st.progress(perc)
@@ -1319,8 +1307,7 @@ with t_tv:
                                 
             if total_tv_display > st.session_state.tv_lib_limit:
                 if st.button("Load 50 More", use_container_width=True, key="load_more_tv_lib"):
-                    st.session_state.tv_lib_limit += 50
-                    st.rerun()
+                    st.session_state.tv_lib_limit += 50; st.rerun()
 
 # ==========================================
 # TAB 5: MOVIE LIBRARY 
@@ -1354,14 +1341,11 @@ with t_movies:
             elif st.session_state.mov_tab == "UPCOMING" and is_upcoming and not is_watched: display_movies.append((m, is_watched))
             elif st.session_state.mov_tab == "WATCHLIST" and not is_upcoming and not is_watched: display_movies.append((m, is_watched))
                 
-        if mov_sort == "Alphabetical": 
-            display_movies.sort(key=lambda x: x[0]['name'].lower())
+        if mov_sort == "Alphabetical": display_movies.sort(key=lambda x: x[0]['name'].lower())
         elif mov_sort == "Release Date":
-            is_upc = (st.session_state.mov_tab == "UPCOMING")
-            def_date = '2099-01-01' if is_upc else '1900-01-01'
+            is_upc = (st.session_state.mov_tab == "UPCOMING"); def_date = '2099-01-01' if is_upc else '1900-01-01'
             display_movies.sort(key=lambda x: x[0].get('release_date', def_date) or def_date, reverse=not is_upc)
-        elif mov_sort == "Recently Added":
-            display_movies.reverse()
+        elif mov_sort == "Recently Added": display_movies.reverse()
                 
         if not display_movies: st.info(f"Your {st.session_state.mov_tab.lower()} is currently empty.")
         else:
@@ -1400,8 +1384,7 @@ with t_movies:
                                 
             if total_mov_display > st.session_state.mov_lib_limit:
                 if st.button("Load 50 More", use_container_width=True, key="load_more_mov_lib"):
-                    st.session_state.mov_lib_limit += 50
-                    st.rerun()
+                    st.session_state.mov_lib_limit += 50; st.rerun()
 
 # ==========================================
 # TAB 6: PROFILE STATS, GRAPHS & IMPORT
@@ -1409,18 +1392,15 @@ with t_movies:
 with t_profile:
     st.markdown("### Lifetime Stats")
     
-    total_tv_mins = 0; total_episodes_watched = 0
-    total_mov_mins = 0; total_movies_watched = 0
+    total_tv_mins = 0; total_episodes_watched = 0; total_mov_mins = 0; total_movies_watched = 0
     
     for show in st.session_state.db["shows"]:
         w_eps = len(show.get("watched_episodes", []))
-        total_episodes_watched += w_eps
-        total_tv_mins += (w_eps * 45) 
+        total_episodes_watched += w_eps; total_tv_mins += (w_eps * 45) 
         
     for m in st.session_state.db["movies"]:
         if m.get("watched", False):
-            total_mov_mins += m.get("runtime", 120) 
-            total_movies_watched += 1
+            total_mov_mins += m.get("runtime", 120); total_movies_watched += 1
             
     total_mins = total_tv_mins + total_mov_mins
     months = total_mins // 43800; days = (total_mins % 43800) // 1440; hours = (total_mins % 1440) // 60
@@ -1475,10 +1455,11 @@ with t_profile:
     df_tv = pd.DataFrame(data_tv).sort_values("Month")
     df_mov = pd.DataFrame(data_mov).sort_values("Month")
     
+    # --- ALTAIR GRAPH FIX: EXACT 90-DEGREE ROTATION, NO LABEL OVERLAPPING ---
     with chart_tab1:
         if not df_tv.empty and df_tv["Episodes"].sum() > 0:
             chart_tv = alt.Chart(df_tv).mark_bar(color="#FFC107", cornerRadiusTopLeft=6, cornerRadiusTopRight=6).encode(
-                x=alt.X("Month:N", title="Month", axis=alt.Axis(labelAngle=-45, labelColor="#aaa", titleColor="#aaa")),
+                x=alt.X("Month:N", title="Month", axis=alt.Axis(labelAngle=-90, labelFontSize=9, labelOverlap=False, labelColor="#aaa", titleColor="#aaa")),
                 y=alt.Y("Episodes:Q", title="Episodes Watched", axis=alt.Axis(labelColor="#aaa", titleColor="#aaa"))
             )
             text_tv = chart_tv.mark_text(align='center', baseline='bottom', dy=-5, color='#EDEDED', fontSize=10, fontWeight='bold').encode(text='Episodes:Q')
@@ -1488,7 +1469,7 @@ with t_profile:
     with chart_tab2:
         if not df_mov.empty and df_mov["Movies"].sum() > 0:
             chart_mov = alt.Chart(df_mov).mark_bar(color="#555555", cornerRadiusTopLeft=6, cornerRadiusTopRight=6).encode(
-                x=alt.X("Month:N", title="Month", axis=alt.Axis(labelAngle=-45, labelColor="#aaa", titleColor="#aaa")),
+                x=alt.X("Month:N", title="Month", axis=alt.Axis(labelAngle=-90, labelFontSize=9, labelOverlap=False, labelColor="#aaa", titleColor="#aaa")),
                 y=alt.Y("Movies:Q", title="Movies Watched", axis=alt.Axis(labelColor="#aaa", titleColor="#aaa"))
             )
             text_mov = chart_mov.mark_text(align='center', baseline='bottom', dy=-5, color='#EDEDED', fontSize=10, fontWeight='bold').encode(text='Movies:Q')
