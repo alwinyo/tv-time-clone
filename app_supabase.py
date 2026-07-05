@@ -1,4 +1,5 @@
 import streamlit as st
+import streamlit.components.v1 as components
 import requests
 import pandas as pd
 import json
@@ -13,6 +14,35 @@ import altair as alt
 # Mobile-friendly layout configuration
 st.set_page_config(page_title="My TV Time", layout="centered", initial_sidebar_state="collapsed")
 
+# --- BULLETPROOF JAVASCRIPT INJECTOR: FORCES NAVIGATION TO THE BOTTOM ---
+components.html("""
+<script>
+    const doc = window.parent.document;
+    const observer = new MutationObserver(() => {
+        const tablist = doc.querySelector('div[data-testid="stTabs"] > div[role="tablist"]');
+        if (tablist) {
+            tablist.style.position = 'fixed';
+            tablist.style.bottom = '0';
+            tablist.style.top = 'auto';
+            tablist.style.left = '0';
+            tablist.style.right = '0';
+            tablist.style.width = '100vw';
+            tablist.style.zIndex = '999999';
+            tablist.style.backgroundColor = 'rgba(8, 10, 14, 0.95)';
+            tablist.style.backdropFilter = 'blur(20px)';
+            tablist.style.borderTop = '1px solid rgba(255, 193, 7, 0.2)';
+            tablist.style.padding = '8px 5px 25px 5px';
+            tablist.style.boxShadow = '0px -10px 40px rgba(0,0,0,0.9)';
+            tablist.style.display = 'flex';
+            
+            const arrows = doc.querySelectorAll('div[data-testid="stTabs"] button[kind="secondary"]');
+            arrows.forEach(a => a.style.display = 'none');
+        }
+    });
+    observer.observe(doc.body, { childList: true, subtree: true });
+</script>
+""", height=0, width=0)
+
 # --- MOBILE-FIRST TARGETED CSS OVERHAUL (AGGRESSIVE PREMIUM OVERRIDE) ---
 st.markdown("""
 <style>
@@ -26,10 +56,8 @@ st.markdown("""
     .stDeployButton {display: none !important;}
     [data-testid="stStatusWidget"] {visibility: hidden !important; display: none !important;}
     
-    /* STRIP STREAMLIT HARDWARE LOCK SO FIXED BOTTOM NAV WORKS */
-    .stApp, .main, .block-container, div[data-testid="stAppViewContainer"] {
-        transform: none !important;
-    }
+    /* UNLOCK HARDWARE SCROLL SO DOCK CAN FLOAT */
+    .stApp, .main, .block-container, div[data-testid="stAppViewContainer"] { transform: none !important; }
     
     /* --- PREMIUM OLED BACKGROUND --- */
     .stApp, [data-testid="stAppViewContainer"], [data-testid="stHeader"] {
@@ -39,129 +67,93 @@ st.markdown("""
         color: #EDEDED !important;
     }
     
-    /* Extra bottom padding so scroll doesn't hide behind the floating dock */
     .block-container { 
         padding: 0.5rem 0.2rem 120px 0.2rem !important; 
-        max-width: 100vw !important;
-        overflow-x: hidden !important;
+        max-width: 100vw !important; overflow-x: hidden !important;
     }
     
-    /* --- THE BULLETPROOF BOTTOM NAVIGATION DOCK --- */
-    /* Targets the exact Tablist following our hidden marker */
-    div[data-testid="stElementContainer"]:has(#bottom-nav-marker) + div[data-testid="stElementContainer"] > div[data-testid="stTabs"] > div:first-child {
-        position: fixed !important;
-        bottom: 0 !important;
-        top: auto !important;
-        left: 0 !important;
-        right: 0 !important;
-        width: 100vw !important;
-        z-index: 999999 !important;
-        background: rgba(10, 12, 16, 0.95) !important;
-        backdrop-filter: blur(25px) !important; -webkit-backdrop-filter: blur(25px) !important;
-        padding: 8px 5px env(safe-area-inset-bottom, 20px) 5px !important;
-        border-top: 1px solid rgba(255, 193, 7, 0.2) !important;
-        box-shadow: 0px -10px 40px rgba(0,0,0,0.9) !important;
-        display: flex !important; flex-direction: row !important; justify-content: space-evenly !important;
-        margin: 0 !important;
-    }
-    
-    div[data-testid="stElementContainer"]:has(#bottom-nav-marker) + div[data-testid="stElementContainer"] > div[data-testid="stTabs"] > div:first-child > div {
-        flex: 1 1 0px !important; display: flex !important; justify-content: center !important;
-    }
-
-    div[data-testid="stElementContainer"]:has(#bottom-nav-marker) + div[data-testid="stElementContainer"] > div[data-testid="stTabs"] button[role="tab"] {
-        flex: 1 1 100% !important; padding: 10px 0px !important; margin: 0 2px !important;
-        border-radius: 12px !important; background: transparent !important; border: none !important;
-        transition: all 0.2s ease !important;
-    }
-    
-    div[data-testid="stElementContainer"]:has(#bottom-nav-marker) + div[data-testid="stElementContainer"] > div[data-testid="stTabs"] button[kind="secondary"] { display: none !important; }
-    
-    div[data-testid="stElementContainer"]:has(#bottom-nav-marker) + div[data-testid="stElementContainer"] > div[data-testid="stTabs"] button[role="tab"] p {
-        font-size: 0.55rem !important; font-weight: 700 !important; text-align: center !important; margin: 0 !important; 
-        white-space: nowrap !important; color: #777 !important;
-    }
-
-    div[data-testid="stElementContainer"]:has(#bottom-nav-marker) + div[data-testid="stElementContainer"] > div[data-testid="stTabs"] button[role="tab"][aria-selected="true"] { 
-        background: rgba(255, 193, 7, 0.1) !important; border: 1px solid rgba(255, 193, 7, 0.25) !important;
-    }
-    div[data-testid="stElementContainer"]:has(#bottom-nav-marker) + div[data-testid="stElementContainer"] > div[data-testid="stTabs"] button[role="tab"][aria-selected="true"] p {
-        color: #FFC107 !important; text-shadow: 0px 0px 10px rgba(255, 193, 7, 0.5) !important;
-    }
-    
-    /* --- FLUSH EDGE POSTER CARDS (PREMIUM NETFLIX STYLE) --- */
+    /* --- FLUSH EDGE POSTER CARDS (NETFLIX STYLE) --- */
     [data-testid="stVerticalBlockBorderWrapper"] {
-        background: #0E1015 !important;
-        border-radius: 10px !important; 
+        background: #0B0C10 !important;
+        border-radius: 12px !important; 
         border: 1px solid rgba(255, 255, 255, 0.05) !important;
-        border-top: 1px solid rgba(255, 193, 7, 0.2) !important;
-        box-shadow: 0px 6px 15px rgba(0, 0, 0, 0.7) !important; 
+        border-top: 1px solid rgba(255, 193, 7, 0.3) !important;
+        box-shadow: 0px 8px 24px rgba(0, 0, 0, 0.8) !important; 
         padding: 0 !important; /* Forces edge-to-edge images */
         overflow: hidden !important;
     }
     
+    /* Annihilate Streamlit's default inner gaps */
+    [data-testid="stVerticalBlockBorderWrapper"] > div { gap: 0 !important; padding: 0 !important; }
+    
     [data-testid="stVerticalBlockBorderWrapper"] img {
-        border-radius: 10px 10px 0 0 !important; 
-        width: 100% !important; margin-bottom: 0 !important; display: block !important;
+        border-radius: 12px 12px 0 0 !important; 
+        width: 100% !important; display: block !important; margin-bottom: 0 !important;
     }
     
-    /* Text & Button inner spacing */
-    .grid-title, .movie-wall-btn, [data-testid="stProgressBar"], .inner-progress-text {
-        padding-left: 6px !important; padding-right: 6px !important;
+    /* TIGHT TEXT & BUTTON CONTAINERS */
+    .grid-title {
+        font-size: 0.65rem !important; font-weight: 800; color: #fff;
+        text-align: center; margin: 8px 4px 4px 4px !important;
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.2;
     }
-    .movie-wall-btn { padding-bottom: 8px !important; }
+    .movie-wall-btn { padding: 0 6px 8px 6px !important; display: flex; flex-direction: column; gap: 6px; }
     
-    div[data-testid="column"] > div[data-testid="stVerticalBlock"] { gap: 0 !important; }
-    
-    /* --- GOLD TINTED BUTTONS --- */
+    /* --- GOLD TINTED SLEEK BUTTONS --- */
     .movie-wall-btn div.stButton > button {
         background: rgba(255, 193, 7, 0.08) !important;
-        border: 1px solid rgba(255, 193, 7, 0.2) !important; border-radius: 6px !important; 
-        color: #FFD54F !important; font-size: 0.55rem !important; font-weight: 700 !important;
-        padding: 6px 2px !important; margin-top: 4px !important; text-transform: uppercase;
-        width: 100% !important; transition: all 0.15s !important; line-height: 1;
+        border: 1px solid rgba(255, 193, 7, 0.2) !important; border-radius: 8px !important; 
+        color: #FFD54F !important; font-size: 0.55rem !important; font-weight: 800 !important;
+        padding: 0 !important; margin: 0 !important; text-transform: uppercase;
+        letter-spacing: 0.5px !important; min-height: 28px !important; height: 28px !important; line-height: 28px !important;
+        width: 100% !important; transition: all 0.15s !important;
     }
+    .movie-wall-btn div.stButton > button:hover { background: rgba(255, 193, 7, 0.15) !important; }
     .movie-wall-btn div.stButton > button:active { 
         transform: scale(0.92) !important; background: linear-gradient(135deg, #FFD54F 0%, #FFC107 100%) !important; 
-        color: #000 !important; box-shadow: 0 0 10px rgba(255, 193, 7, 0.5) !important;
+        color: #000 !important; box-shadow: 0 0 10px rgba(255, 193, 7, 0.6) !important;
     }
     
-    /* Deep Recessed Selectboxes (Tightened) */
+    /* --- GLOBAL TIGHT GRID LOCK (STOPS GIANT POSTERS) --- */
+    @media (max-width: 1000px) {
+        /* Force Streamlit Columns to Stay Side-by-Side */
+        [data-testid="stColumns"] {
+            display: flex !important; flex-direction: row !important; flex-wrap: nowrap !important; gap: 6px !important;
+        }
+        /* Tell columns to auto-fit instead of blowing up to 100% */
+        [data-testid="column"] {
+            width: auto !important; min-width: 0 !important; flex: 1 1 0px !important; padding: 0 !important;
+        }
+        div[role="dialog"] {
+            width: 95vw !important; max-width: 95vw !important; margin: 0 auto !important; padding: 1rem !important;
+            background: rgba(15, 17, 22, 0.95) !important; backdrop-filter: blur(20px) !important; -webkit-backdrop-filter: blur(20px) !important;
+            border: 1px solid rgba(255, 255, 255, 0.1) !important;
+        }
+    }
+    
+    /* --- TOP NAV TABS STYLING --- */
+    div[data-testid="stTabs"] button[role="tab"] {
+        flex: 1 1 0px !important; min-width: 0 !important; padding: 8px 0px !important; margin: 0 2px !important;
+        border-radius: 12px !important; background: transparent !important; border: none !important; transition: all 0.2s ease !important;
+    }
+    div[data-testid="stTabs"] button[role="tab"] p {
+        font-size: 0.55rem !important; font-weight: 700 !important; text-align: center !important; margin: 0 !important; 
+        white-space: nowrap !important; color: #777 !important;
+    }
+    div[data-testid="stTabs"] button[role="tab"][aria-selected="true"] { background: rgba(255, 193, 7, 0.1) !important; border: 1px solid rgba(255, 193, 7, 0.25) !important; }
+    div[data-testid="stTabs"] button[role="tab"][aria-selected="true"] p { color: #FFC107 !important; text-shadow: 0px 0px 10px rgba(255, 193, 7, 0.5) !important; }
+    
+    /* TIGHT FILTERS */
     div[data-baseweb="select"] > div:first-child {
         background-color: rgba(0, 0, 0, 0.7) !important; border-radius: 8px !important;
         border: 1px solid rgba(255, 255, 255, 0.05) !important; padding: 0px 4px !important; min-height: 28px !important;
     }
     div[data-baseweb="select"] div[class*="singleValue"] { font-size: 0.75rem !important; font-weight: 600 !important; }
     
-    /* PROGRESS BAR */
-    [data-testid="stProgressBar"] > div { height: 4px !important; background-color: rgba(255, 255, 255, 0.1) !important; margin-bottom: 6px; }
-    [data-testid="stProgressBar"] > div > div { background: linear-gradient(90deg, #FFD54F 0%, #FFC107 100%) !important; }
-    
-    /* --- TIGHT 3x3 GRID MATH (STRICT LOCK) --- */
-    @media (max-width: 992px) {
-        div[data-testid="stHorizontalBlock"]:has(.grid-3-col), div[data-testid="stColumns"]:has(.grid-3-col) {
-            display: flex !important; flex-direction: row !important; flex-wrap: nowrap !important; gap: 8px !important; 
-        }
-        div[data-testid="column"]:has(.grid-3-col), div[data-testid="stColumn"]:has(.grid-3-col) {
-            width: calc(33.33% - 5px) !important; flex: 1 1 calc(33.33% - 5px) !important; padding: 0 !important; display: block !important;
-        }
-        div[data-testid="stHorizontalBlock"]:has(.grid-2-col), div[data-testid="stColumns"]:has(.grid-2-col) {
-            display: flex !important; flex-direction: row !important; flex-wrap: nowrap !important; gap: 6px !important; 
-        }
-        div[data-testid="column"]:has(.grid-2-col), div[data-testid="stColumn"]:has(.grid-2-col) {
-            width: 48% !important; flex: 1 1 48% !important; padding: 0 !important; display: block !important;
-        }
-        div[role="dialog"] {
-            width: 95vw !important; max-width: 95vw !important; margin: 0 auto !important; padding: 1rem !important;
-            background: rgba(15, 17, 22, 0.95) !important; backdrop-filter: blur(20px) !important;
-            border: 1px solid rgba(255, 255, 255, 0.1) !important;
-        }
-    }
-    
-    .grid-title {
-        font-size: 0.65rem !important; font-weight: 700; white-space: nowrap; overflow: hidden;
-        text-overflow: ellipsis; text-align: center; margin: 6px 0 2px 0 !important; line-height: 1.2; color: #ddd;
-    }
+    /* INLINE PROGRESS BAR */
+    [data-testid="stProgressBar"] { padding: 0 8px 4px 8px !important; }
+    [data-testid="stProgressBar"] > div { height: 4px !important; background-color: rgba(255, 255, 255, 0.1) !important; border-radius: 10px !important; }
+    [data-testid="stProgressBar"] > div > div { background: linear-gradient(90deg, #FFD54F 0%, #FFC107 100%) !important; border-radius: 10px !important; }
     
     .badge-gold { 
         display: inline-block; padding: 3px 8px; border-radius: 12px; font-size: 0.7rem; font-weight: 600; margin-right: 4px; margin-bottom: 6px;
@@ -377,7 +369,6 @@ def display_poster(path, width=185):
     if path and str(path).lower() not in ["none", "null", ""]: st.image(f"https://image.tmdb.org/t/p/w{width}{path}", use_container_width=True)
     else: st.markdown(f'<div style="background-color: rgba(255,255,255,0.05); width:100%; aspect-ratio: 2/3; display:flex; align-items:center; justify-content:center; color:#555; font-size:0.8rem; text-align:center;">No Image</div>', unsafe_allow_html=True)
 
-# --- REWORKED: CHARACTER NAMES IN BOLD GOLD ---
 def show_cast_horizontal(cast_list, limit=12):
     if not cast_list: return
     html = '<div style="display: flex; overflow-x: auto; gap: 12px; padding-bottom: 10px; scrollbar-width: none; -ms-overflow-style: none;">'
@@ -486,20 +477,18 @@ def manage_show_dialog(show_id, show_name, details):
         
     s_nums = [s["season_number"] for s in details.get("seasons", []) if s["season_number"] > 0]
     if s_nums:
-        c1, c2 = st.columns([1,1])
-        with c1: sel_s = st.selectbox("Select Season", s_nums, key=f"dlg_s_{show_id}", label_visibility="collapsed")
+        sel_s = st.selectbox("Select Season", s_nums, key=f"dlg_s_{show_id}")
             
         s_data = fetch_api(f"https://api.themoviedb.org/3/tv/{show_id}/season/{sel_s}?api_key={TMDB_KEY}")
         watched_list = current_show.get("watched_episodes", []) if current_show else []
         ep_codes = [f"S{sel_s}E{ep['episode_number']}" for ep in s_data.get("episodes", [])]
         unwatched_in_season = [e for e in ep_codes if e not in watched_list]
         
-        with c2:
-            if current_show and unwatched_in_season:
-                if st.button("✅ Mark Season Watched", use_container_width=True):
-                    mark_season_watched(show_id, sel_s, unwatched_in_season); st.rerun()
-            elif current_show and not unwatched_in_season:
-                st.button("✔️ Season Complete", disabled=True, use_container_width=True)
+        if current_show and unwatched_in_season:
+            if st.button("✅ Mark Season Watched", use_container_width=True):
+                mark_season_watched(show_id, sel_s, unwatched_in_season); st.rerun()
+        elif current_show and not unwatched_in_season:
+            st.button("✔️ Season Complete", disabled=True, use_container_width=True)
 
         for ep in s_data.get("episodes", []):
             e_code = f"S{sel_s}E{ep['episode_number']}"
@@ -600,7 +589,8 @@ def show_yearly_recap_dialog(year, y_tv, y_mov, recap_id):
         
     st.markdown(f"""<div style="background: rgba(255, 193, 7, 0.08); border: 1px dashed #FFC107; border-radius: 12px; padding: 15px; margin-top: 15px; text-align: center;"><div style="font-size: 1.15rem; font-weight: 800; color: #FFD54F;">{tier_title}</div><div style="font-size: 0.75rem; color: #eee; margin-top: 5px; line-height:1.3;">{tier_desc}</div></div>""", unsafe_allow_html=True)
     st.divider()
-    if st.button("Claim Achievement Status", use_container_width=True): st.session_state.db.setdefault("seen_recaps", []).append(recap_id); save_db(); st.rerun()
+    if st.button("Claim Achievement Status", use_container_width=True):
+        st.session_state.db.setdefault("seen_recaps", []).append(recap_id); save_db(); st.rerun()
 
 def evaluate_and_trigger_recaps():
     if "recaps_checked" in st.session_state: return
@@ -640,7 +630,6 @@ if st.session_state.last_action:
             st.session_state.last_action = None; st.rerun()
 
 # --- APP NAVIGATION BAR ---
-st.markdown('<div id="bottom-nav-marker" style="display:none;"></div>', unsafe_allow_html=True)
 t_next, t_soon, t_search, t_tv, t_movies, t_profile = st.tabs(["🔥 Next", "📅 Soon", "🔍 Search", "📺 TV", "🎬 Movies", "👤 Profile"])
 
 # ==========================================
@@ -720,9 +709,8 @@ with t_next:
                 cols = st.columns(3)
                 for j in range(3):
                     idx = i + j
-                    with cols[j]:
-                        st.markdown('<span class="grid-3-col"></span>', unsafe_allow_html=True)
-                        if idx < len(up_next_tv[:limit]):
+                    if idx < len(up_next_tv[:limit]):
+                        with cols[j]:
                             item = up_next_tv[idx]; show, details, ep, ep_code = item["item"], item["details"], item["ep"], item["code"]
                             with st.container(border=True):
                                 display_poster(show.get("poster_path") or details.get('poster_path'), width=185)
@@ -762,9 +750,8 @@ with t_next:
                 cols = st.columns(3)
                 for j in range(3):
                     idx = i + j
-                    with cols[j]:
-                        st.markdown('<span class="grid-3-col"></span>', unsafe_allow_html=True)
-                        if idx < len(up_next_mov[:limit]):
+                    if idx < len(up_next_mov[:limit]):
+                        with cols[j]:
                             m = up_next_mov[idx]["item"]
                             with st.container(border=True):
                                 display_poster(m.get('poster_path'), width=185)
@@ -822,9 +809,8 @@ with t_soon:
                 cols = st.columns(3)
                 for j in range(3):
                     idx = i + j
-                    with cols[j]:
-                        st.markdown('<span class="grid-3-col"></span>', unsafe_allow_html=True)
-                        if idx < len(soon_tv[:limit]):
+                    if idx < len(soon_tv[:limit]):
+                        with cols[j]:
                             item = soon_tv[idx]
                             show, details, ep, ep_code = item["item"], item["details"], item["ep"], item["code"]
                             days_left = (datetime.strptime(item["date"], '%Y-%m-%d') - get_dubai_time()).days
@@ -863,9 +849,8 @@ with t_soon:
                 cols = st.columns(3)
                 for j in range(3):
                     idx = i + j
-                    with cols[j]:
-                        st.markdown('<span class="grid-3-col"></span>', unsafe_allow_html=True)
-                        if idx < len(soon_mov[:limit]):
+                    if idx < len(soon_mov[:limit]):
+                        with cols[j]:
                             item = soon_mov[idx]; m = item["item"]
                             days_left = (datetime.strptime(item["date"], '%Y-%m-%d') - get_dubai_time()).days
                             with st.container(border=True):
@@ -904,10 +889,10 @@ with t_search:
             for i in range(0, len(search_results), 3):
                 cols = st.columns(3)
                 for j in range(3):
-                    with cols[j]:
-                        st.markdown('<span class="grid-3-col"></span>', unsafe_allow_html=True)
-                        if i + j < len(search_results):
-                            item = search_results[i + j]; item_id = item["id"]
+                    idx = i + j
+                    if idx < len(search_results):
+                        with cols[j]:
+                            item = search_results[idx]; item_id = item["id"]
                             title = item.get("name") if search_type == "TV Shows" else item.get("title")
                             with st.container(border=True):
                                 display_poster(item.get("poster_path"), width=185)
@@ -917,14 +902,14 @@ with t_search:
                                 added = any(str(x["id"]) == str(item_id) for x in st.session_state.db["shows" if is_tv else "movies"])
                                 
                                 if not added:
-                                    if st.button("➕ ADD", key=f"add_{item_id}_{i+j}", use_container_width=True):
+                                    if st.button("➕ ADD", key=f"add_{item_id}_{idx}", use_container_width=True):
                                         details = fetch_api(f"https://api.themoviedb.org/3/{'tv' if is_tv else 'movie'}/{item_id}?api_key={TMDB_KEY}")
                                         if is_tv: st.session_state.db["shows"].append({"id": item_id, "name": title, "watched_episodes": get_watched_from_history("tv", item_id), "poster_path": details.get("poster_path", ""), "first_air_date": details.get("first_air_date", ""), "total_episodes": details.get("number_of_episodes", 1)})
                                         else: st.session_state.db["movies"].append({"id": item_id, "name": title, "watched": get_watched_from_history("movie", item_id), "poster_path": details.get("poster_path", ""), "release_date": details.get("release_date", ""), "runtime": details.get("runtime", 0)})
                                         if save_db(): st.rerun()
-                                else: st.button("✔️ ADDED", key=f"dsb_{item_id}_{i+j}", disabled=True, use_container_width=True)
+                                else: st.button("✔️ ADDED", key=f"dsb_{item_id}_{idx}", disabled=True, use_container_width=True)
                                 
-                                if st.button("ℹ️ INFO", key=f"inf_{item_id}_{i+j}", use_container_width=True):
+                                if st.button("ℹ️ INFO", key=f"inf_{item_id}_{idx}", use_container_width=True):
                                     details = fetch_api(f"https://api.themoviedb.org/3/{'tv' if is_tv else 'movie'}/{item_id}?api_key={TMDB_KEY}")
                                     if is_tv: manage_show_dialog(item_id, title, details)
                                     else: show_movie_details(item_id, title, details, is_watched=False)
@@ -1052,28 +1037,24 @@ with t_tv:
             for i in range(0, len(paginated_shows), 3):
                 cols = st.columns(3)
                 for j in range(3):
-                    with cols[j]:
-                        st.markdown('<span class="grid-3-col"></span>', unsafe_allow_html=True)
-                        if i + j < len(paginated_shows):
-                            show, t_eps, w_eps = paginated_shows[i + j]
+                    idx = i + j
+                    if idx < len(paginated_shows):
+                        with cols[j]:
+                            show, t_eps, w_eps = paginated_shows[idx]
                             with st.container(border=True):
                                 display_poster(show.get("poster_path"), width=185)
                                 st.markdown(f'<div class="grid-title" title="{show["name"]}">{show["name"]}</div>', unsafe_allow_html=True)
                                 perc = min(w_eps / t_eps, 1.0) if t_eps > 0 else 0.0
-                                st.markdown(f'<div class="inner-progress-text" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:2px;"><div style="font-size:0.55rem; color:#888;">PROGRESS</div><div style="font-size:0.55rem; color:#FFC107; font-weight:bold;">{int(perc*100)}%</div></div>', unsafe_allow_html=True)
+                                st.markdown(f'<div class="inner-progress-text" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:2px; padding: 0 6px;"><div style="font-size:0.55rem; color:#888;">PROGRESS</div><div style="font-size:0.55rem; color:#FFC107; font-weight:bold;">{int(perc*100)}%</div></div>', unsafe_allow_html=True)
                                 st.progress(perc)
                                 
                                 st.markdown('<div class="movie-wall-btn">', unsafe_allow_html=True)
                                 if st.session_state.tv_tab == "WATCHLIST":
-                                    st.markdown('<span class="grid-2-col"></span>', unsafe_allow_html=True)
-                                    bc1, bc2 = st.columns(2)
-                                    with bc1:
-                                        if st.button("ℹ️ INFO", key=f"s_mgr_{show['id']}", use_container_width=True):
-                                            details = fetch_api(f"https://api.themoviedb.org/3/tv/{show['id']}?api_key={TMDB_KEY}"); manage_show_dialog(show['id'], show['name'], details)
-                                    with bc2:
-                                        def del_tv(s_id=show['id']):
-                                            st.session_state.db["shows"] = [s for s in st.session_state.db["shows"] if str(s["id"]) != str(s_id)]; save_db()
-                                        st.button("🗑️ DEL", key=f"s_del_{show['id']}", on_click=del_tv, use_container_width=True)
+                                    if st.button("ℹ️ INFO", key=f"s_mgr_{show['id']}", use_container_width=True):
+                                        details = fetch_api(f"https://api.themoviedb.org/3/tv/{show['id']}?api_key={TMDB_KEY}"); manage_show_dialog(show['id'], show['name'], details)
+                                    def del_tv(s_id=show['id']):
+                                        st.session_state.db["shows"] = [s for s in st.session_state.db["shows"] if str(s["id"]) != str(s_id)]; save_db()
+                                    st.button("🗑️ DEL", key=f"s_del_{show['id']}", on_click=del_tv, use_container_width=True)
                                 else:
                                     if st.button("ℹ️ INFO", key=f"s_mgr_{show['id']}", use_container_width=True):
                                         details = fetch_api(f"https://api.themoviedb.org/3/tv/{show['id']}?api_key={TMDB_KEY}"); manage_show_dialog(show['id'], show['name'], details)
@@ -1123,24 +1104,20 @@ with t_movies:
             for i in range(0, len(paginated_movies), 3):
                 cols = st.columns(3)
                 for j in range(3):
-                    with cols[j]:
-                        st.markdown('<span class="grid-3-col"></span>', unsafe_allow_html=True)
-                        if i + j < len(paginated_movies):
-                            m, is_watched = paginated_movies[i + j]
+                    idx = i + j
+                    if idx < len(paginated_movies):
+                        with cols[j]:
+                            m, is_watched = paginated_movies[idx]
                             with st.container(border=True):
                                 display_poster(m.get("poster_path"), width=185)
                                 st.markdown(f'<div class="grid-title" title="{m["name"]}">{m["name"]}</div>', unsafe_allow_html=True)
                                 
                                 st.markdown('<div class="movie-wall-btn">', unsafe_allow_html=True)
                                 if st.session_state.mov_tab == "WATCHLIST":
-                                    st.markdown('<span class="grid-2-col"></span>', unsafe_allow_html=True)
-                                    bc1, bc2 = st.columns(2)
-                                    with bc1:
-                                        if st.button("ℹ️ INFO", key=f"m_mgr_{m['id']}", use_container_width=True): show_movie_details(m['id'], m['name'], details=None, is_watched=is_watched)
-                                    with bc2:
-                                        def del_mov(m_id=m['id']):
-                                            st.session_state.db["movies"] = [mv for mv in st.session_state.db["movies"] if str(mv["id"]) != str(m_id)]; save_db()
-                                        st.button("🗑️ DEL", key=f"m_del_{m['id']}", on_click=del_mov, use_container_width=True)
+                                    if st.button("ℹ️ INFO", key=f"m_mgr_{m['id']}", use_container_width=True): show_movie_details(m['id'], m['name'], details=None, is_watched=is_watched)
+                                    def del_mov(m_id=m['id']):
+                                        st.session_state.db["movies"] = [mv for mv in st.session_state.db["movies"] if str(mv["id"]) != str(m_id)]; save_db()
+                                    st.button("🗑️ DEL", key=f"m_del_{m['id']}", on_click=del_mov, use_container_width=True)
                                 else:
                                     if st.button("ℹ️ INFO", key=f"m_mgr_{m['id']}", use_container_width=True): show_movie_details(m['id'], m['name'], details=None, is_watched=is_watched)
                                 st.markdown('</div>', unsafe_allow_html=True)
