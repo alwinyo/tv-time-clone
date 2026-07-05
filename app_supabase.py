@@ -36,7 +36,7 @@ st.markdown("""
     
     /* True Mobile Edge-to-Edge Layout - Extra bottom padding for floating dock */
     .block-container { 
-        padding: 1rem 0.2rem 100px 0.2rem !important; /* Ultra-tight side padding */
+        padding: 1rem 0.2rem 100px 0.2rem !important; 
         max-width: 100vw !important;
         overflow-x: hidden !important;
     }
@@ -82,7 +82,6 @@ st.markdown("""
         color: #888 !important; white-space: nowrap !important; overflow: hidden !important; text-overflow: clip !important;
     }
     
-    /* Tighten Selectboxes to save space */
     div[data-baseweb="select"] > div:first-child {
         background-color: rgba(0, 0, 0, 0.7) !important;
         border-radius: 10px !important;
@@ -100,7 +99,7 @@ st.markdown("""
         border-radius: 10px !important; 
         border: 1px solid rgba(255, 193, 7, 0.15) !important;
         box-shadow: 0px 6px 18px rgba(0, 0, 0, 0.6), 0px 0px 12px rgba(255, 193, 7, 0.1) !important; 
-        padding: 0.2rem !important; /* Aggressive squeeze */
+        padding: 0.2rem !important; 
     }
     
     div[data-testid="column"] > div[data-testid="stVerticalBlock"] { gap: 0.1rem !important; }
@@ -133,9 +132,12 @@ st.markdown("""
         color: #000 !important; border-color: #FFC107 !important; box-shadow: 0 0 10px rgba(255, 193, 7, 0.5) !important;
     }
     
-    /* --- UI UPGRADE 1: BULLETPROOF PINNED DOCK --- */
-    .main-nav-marker + div[data-testid="stTabs"] > div[data-baseweb="tab-list"],
-    .main-nav-marker + div[data-testid="stTabs"] > div[role="tablist"] {
+    /* --- UI UPGRADE 1: BULLETPROOF PINNED DOCK (STREAMLIT DOM FIX) --- */
+    /* Target the container holding the marker, find its sibling container, and drop the tabs to the bottom */
+    [data-testid="stElementContainer"]:has(#main-nav-marker) + [data-testid="stElementContainer"] div[data-testid="stTabs"] > div[role="tablist"],
+    .element-container:has(#main-nav-marker) + .element-container div[data-testid="stTabs"] > div[role="tablist"],
+    [data-testid="stElementContainer"]:has(#main-nav-marker) + [data-testid="stElementContainer"] div[data-testid="stTabs"] > div[data-baseweb="tab-list"],
+    .element-container:has(#main-nav-marker) + .element-container div[data-testid="stTabs"] > div[data-baseweb="tab-list"] {
         position: fixed !important;
         bottom: 0 !important;
         top: auto !important;
@@ -153,29 +155,35 @@ st.markdown("""
         gap: 2px !important; overflow-x: visible !important;
     }
     
-    .main-nav-marker + div[data-testid="stTabs"] > div[role="tablist"] > div {
+    [data-testid="stElementContainer"]:has(#main-nav-marker) + [data-testid="stElementContainer"] div[data-testid="stTabs"] > div[role="tablist"] > div,
+    .element-container:has(#main-nav-marker) + .element-container div[data-testid="stTabs"] > div[role="tablist"] > div {
         flex: 1 1 0px !important; min-width: 0 !important; display: flex !important; justify-content: center !important;
     }
 
-    .main-nav-marker + div[data-testid="stTabs"] button[role="tab"] {
+    [data-testid="stElementContainer"]:has(#main-nav-marker) + [data-testid="stElementContainer"] div[data-testid="stTabs"] button[role="tab"],
+    .element-container:has(#main-nav-marker) + .element-container div[data-testid="stTabs"] button[role="tab"] {
         flex: 1 1 100% !important; min-width: 0 !important; padding: 8px 0px !important; margin: 0 !important;
         border-radius: 12px !important; background: transparent !important; border: 1px solid transparent !important;
-        transition: all 0.2s ease !important;
+        transition: all 0.2s ease !important; border-bottom: none !important;
     }
     
-    /* Hide Streamlit Native Scroll Arrows */
-    .main-nav-marker + div[data-testid="stTabs"] button[kind="secondary"] { display: none !important; }
+    /* Hide Streamlit Native Scroll Arrows on the Bottom Dock */
+    [data-testid="stElementContainer"]:has(#main-nav-marker) + [data-testid="stElementContainer"] div[data-testid="stTabs"] button[kind="secondary"],
+    .element-container:has(#main-nav-marker) + .element-container div[data-testid="stTabs"] button[kind="secondary"] { display: none !important; }
     
-    .main-nav-marker + div[data-testid="stTabs"] button[role="tab"] p {
+    [data-testid="stElementContainer"]:has(#main-nav-marker) + [data-testid="stElementContainer"] div[data-testid="stTabs"] button[role="tab"] p,
+    .element-container:has(#main-nav-marker) + .element-container div[data-testid="stTabs"] button[role="tab"] p {
         font-size: 0.55rem !important; font-weight: 700 !important; text-align: center !important;
         margin: 0 auto !important; white-space: nowrap !important; letter-spacing: -0.4px !important; 
         color: #888 !important; transition: all 0.2s ease !important;
     }
 
-    .main-nav-marker + div[data-testid="stTabs"] button[role="tab"][aria-selected="true"] {
+    [data-testid="stElementContainer"]:has(#main-nav-marker) + [data-testid="stElementContainer"] div[data-testid="stTabs"] button[role="tab"][aria-selected="true"],
+    .element-container:has(#main-nav-marker) + .element-container div[data-testid="stTabs"] button[role="tab"][aria-selected="true"] {
         background: rgba(255, 193, 7, 0.1) !important; border: 1px solid rgba(255, 193, 7, 0.3) !important;
     }
-    .main-nav-marker + div[data-testid="stTabs"] button[role="tab"][aria-selected="true"] p {
+    [data-testid="stElementContainer"]:has(#main-nav-marker) + [data-testid="stElementContainer"] div[data-testid="stTabs"] button[role="tab"][aria-selected="true"] p,
+    .element-container:has(#main-nav-marker) + .element-container div[data-testid="stTabs"] button[role="tab"][aria-selected="true"] p {
         color: #FFC107 !important; text-shadow: 0px 0px 10px rgba(255, 193, 7, 0.5) !important;
     }
     
@@ -703,7 +711,7 @@ if st.session_state.last_action:
             st.session_state.last_action = None; st.rerun()
 
 # --- APP NAVIGATION BAR ---
-st.markdown('<span class="main-nav-marker" style="display:none;"></span>', unsafe_allow_html=True)
+st.markdown('<div id="main-nav-marker" style="display:none;"></div>', unsafe_allow_html=True)
 t_next, t_soon, t_search, t_tv, t_movies, t_profile = st.tabs(["🔥 Next", "📅 Soon", "🔍 Search", "📺 TV", "🎬 Movies", "👤 Profile"])
 
 # ==========================================
@@ -711,7 +719,6 @@ t_next, t_soon, t_search, t_tv, t_movies, t_profile = st.tabs(["🔥 Next", "�
 # ==========================================
 with t_next:
     st.markdown("### Up Next")
-    # --- UI UPGRADE: SIDE-BY-SIDE TIGHT FILTERS ---
     f_col1, f_col2 = st.columns(2)
     with f_col1: next_filter = st.selectbox("Category:", ["📺 Series", "🎬 Movies"], label_visibility="collapsed", key="next_filter_box")
     with f_col2: next_sort = st.selectbox("Sort by:", ["Smart Priority", "Release Date", "Alphabetical"], label_visibility="collapsed", key="next_sort_box")
@@ -788,8 +795,7 @@ with t_next:
                     with cols[j]:
                         st.markdown('<span class="grid-3-col"></span>', unsafe_allow_html=True)
                         if idx < len(up_next_tv[:limit]):
-                            item = up_next_tv[idx]
-                            show, details, ep, ep_code = item["item"], item["details"], item["ep"], item["code"]
+                            item = up_next_tv[idx]; show, details, ep, ep_code = item["item"], item["details"], item["ep"], item["code"]
                             with st.container(border=True):
                                 display_poster(show.get("poster_path") or details.get('poster_path'), width=185)
                                 st.markdown(f'<div class="grid-title" title="{show["name"]}">{show["name"]}</div>', unsafe_allow_html=True)
@@ -985,10 +991,8 @@ with t_search:
                                 if not added:
                                     if st.button("➕ ADD", key=f"add_{item_id}_{i+j}", use_container_width=True):
                                         details = fetch_api(f"https://api.themoviedb.org/3/{'tv' if is_tv else 'movie'}/{item_id}?api_key={TMDB_KEY}")
-                                        if is_tv:
-                                            st.session_state.db["shows"].append({"id": item_id, "name": title, "watched_episodes": get_watched_from_history("tv", item_id), "poster_path": details.get("poster_path", ""), "first_air_date": details.get("first_air_date", ""), "total_episodes": details.get("number_of_episodes", 1)})
-                                        else:
-                                            st.session_state.db["movies"].append({"id": item_id, "name": title, "watched": get_watched_from_history("movie", item_id), "poster_path": details.get("poster_path", ""), "release_date": details.get("release_date", ""), "runtime": details.get("runtime", 0)})
+                                        if is_tv: st.session_state.db["shows"].append({"id": item_id, "name": title, "watched_episodes": get_watched_from_history("tv", item_id), "poster_path": details.get("poster_path", ""), "first_air_date": details.get("first_air_date", ""), "total_episodes": details.get("number_of_episodes", 1)})
+                                        else: st.session_state.db["movies"].append({"id": item_id, "name": title, "watched": get_watched_from_history("movie", item_id), "poster_path": details.get("poster_path", ""), "release_date": details.get("release_date", ""), "runtime": details.get("runtime", 0)})
                                         if save_db(): st.rerun()
                                 else: st.button("✔️ ADDED", key=f"dsb_{item_id}_{i+j}", disabled=True, use_container_width=True)
                                 
