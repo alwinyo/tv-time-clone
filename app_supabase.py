@@ -45,11 +45,14 @@ st.markdown("""
     img { border-radius: 8px !important; }
     [data-testid="stProgressBar"] > div > div { background: linear-gradient(135deg, #FFD54F 0%, #FFC107 100%) !important; }
     
-    /* --- AGGRESSIVE SPACE SQUEEZE (COMPACTION) --- */
-    [data-testid="stVerticalBlock"] { gap: 0.4rem !important; }
-    hr { margin: 0.5rem 0 !important; }
-    h1, h2, h3, h4, h5, h6 { padding-bottom: 0rem !important; padding-top: 0.2rem !important; margin-bottom: 0 !important; }
-    .stMarkdown p { margin-bottom: 0.2rem !important; }
+    /* --- BALANCED SPACE SQUEEZE --- */
+    hr { margin: 1.2rem 0 !important; border-color: rgba(255, 255, 255, 0.1) !important; }
+    h1, h2, h3 { padding-top: 1rem !important; padding-bottom: 0.5rem !important; }
+    
+    /* --- SQUEEZE EMPTY SPACE OUT OF POSTER GRIDS ONLY --- */
+    div[data-testid="column"] > div[data-testid="stVerticalBlock"] {
+        gap: 0.25rem !important; 
+    }
     
     /* --- SLICK NATIVE iOS-STYLE FULL WIDTH CONTROLS --- */
     div[data-testid="stRadio"] { width: 100% !important; }
@@ -394,6 +397,7 @@ def pack_db(db):
         packed["h"].append([1 if h.get("t") == "s" else 0, h.get("i"), h.get("e", ""), h.get("d")])
     for k, v in db.get("analytics", {}).items():
         packed["a"][k] = [v.get("tv", 0), v.get("movie", 0)]
+    # Pack viewed recaps list to save across server boots
     packed["r"] = db.get("seen_recaps", [])
     return packed
 
