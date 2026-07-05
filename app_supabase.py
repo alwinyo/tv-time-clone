@@ -86,13 +86,18 @@ st.markdown("""
     div[data-testid="stHorizontalBlock"]:has(.carousel-marker)::-webkit-scrollbar, div[data-testid="stColumns"]:has(.carousel-marker)::-webkit-scrollbar { display: none; }
     div[data-testid="column"]:has(.carousel-marker), div[data-testid="stColumn"]:has(.carousel-marker) { flex: 0 0 110px !important; width: 110px !important; min-width: 110px !important; padding: 0 !important; display: block !important; }
 
-    /* --- INVISIBLE NATIVE BUTTON HACK FOR CAST --- */
     div[data-testid="stHorizontalBlock"]:has(.carousel-marker-cast), div[data-testid="stColumns"]:has(.carousel-marker-cast) { display: flex !important; flex-direction: row !important; overflow-x: auto !important; flex-wrap: nowrap !important; scrollbar-width: none; padding-bottom: 10px !important; gap: 10px !important; }
     div[data-testid="stHorizontalBlock"]:has(.carousel-marker-cast)::-webkit-scrollbar, div[data-testid="stColumns"]:has(.carousel-marker-cast)::-webkit-scrollbar { display: none; }
     div[data-testid="column"]:has(.carousel-marker-cast), div[data-testid="stColumn"]:has(.carousel-marker-cast) { flex: 0 0 85px !important; width: 85px !important; min-width: 85px !important; padding: 0 !important; display: block !important; text-align: center !important; }
     div[data-testid="column"]:has(.carousel-marker-cast) div[data-testid="stButton"] button { background: transparent !important; border: none !important; box-shadow: none !important; padding: 0 !important; margin: 0 !important; color: #E0E0E0 !important; font-size: 0.6rem !important; font-weight: 600 !important; line-height: 1.2 !important; white-space: nowrap !important; overflow: hidden !important; text-overflow: ellipsis !important; height: auto !important; min-height: 0 !important; width: 100% !important; display: block !important; }
     div[data-testid="column"]:has(.carousel-marker-cast) div[data-testid="stButton"] button:hover { color: #FFC107 !important; transform: none !important; text-decoration: underline !important;}
     
+    /* --- INLINE SEARCH CLEAR BUTTON OVERRIDE --- */
+    div[data-testid="stVerticalBlock"]:has(> div > div > .search-container-hook) { position: relative !important; }
+    div:has(> .clear-btn-hook) + div { position: absolute !important; right: 8px !important; top: 7px !important; width: 26px !important; z-index: 100 !important; }
+    div:has(> .clear-btn-hook) + div button { background: rgba(255,255,255,0.08) !important; border: none !important; box-shadow: none !important; color: #aaa !important; padding: 0 !important; min-height: 26px !important; height: 26px !important; width: 26px !important; border-radius: 50% !important; font-size: 0.7rem !important; display: flex !important; align-items: center !important; justify-content: center !important; margin: 0 !important; line-height: 1 !important; }
+    div:has(> .clear-btn-hook) + div button:hover { background: rgba(255, 193, 7, 0.3) !important; color: #FFD54F !important; }
+
     @media (max-width: 992px) {
         div[data-testid="stHorizontalBlock"]:has(.grid-3-col), div[data-testid="stColumns"]:has(.grid-3-col) { display: flex !important; flex-direction: row !important; flex-wrap: nowrap !important; gap: 2% !important; }
         div[data-testid="column"]:has(.grid-3-col), div[data-testid="stColumn"]:has(.grid-3-col) { width: 32% !important; flex: 1 1 32% !important; min-width: 0 !important; padding: 0 !important; display: block !important; }
@@ -121,6 +126,7 @@ if "rec_show" not in st.session_state: st.session_state.rec_show = None
 if "last_action" not in st.session_state: st.session_state.last_action = None
 if "active_actor" not in st.session_state: st.session_state.active_actor = None
 if "prompt_review" not in st.session_state: st.session_state.prompt_review = None
+if "search_reset_ctr" not in st.session_state: st.session_state.search_reset_ctr = 0
 
 # --- DB PIPELINE ---
 TMDB_KEY = st.secrets["TMDB_KEY"]
@@ -130,7 +136,8 @@ DB_ENDPOINT = f"{SUPABASE_URL}/rest/v1/tv_time_data?id=eq.1"
 HEADERS = {"apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}", "Content-Type": "application/json", "Prefer": "return=representation"}
 TODAY = get_dubai_time().strftime('%Y-%m-%d')
 
-@st.cache_data(ttl=43200, persist="disk")
+# NOTE: Removed persist="disk" to force TTL expiration every 12 hours.
+@st.cache_data(ttl=43200)
 def fetch_api(url):
     try:
         r = requests.get(url, timeout=5)
@@ -356,7 +363,7 @@ def cb_undo_action(t, i, e):
     st.session_state.prompt_review = None
 
 def cb_clear_search():
-    st.session_state.search_query_input = ""
+    st.session_state.search_reset_ctr += 1
 
 # --- GLOBAL SAFE UNDO BANNER ---
 if st.session_state.last_action and not st.session_state.prompt_review:
@@ -936,12 +943,12 @@ with t_soon:
 with t_search:
     st.markdown("<h3 class='tab-title'>Discover</h3>", unsafe_allow_html=True)
     
-    # --- DYNAMIC SEARCH WITH CLEAR BUTTON ---
-    c_search, c_clear = st.columns([85, 15])
-    with c_search:
-        search_query = st_keyup("Search", debounce=2000, key="search_query_input", placeholder="Search TV shows, movies...", label_visibility="collapsed")
-    with c_clear:
-        st.button("✖", key="clear_search_btn", on_click=cb_clear_search, disabled=(not search_query), use_container_width=True)
+    with st.container():
+        st.markdown('<span class="search-container-hook"></span>', unsafe_allow_html=True)
+        search_query = st_keyup("Search", debounce=1500, key=f"sq_{st.session_state.search_reset_ctr}", placeholder="Search TV shows, movies...", label_visibility="collapsed")
+        if search_query:
+            st.markdown('<span class="clear-btn-hook"></span>', unsafe_allow_html=True)
+            st.button("✖", key=f"clr_btn_{st.session_state.search_reset_ctr}", on_click=cb_clear_search)
 
     if search_query:
         search_type = st.selectbox("Search in:", ["TV Shows", "Movies"], label_visibility="collapsed", key="search_filter_box")
