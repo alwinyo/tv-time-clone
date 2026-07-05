@@ -417,7 +417,7 @@ def pack_db(db):
     for s in db.get("shows", []):
         packed["s"].append([s["id"], s["name"], encode_eps(s.get("watched_episodes", [])), s.get("poster_path", ""), s.get("first_air_date", ""), s.get("total_episodes", 1)])
     for h in db.get("history", []):
-        packed["h"].append([1 if h.get("t") == "s" else 0, h.get("i"), h.get("e", ""), h.get("d")])
+        packed["h"].append([1 if h.get("t") == "s" else 0, h.get("i"), h.get("e", ""), h.get("d"), h.get("r", 0), h.get("f", ""), h.get("p", "")])
     for k, v in db.get("analytics", {}).items():
         packed["a"][k] = [v.get("tv", 0), v.get("movie", 0)]
     packed["r"] = db.get("seen_recaps", [])
@@ -430,7 +430,11 @@ def unpack_db(packed):
     for s in packed.get("s", []):
         db["shows"].append({"id": s[0], "name": s[1], "watched_episodes": decode_eps(s[2]), "poster_path": s[3], "first_air_date": s[4], "total_episodes": s[5]})
     for h in packed.get("h", []):
-        db["history"].append({"t": "s" if h[0]==1 else "m", "i": h[1], "e": h[2], "d": h[3]})
+        entry = {"t": "s" if h[0]==1 else "m", "i": h[1], "e": h[2], "d": h[3]}
+        if len(h) > 4: entry["r"] = h[4]
+        if len(h) > 5: entry["f"] = h[5]
+        if len(h) > 6: entry["p"] = h[6]
+        db["history"].append(entry)
     for k, v in packed.get("a", {}).items():
         db["analytics"][k] = {"tv": v[0], "movie": v[1]}
     db["seen_recaps"] = packed.get("r", [])
@@ -493,7 +497,7 @@ def log_watch(item_type, item_id, detail=""):
     else: db["analytics"][m_key]["movie"] += 1
     
     t_flag = "s" if item_type == "tv" else "m"
-    db.setdefault("history", []).insert(0, {"t": t_flag, "i": item_id, "e": detail, "d": now_str})
+    db.setdefault("history", []).insert(0, {"t": t_flag, "i": item_id, "e": detail, "d": now_str, "r": 0, "f": "", "p": ""})
     
     st.session_state.last_action = {"t": item_type, "i": item_id, "e": detail}
     
@@ -531,6 +535,19 @@ def remove_watch(item_type, item_id, detail=""):
                 break
     save_db()
 
+def calc_time_remaining(date_str):
+    if not date_str: return "Soon"
+    try:
+        target = datetime.strptime(date_str, '%Y-%m-%d')
+        now = get_dubai_time()
+        diff = target - now
+        days = diff.days
+        hours = diff.seconds // 3600
+        if days > 0: return f"In {days}d {hours}h"
+        elif days == 0 and hours > 0: return f"In {hours}h"
+        else: return "Today"
+    except: return "Soon"
+
 # --- AUTOMATED POP-UP RECAP ENGINE (MONTHLY & YEARLY AUTOMATION) ---
 @st.dialog("🌙 Monthly Wrap-Up")
 def show_monthly_recap_dialog(month_key, month_title, stats, recap_id):
@@ -550,17 +567,24 @@ def show_monthly_recap_dialog(month_key, month_title, stats, recap_id):
         
     st.markdown(f"⏳ **Screen Time Investment:** ~`{hours}` hours spent streaming.")
     
-    # Calculate most active series from logs matching that specific month frame
+    # Calculate top platform and active series
     show_counts = {}
+    plat_counts = {}
     for h in st.session_state.db.get("history", []):
-        if h.get("t") == "s" and str(h.get("d", "")).startswith(month_key):
-            show_counts[h["i"]] = show_counts.get(h["i"], 0) + 1
+        if str(h.get("d", "")).startswith(month_key):
+            if h.get("t") == "s":
+                show_counts[h["i"]] = show_counts.get(h["i"], 0) + 1
+            if h.get("p") and h.get("p") != "None":
+                plat_counts[h["p"]] = plat_counts.get(h["p"], 0) + 1
             
     if show_counts:
         top_show_id = max(show_counts, key=show_counts.get)
         show = next((s for s in st.session_state.db["shows"] if str(s["id"]) == str(top_show_id)), None)
-        if show:
-            st.markdown(f"🔥 **Top Binge Focus:** *{show['name']}* ({show_counts[top_show_id]} episodes)")
+        if show: st.markdown(f"🔥 **Top Binge Focus:** *{show['name']}* ({show_counts[top_show_id]} episodes)")
+            
+    if plat_counts:
+        top_p = max(plat_counts, key=plat_counts.get)
+        st.markdown(f"📡 **Platform Loyalty:** Most watched on **{top_p}**")
             
     st.divider()
     if st.button("Sweet!", use_container_width=True, key="close_month_recap_btn"):
@@ -602,13 +626,9 @@ def show_yearly_recap_dialog(year, y_tv, y_mov, recap_id):
         
     st.markdown(f"⏳ **Time Commitment:** You dedicated total of **{days} days** and **{rem_hours} hours** to premium story arcs.")
     
-    # Fun title tiers based on screening metrics density
-    if days > 12:
-        tier_title, tier_desc = "👑 Emperor of the Couch", "Absolute legend. Hollywood production lines should put you on their payroll."
-    elif days > 5:
-        tier_title, tier_desc = "🍿 Marathon Veteran", "You know exactly how to lock down a weekend block and demolish complex plotlines."
-    else:
-        tier_title, tier_desc = "🎬 Curation Connoisseur", "High-taste selection habits. You filter for absolute choice cinema narrative styles."
+    if days > 12: tier_title, tier_desc = "👑 Emperor of the Couch", "Absolute legend. Hollywood production lines should put you on their payroll."
+    elif days > 5: tier_title, tier_desc = "🍿 Marathon Veteran", "You know exactly how to lock down a weekend block and demolish complex plotlines."
+    else: tier_title, tier_desc = "🎬 Curation Connoisseur", "High-taste selection habits. You filter for absolute choice cinema narrative styles."
         
     st.markdown(f"""
     <div style="background: rgba(255, 193, 7, 0.08); border: 1px dashed #FFC107; border-radius: 12px; padding: 15px; margin-top: 15px; text-align: center;">
@@ -631,7 +651,6 @@ def evaluate_and_trigger_recaps():
     seen = db.setdefault("seen_recaps", [])
     now = get_dubai_time()
     
-    # 1. Monthly Automation Engine (Targeting immediate previous calendar month)
     first_of_this_month = now.replace(day=1)
     last_day_of_prev_month = first_of_this_month - timedelta(days=1)
     prev_month_key = last_day_of_prev_month.strftime("%Y-%m")
@@ -644,7 +663,6 @@ def evaluate_and_trigger_recaps():
             show_monthly_recap_dialog(prev_month_key, prev_month_name, stats, month_recap_id)
             return
             
-    # 2. Yearly Automation Engine (Targeting immediate previous full year block)
     prev_year_num = now.year - 1
     year_recap_id = f"yearly-{prev_year_num}"
     if year_recap_id not in seen:
@@ -685,14 +703,6 @@ def show_cast_horizontal(cast_list, limit=12):
     html = html.replace('\n', '')
     st.markdown(html, unsafe_allow_html=True)
 
-def parse_tvtime_date(d_str):
-    if not d_str: return "2000-01-01 12:00:00"
-    try:
-        clean_str = str(d_str).replace("Z", "").replace("T", " ").split(".")[0]
-        dt = datetime.strptime(clean_str, "%Y-%m-%d %H:%M:%S")
-        return dt.strftime("%Y-%m-%d %H:%M:%S")
-    except: return "2000-01-01 12:00:00"
-
 # --- DIALOGS ---
 @st.dialog("Episode Details")
 def show_episode_details(show_id, show_name, ep_code, ep_data=None, is_watched=False):
@@ -708,6 +718,42 @@ def show_episode_details(show_id, show_name, ep_code, ep_data=None, is_watched=F
     render_badges([ep_code, f"⭐ {ep_data.get('vote_average', 0.0)}"], is_gold=True)
     st.caption(f"**Aired:** {ep_data.get('air_date', 'N/A')}")
     st.write(ep_data.get("overview", "No synopsis available for this episode yet."))
+    
+    current_show = next((s for s in st.session_state.db["shows"] if str(s["id"]) == str(show_id)), None)
+    btn_disabled = (current_show is None)
+    
+    if is_watched:
+        h_log = next((h for h in st.session_state.db.get("history", []) if h.get("t")=="s" and str(h.get("i"))==str(show_id) and h.get("e")==ep_code), None)
+        if h_log:
+            try:
+                dt_obj = datetime.strptime(h_log["d"], "%Y-%m-%d %H:%M:%S")
+                st.success(f"✅ **Watched on:** {dt_obj.strftime('%B %d, %Y at %I:%M %p')}")
+            except: pass
+            
+            st.markdown("#### Journal & Review")
+            platforms = ["None", "Netflix", "OSN+", "Amazon Prime", "Apple TV+", "Disney+", "Starzplay", "Cinema", "Downloaded", "Other"]
+            curr_p = h_log.get("p", "")
+            p_idx = platforms.index(curr_p) if curr_p in platforms else 0
+            new_p = st.selectbox("Watched On:", platforms, index=p_idx, key=f"p_s_{show_id}_{ep_code}")
+            
+            c1, c2 = st.columns(2)
+            with c1:
+                ratings = [0, 1, 2, 3, 4, 5]
+                curr_r = h_log.get("r", 0)
+                r_idx = curr_r if curr_r in ratings else 0
+                new_r = st.selectbox("Rating (1-5):", ratings, index=r_idx, format_func=lambda x: f"{x} ⭐" if x>0 else "Unrated", key=f"r_s_{show_id}_{ep_code}")
+            with c2:
+                feelings = ["None", "🤯 Mind Blown", "😂 Hilarious", "😭 Emotional", "😍 Loved it", "😡 Frustrated", "😴 Bored"]
+                curr_f = h_log.get("f", "")
+                f_idx = feelings.index(curr_f) if curr_f in feelings else 0
+                new_f = st.selectbox("Feeling:", feelings, index=f_idx, key=f"f_s_{show_id}_{ep_code}")
+                
+            if new_p != curr_p or new_r != curr_r or new_f != curr_f:
+                h_log["p"] = new_p if new_p != "None" else ""
+                h_log["r"] = new_r
+                h_log["f"] = new_f if new_f != "None" else ""
+                save_db()
+                
     st.divider()
     st.markdown("#### Cast & Guest Stars")
     credits = fetch_api(f"https://api.themoviedb.org/3/tv/{show_id}/credits?api_key={TMDB_KEY}")
@@ -715,10 +761,7 @@ def show_episode_details(show_id, show_name, ep_code, ep_data=None, is_watched=F
     show_cast_horizontal(combined_cast, limit=15)
     st.divider()
     
-    current_show = next((s for s in st.session_state.db["shows"] if str(s["id"]) == str(show_id)), None)
-    btn_disabled = (current_show is None)
-    if btn_disabled:
-        st.warning("➕ Add this show to your library to track episodes!")
+    if btn_disabled: st.warning("➕ Add this show to your library to track episodes!")
         
     btn_label = "❌ Unmark as Watched" if is_watched else "✅ Mark as Watched"
     if st.button(btn_label, use_container_width=True, key=f"dlg_btn_tv_{show_id}_{ep_code}", disabled=btn_disabled):
@@ -798,16 +841,49 @@ def show_movie_details(m_id, m_name, details=None, is_watched=False):
     genres = [g["name"] for g in details.get("genres", [])]
     render_badges([f"{details.get('runtime', 0)} mins"] + genres)
     st.write(details.get("overview", "No synopsis available."))
+    
+    current_movie = next((m for m in st.session_state.db["movies"] if str(m["id"]) == str(m_id)), None)
+    btn_disabled = (current_movie is None)
+    
+    if is_watched:
+        h_log = next((h for h in st.session_state.db.get("history", []) if h.get("t")=="m" and str(h.get("i"))==str(m_id)), None)
+        if h_log:
+            try:
+                dt_obj = datetime.strptime(h_log["d"], "%Y-%m-%d %H:%M:%S")
+                st.success(f"✅ **Watched on:** {dt_obj.strftime('%B %d, %Y at %I:%M %p')}")
+            except: pass
+            
+            st.markdown("#### Journal & Review")
+            platforms = ["None", "Netflix", "OSN+", "Amazon Prime", "Apple TV+", "Disney+", "Starzplay", "Cinema", "Downloaded", "Other"]
+            curr_p = h_log.get("p", "")
+            p_idx = platforms.index(curr_p) if curr_p in platforms else 0
+            new_p = st.selectbox("Watched On:", platforms, index=p_idx, key=f"p_m_{m_id}")
+            
+            c1, c2 = st.columns(2)
+            with c1:
+                ratings = [0, 1, 2, 3, 4, 5]
+                curr_r = h_log.get("r", 0)
+                r_idx = curr_r if curr_r in ratings else 0
+                new_r = st.selectbox("Rating (1-5):", ratings, index=r_idx, format_func=lambda x: f"{x} ⭐" if x>0 else "Unrated", key=f"r_m_{m_id}")
+            with c2:
+                feelings = ["None", "🤯 Mind Blown", "😂 Hilarious", "😭 Emotional", "😍 Loved it", "😡 Frustrated", "😴 Bored"]
+                curr_f = h_log.get("f", "")
+                f_idx = feelings.index(curr_f) if curr_f in feelings else 0
+                new_f = st.selectbox("Feeling:", feelings, index=f_idx, key=f"f_m_{m_id}")
+                
+            if new_p != curr_p or new_r != curr_r or new_f != curr_f:
+                h_log["p"] = new_p if new_p != "None" else ""
+                h_log["r"] = new_r
+                h_log["f"] = new_f if new_f != "None" else ""
+                save_db()
+                
     st.divider()
     st.markdown("#### Top Cast")
     credits = fetch_api(f"https://api.themoviedb.org/3/movie/{m_id}/credits?api_key={TMDB_KEY}")
     show_cast_horizontal(credits.get("cast", []), limit=15)
     st.divider()
     
-    current_movie = next((m for m in st.session_state.db["movies"] if str(m["id"]) == str(m_id)), None)
-    btn_disabled = (current_movie is None)
-    if btn_disabled:
-        st.warning("➕ Add this movie to your library to mark it as watched!")
+    if btn_disabled: st.warning("➕ Add this movie to your library to mark it as watched!")
         
     btn_label = "❌ Unmark as Watched" if is_watched else "✅ Mark as Watched"
     if st.button(btn_label, use_container_width=True, key=f"dlg_btn_mov_{m_id}", disabled=btn_disabled):
@@ -1053,11 +1129,11 @@ with t_soon:
                         if idx < len(soon_tv[:limit]):
                             item = soon_tv[idx]
                             show, details, ep, ep_code = item["item"], item["details"], item["ep"], item["code"]
-                            days_left = (datetime.strptime(item["date"], '%Y-%m-%d') - get_dubai_time()).days
+                            time_rem = calc_time_remaining(item["date"])
                             with st.container(border=True):
                                 display_poster(show.get("poster_path") or details.get('poster_path'), width=185)
                                 st.markdown(f'<div class="grid-title" title="{show["name"]}">{show["name"]}</div>', unsafe_allow_html=True)
-                                st.markdown(f'<div style="text-align:center; font-size:0.65rem; color:#FFC107; margin-bottom:5px; font-weight:600;">{ep_code} • In {days_left}d</div>', unsafe_allow_html=True)
+                                st.markdown(f'<div style="text-align:center; font-size:0.65rem; color:#FFC107; margin-bottom:5px; font-weight:600;">{ep_code} • {time_rem}</div>', unsafe_allow_html=True)
                                 
                                 st.markdown('<div class="movie-wall-btn">', unsafe_allow_html=True)
                                 def f_w_s_tv(sid=show['id'], sname=show['name'], ecode=ep_code):
@@ -1100,11 +1176,11 @@ with t_soon:
                         if idx < len(soon_mov[:limit]):
                             item = soon_mov[idx]
                             m = item["item"]
-                            days_left = (datetime.strptime(item["date"], '%Y-%m-%d') - get_dubai_time()).days
+                            time_rem = calc_time_remaining(item["date"])
                             with st.container(border=True):
                                 display_poster(m.get('poster_path'), width=185)
                                 st.markdown(f'<div class="grid-title" title="{m["name"]}">{m["name"]}</div>', unsafe_allow_html=True)
-                                st.markdown(f'<div style="text-align:center; font-size:0.65rem; color:#FFC107; margin-bottom:5px; font-weight:600;">In {days_left}d</div>', unsafe_allow_html=True)
+                                st.markdown(f'<div style="text-align:center; font-size:0.65rem; color:#FFC107; margin-bottom:5px; font-weight:600;">{time_rem}</div>', unsafe_allow_html=True)
                                 
                                 st.markdown('<div class="movie-wall-btn">', unsafe_allow_html=True)
                                 def f_w_s_mov(mid=m['id']):
@@ -1597,6 +1673,10 @@ with t_profile:
                         poster = s_data.get("poster_path", "")
                         
                     ep_code = h.get('e', '')
+                    r_stars = ("⭐" * h.get('r')) if h.get('r', 0) > 0 else ""
+                    f_moji = h.get('f', '')
+                    tag_line = f"{r_stars} {f_moji}".strip()
+                    
                     poster_url = f"https://image.tmdb.org/t/p/w92{poster}" if poster else "https://via.placeholder.com/92x138/222222/555555?text=No+Img"
                     
                     html = f"""
@@ -1604,7 +1684,7 @@ with t_profile:
                         <img src="{poster_url}" style="width: 45px; height: 68px; border-radius: 4px; object-fit: cover; margin-right: 14px; box-shadow: 0 2px 4px rgba(0,0,0,0.5);">
                         <div style="display: flex; flex-direction: column; justify-content: center;">
                             <div style="font-size: 0.95rem; font-weight: 700; color: #FFFFFF; margin-bottom: 2px; line-height: 1.2;">{s_name}</div>
-                            <div style="font-size: 0.75rem; font-weight: 600; color: #FFC107; margin-bottom: 2px;">{ep_code}</div>
+                            <div style="font-size: 0.75rem; font-weight: 600; color: #FFC107; margin-bottom: 2px;">{ep_code} <span style="color:#EDEDED; margin-left:4px;">{tag_line}</span></div>
                             <div style="font-size: 0.7rem; color: #888888;">{dt.strftime('%b %d, %Y • %I:%M %p')}</div>
                         </div>
                     </div>
@@ -1639,6 +1719,10 @@ with t_profile:
                         m_name = m_data.get("title", "Unknown Movie")
                         poster = m_data.get("poster_path", "")
                         
+                    r_stars = ("⭐" * h.get('r')) if h.get('r', 0) > 0 else ""
+                    f_moji = h.get('f', '')
+                    tag_line = f"{r_stars} {f_moji}".strip()
+                        
                     poster_url = f"https://image.tmdb.org/t/p/w92{poster}" if poster else "https://via.placeholder.com/92x138/222222/555555?text=No+Img"
                     
                     html = f"""
@@ -1646,7 +1730,7 @@ with t_profile:
                         <img src="{poster_url}" style="width: 45px; height: 68px; border-radius: 4px; object-fit: cover; margin-right: 14px; box-shadow: 0 2px 4px rgba(0,0,0,0.5);">
                         <div style="display: flex; flex-direction: column; justify-content: center;">
                             <div style="font-size: 0.95rem; font-weight: 700; color: #FFFFFF; margin-bottom: 2px; line-height: 1.2;">{m_name}</div>
-                            <div style="font-size: 0.75rem; font-weight: 600; color: #FFC107; margin-bottom: 2px;">Movie</div>
+                            <div style="font-size: 0.75rem; font-weight: 600; color: #FFC107; margin-bottom: 2px;">Movie <span style="color:#EDEDED; margin-left:4px;">{tag_line}</span></div>
                             <div style="font-size: 0.7rem; color: #888888;">{dt.strftime('%b %d, %Y • %I:%M %p')}</div>
                         </div>
                     </div>
@@ -1721,7 +1805,7 @@ with t_profile:
                                             
                                             new_db["analytics"].setdefault(m_key, {"tv": 0, "movie": 0})
                                             new_db["analytics"][m_key]["movie"] += 1
-                                            new_db["history"].append({"t": "m", "i": tmdb_id, "e": "", "d": w_dt})
+                                            new_db["history"].append({"t": "m", "i": tmdb_id, "e": "", "d": w_dt, "r": 0, "f": "", "p": ""})
                             except Exception as item_error: continue 
                     except Exception as e: st.error(f"Error processing movies: {e}")
                 
@@ -1772,7 +1856,7 @@ with t_profile:
                                                 
                                                 new_db["analytics"].setdefault(m_key, {"tv": 0, "movie": 0})
                                                 new_db["analytics"][m_key]["tv"] += 1
-                                                new_db["history"].append({"t": "s", "i": tmdb_id, "e": e_code, "d": w_dt})
+                                                new_db["history"].append({"t": "s", "i": tmdb_id, "e": e_code, "d": w_dt, "r": 0, "f": "", "p": ""})
                                                 
                                     if is_new_show:
                                         new_db["shows"].append({
