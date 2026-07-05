@@ -45,9 +45,18 @@ st.markdown("""
     img { border-radius: 8px !important; }
     [data-testid="stProgressBar"] > div > div { background: linear-gradient(135deg, #FFD54F 0%, #FFC107 100%) !important; }
     
-    /* --- BALANCED SPACE SQUEEZE --- */
-    hr { margin: 1.2rem 0 !important; border-color: rgba(255, 255, 255, 0.1) !important; }
-    h1, h2, h3 { padding-top: 1rem !important; padding-bottom: 0.5rem !important; }
+    /* --- MODERATE "HALF-SQUEEZE" SPACING --- */
+    [data-testid="stVerticalBlock"] { gap: 0.6rem !important; }
+    hr { margin: 0.8rem 0 !important; border-color: rgba(255, 255, 255, 0.1) !important; }
+    h1, h2, h3 { padding-top: 0.6rem !important; padding-bottom: 0.3rem !important; margin-bottom: 0 !important; }
+    .stMarkdown p { margin-bottom: 0.5rem !important; }
+    
+    /* --- SLEEK TYPOGRAPHY & COLORS FOR HEADERS --- */
+    h3 { 
+        color: #FFD54F !important; 
+        font-weight: 800 !important;
+        letter-spacing: -0.5px !important;
+    }
     
     /* --- SQUEEZE EMPTY SPACE OUT OF POSTER GRIDS ONLY --- */
     div[data-testid="column"] > div[data-testid="stVerticalBlock"] {
@@ -129,15 +138,22 @@ st.markdown("""
         color: #000 !important; 
         border: none !important; 
         border-radius: 20px !important;
-        font-weight: 700 !important;
+        font-weight: 800 !important;
         box-shadow: 0 4px 15px rgba(255, 193, 7, 0.4) !important;
+        letter-spacing: 0.5px !important;
     }
     button[kind="secondary"] { 
         background-color: rgba(255, 255, 255, 0.05) !important; 
-        color: #ccc !important; 
+        color: #F8F9FA !important; 
         border: 1px solid rgba(255, 255, 255, 0.1) !important; 
         border-radius: 20px !important;
-        font-weight: 600 !important;
+        font-weight: 700 !important;
+        letter-spacing: 0.5px !important;
+        transition: all 0.2s ease !important;
+    }
+    button[kind="secondary"]:hover {
+        border-color: rgba(255, 193, 7, 0.5) !important;
+        color: #FFD54F !important; 
     }
     
     /* --- SLEEK FROSTED BLOCK BUTTONS (SCOPED TO POSTERS ONLY) --- */
@@ -162,6 +178,7 @@ st.markdown("""
         text-overflow: clip !important;
         transition: all 0.2s !important;
     }
+    .movie-wall-btn div.stButton > button:hover, 
     .movie-wall-btn div.stButton > button:active { 
         transform: scale(0.95); 
         background: linear-gradient(135deg, #FFD54F 0%, #FFC107 100%) !important; 
@@ -397,7 +414,6 @@ def pack_db(db):
         packed["h"].append([1 if h.get("t") == "s" else 0, h.get("i"), h.get("e", ""), h.get("d")])
     for k, v in db.get("analytics", {}).items():
         packed["a"][k] = [v.get("tv", 0), v.get("movie", 0)]
-    # Pack viewed recaps list to save across server boots
     packed["r"] = db.get("seen_recaps", [])
     return packed
 
