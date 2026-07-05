@@ -35,21 +35,30 @@ st.markdown("""
         color: #EDEDED !important;
     }
     
-    /* True Mobile Edge-to-Edge Layout */
+    /* True Mobile Edge-to-Edge Layout - Extra bottom padding for floating dock */
     .block-container { 
-        padding: 1rem 0.5rem 5rem 0.5rem !important; 
+        padding: 1rem 0.5rem 80px 0.5rem !important; 
         max-width: 100vw !important;
         overflow-x: hidden !important;
     }
     
     img { border-radius: 8px !important; }
-    [data-testid="stProgressBar"] > div > div { background: linear-gradient(135deg, #FFD54F 0%, #FFC107 100%) !important; }
+    
+    /* --- UI UPGRADE 3: SLICK GRADIENT PROGRESS BARS --- */
+    [data-testid="stProgressBar"] > div {
+        height: 6px !important;
+        border-radius: 10px !important;
+        background-color: rgba(255, 255, 255, 0.1) !important;
+    }
+    [data-testid="stProgressBar"] > div > div { 
+        background: linear-gradient(90deg, #FFD54F 0%, #FFC107 100%) !important; 
+        border-radius: 10px !important;
+    }
     
     /* --- SLICK NATIVE iOS-STYLE FULL WIDTH CONTROLS --- */
     div[data-testid="stRadio"] { width: 100% !important; }
     div[data-testid="stRadio"] > div { width: 100% !important; }
     
-    /* Deep Recessed Navigation Container */
     div[role="radiogroup"] {
         display: flex !important;
         flex-direction: row !important;
@@ -73,7 +82,6 @@ st.markdown("""
     }
     div[role="radiogroup"] > label > div:first-child { display: none !important; }
     
-    /* Premium Gold Glowing Active State (Using :has to force Streamlit override) */
     div[role="radiogroup"] > label:has(input:checked) { 
         background: linear-gradient(135deg, #FFD54F 0%, #FFC107 100%) !important; 
         box-shadow: 0 4px 15px rgba(255, 193, 7, 0.4) !important;
@@ -94,7 +102,6 @@ st.markdown("""
         text-overflow: clip !important;
     }
     
-    /* Deep Recessed Selectboxes */
     div[data-baseweb="select"] > div:first-child {
         background-color: rgba(0, 0, 0, 0.7) !important;
         border-radius: 14px !important;
@@ -103,23 +110,23 @@ st.markdown("""
         padding: 4px !important;
     }
     
-    /* --- PREMIUM GLASSMORPHISM CARDS (FORCED) --- */
+    /* --- UI UPGRADE 2: AMBIENT POSTER GLOW & GLASSMORPHISM CARDS --- */
     [data-testid="stVerticalBlockBorderWrapper"] {
         background: linear-gradient(145deg, rgba(30, 32, 40, 0.6) 0%, rgba(15, 17, 22, 0.8) 100%) !important;
         backdrop-filter: blur(12px) !important;
         -webkit-backdrop-filter: blur(12px) !important;
         border-radius: 12px !important; 
-        border: 1px solid rgba(255, 255, 255, 0.1) !important;
-        box-shadow: 0px 8px 24px rgba(0, 0, 0, 0.6) !important; 
+        /* The Ambient Amber Glow */
+        border: 1px solid rgba(255, 193, 7, 0.15) !important;
+        box-shadow: 0px 8px 24px rgba(0, 0, 0, 0.6), 0px 0px 15px rgba(255, 193, 7, 0.1) !important; 
         padding: 0.3rem !important;
     }
     
-    /* --- SQUEEZE EMPTY SPACE OUT OF GRIDS --- */
     div[data-testid="column"] > div[data-testid="stVerticalBlock"] {
         gap: 0.25rem !important; 
     }
     
-    /* --- PRIMARY ACTION OVERRIDE (Tabs & Standard Buttons) --- */
+    /* --- PRIMARY ACTION OVERRIDE & ELASTIC TAP FEEDBACK --- */
     button[kind="primary"] { 
         background: linear-gradient(135deg, #FFD54F 0%, #FFC107 100%) !important; 
         color: #000 !important; 
@@ -127,6 +134,7 @@ st.markdown("""
         border-radius: 20px !important;
         font-weight: 700 !important;
         box-shadow: 0 4px 15px rgba(255, 193, 7, 0.4) !important;
+        transition: transform 0.1s ease !important;
     }
     button[kind="secondary"] { 
         background-color: rgba(255, 255, 255, 0.05) !important; 
@@ -134,9 +142,10 @@ st.markdown("""
         border: 1px solid rgba(255, 255, 255, 0.1) !important; 
         border-radius: 20px !important;
         font-weight: 600 !important;
+        transition: transform 0.1s ease !important;
     }
+    button:active { transform: scale(0.96) !important; }
     
-    /* --- SLEEK FROSTED BLOCK BUTTONS (SCOPED TO POSTERS ONLY) --- */
     .movie-wall-btn div.stButton > button {
         background: rgba(255, 255, 255, 0.05) !important;
         backdrop-filter: blur(5px) !important;
@@ -166,28 +175,34 @@ st.markdown("""
         box-shadow: 0 0 10px rgba(255, 193, 7, 0.5) !important;
     }
     
-    /* --- SYMMETRICAL TOP NAVIGATION TABS (PREMIUM HEADER) --- */
+    /* --- UI UPGRADE 1: PINNED FLOATING BOTTOM NAVIGATION DOCK --- */
     div[data-testid="stTabs"] > div[data-baseweb="tab-list"],
     div[data-testid="stTabs"] > div[role="tablist"] {
-        display: flex !important; 
+        position: fixed !important;
+        bottom: 0 !important;
+        top: auto !important;
+        left: 0 !important;
         width: 100vw !important;
-        max-width: 100% !important;
-        margin-left: -0.5rem !important; 
-        padding: 0 0 5px 0 !important;
-        gap: 0 !important; 
-        overflow-x: hidden !important; 
+        z-index: 99999 !important;
+        padding: 10px 5px max(20px, env(safe-area-inset-bottom)) 5px !important;
+        margin: 0 !important;
         background-color: rgba(8, 9, 12, 0.85) !important;
-        backdrop-filter: blur(12px) !important;
-        -webkit-backdrop-filter: blur(12px) !important;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
+        backdrop-filter: blur(20px) !important;
+        -webkit-backdrop-filter: blur(20px) !important;
+        border-top: 1px solid rgba(255, 255, 255, 0.1) !important;
+        border-bottom: none !important;
+        display: flex !important;
+        justify-content: space-around !important;
+        box-shadow: 0px -10px 30px rgba(0,0,0,0.6) !important;
     }
     
     div[data-testid="stTabs"] button[role="tab"] {
         flex: 1 1 0px !important; 
         min-width: 0 !important; 
-        padding: 10px 0px !important;
+        padding: 5px 0px !important;
         margin: 0 !important;
-        border-radius: 0 !important;
+        border-radius: 12px !important;
+        background: transparent !important;
         transition: all 0.3s ease !important;
     }
     
@@ -198,21 +213,17 @@ st.markdown("""
         margin: 0 auto !important;
         white-space: nowrap !important;
         letter-spacing: -0.4px !important; 
-        overflow: hidden !important;
-        text-overflow: clip !important;
         color: #888 !important;
         transition: all 0.3s ease !important;
     }
 
-    /* Active Gold Tab Glow (Using true aria-selected state) */
     div[data-testid="stTabs"] button[role="tab"][aria-selected="true"] {
-        border-bottom: 3px solid #FFC107 !important;
-        background: linear-gradient(to top, rgba(255, 193, 7, 0.15) 0%, transparent 100%) !important;
-        box-shadow: inset 0px -10px 15px -10px rgba(255, 193, 7, 0.5) !important;
+        background: rgba(255, 193, 7, 0.1) !important;
+        border: 1px solid rgba(255, 193, 7, 0.3) !important;
     }
     div[data-testid="stTabs"] button[role="tab"][aria-selected="true"] p {
-        color: #FFD54F !important;
-        text-shadow: 0px 0px 10px rgba(255, 193, 7, 0.6) !important;
+        color: #FFC107 !important;
+        text-shadow: 0px 0px 10px rgba(255, 193, 7, 0.5) !important;
     }
     
     /* --- DISCOVER FEED: HORIZONTAL CAROUSEL HACK --- */
@@ -228,21 +239,15 @@ st.markdown("""
         gap: 12px !important;
     }
     div[data-testid="stHorizontalBlock"]:has(.carousel-marker)::-webkit-scrollbar,
-    div[data-testid="stColumns"]:has(.carousel-marker)::-webkit-scrollbar { 
-        display: none; 
-    }
+    div[data-testid="stColumns"]:has(.carousel-marker)::-webkit-scrollbar { display: none; }
     div[data-testid="column"]:has(.carousel-marker),
     div[data-testid="stColumn"]:has(.carousel-marker) {
-        flex: 0 0 110px !important; 
-        width: 110px !important;
-        min-width: 110px !important;
-        padding: 0 !important;
-        display: block !important;
+        flex: 0 0 110px !important; width: 110px !important; min-width: 110px !important;
+        padding: 0 !important; display: block !important;
     }
     
     /* --- GRID LOCK FOR HIGH-DPI SCREENS --- */
     @media (max-width: 992px) {
-        /* STRICT 3-COLUMN LOCK (Libraries) */
         div[data-testid="stHorizontalBlock"]:has(.grid-3-col),
         div[data-testid="stColumns"]:has(.grid-3-col) {
             display: flex !important; flex-direction: row !important; flex-wrap: nowrap !important; gap: 2% !important; 
@@ -252,7 +257,6 @@ st.markdown("""
             width: 32% !important; flex: 1 1 32% !important; min-width: 0 !important; padding: 0 !important; display: block !important;
         }
         
-        /* STRICT 2-COLUMN LOCK (For Button Row Splits inside Cards) */
         div[data-testid="stHorizontalBlock"]:has(.grid-2-col),
         div[data-testid="stColumns"]:has(.grid-2-col) {
             display: flex !important; flex-direction: row !important; flex-wrap: nowrap !important; gap: 4% !important; 
@@ -262,17 +266,14 @@ st.markdown("""
             width: 48% !important; flex: 1 1 48% !important; min-width: 0 !important; padding: 0 !important; display: block !important;
         }
         
-        /* Widescreen Pop-up Dialogs */
         div[role="dialog"] {
             width: 95vw !important; max-width: 95vw !important; margin: 0 auto !important; padding: 1rem !important;
             background: rgba(15, 17, 22, 0.95) !important;
-            backdrop-filter: blur(20px) !important;
-            -webkit-backdrop-filter: blur(20px) !important;
+            backdrop-filter: blur(20px) !important; -webkit-backdrop-filter: blur(20px) !important;
             border: 1px solid rgba(255, 255, 255, 0.1) !important;
         }
     }
     
-    /* Text formatting for tight mobile grids */
     .grid-title {
         font-size: 0.65rem !important; font-weight: 700; white-space: nowrap; overflow: hidden;
         text-overflow: ellipsis; text-align: center; margin-top: 2px; margin-bottom: 2px; line-height: 1.2; color: #ddd;
@@ -285,12 +286,9 @@ st.markdown("""
     }
     .badge-gold { 
         background: linear-gradient(135deg, #FFD54F 0%, #FFC107 100%); 
-        color: #000000; 
-        border: none;
-        box-shadow: 0 2px 6px rgba(255, 193, 7, 0.3);
+        color: #000000; border: none; box-shadow: 0 2px 6px rgba(255, 193, 7, 0.3);
     }
     
-    /* Edge-to-Edge Poster Magic */
     .movie-poster-sharp img { border-radius: 6px !important; aspect-ratio: 2/3; object-fit: cover; }
 </style>
 """, unsafe_allow_html=True)
@@ -347,7 +345,6 @@ def fetch_robust(url):
         except: time.sleep(1)
     return {}
 
-# --- MATHEMATICAL RANGE ENCODER ---
 def encode_eps(eps):
     seasons = {}
     for ep in eps:
@@ -393,7 +390,6 @@ def pack_db(db):
         packed["h"].append([1 if h.get("t") == "s" else 0, h.get("i"), h.get("e", ""), h.get("d")])
     for k, v in db.get("analytics", {}).items():
         packed["a"][k] = [v.get("tv", 0), v.get("movie", 0)]
-    # Pack viewed recaps list to save across server boots
     packed["r"] = db.get("seen_recaps", [])
     return packed
 
@@ -420,67 +416,67 @@ def load_db():
                 if "m" in payload and "s" in payload:
                     return unpack_db(payload)
             return {"shows": [], "movies": [], "history": [], "analytics": {}, "seen_recaps": []}
-        else:
-            st.error(f"⚠️ Supabase Connection Failed: {res.status_code}")
-            return None
-    except Exception as e:
-        st.error(f"⚠️ Database Error: {e}")
         return None
+    except: return None
 
 def save_db():
     try:
         packed = pack_db(st.session_state.db)
         res = requests.patch(DB_ENDPOINT, json={"payload": packed}, headers=HEADERS, timeout=5)
-        if res.status_code not in [200, 204]:
-            st.error(f"⚠️ Supabase Save Blocked! Code: {res.status_code} | Reason: {res.text}")
-            return False
-        return True
-    except Exception as e:
-        st.error(f"Database Engine Error: {e}")
-        return False
+        return res.status_code in [200, 204]
+    except: return False
 
 if "db" not in st.session_state:
     db_data = load_db()
     if db_data is None: st.stop()
     st.session_state.db = db_data
 
-# --- HISTORY RECOVERY SYSTEM (PREVENTS DUPLICATE OR ORPHAN DATA) ---
 def get_watched_from_history(item_type, item_id):
     t_flag = "s" if item_type == "tv" else "m"
     watched = []
     for h in st.session_state.db.get("history", []):
         if h.get("t") == t_flag and str(h.get("i")) == str(item_id):
-            if item_type == "tv" and h.get("e"): 
-                watched.append(h.get("e"))
-            elif item_type == "movie": 
-                return True
+            if item_type == "tv" and h.get("e"): watched.append(h.get("e"))
+            elif item_type == "movie": return True
     return list(set(watched)) if item_type == "tv" else False
 
-# --- CENTRALIZED HISTORY LOGGER ---
 def log_watch(item_type, item_id, detail=""):
     now_str = get_dubai_time().strftime('%Y-%m-%d %H:%M:%S')
     m_key = get_dubai_time().strftime('%Y-%m')
     db = st.session_state.db
-    
     db.setdefault("analytics", {}).setdefault(m_key, {"tv": 0, "movie": 0})
     if item_type == "tv": db["analytics"][m_key]["tv"] += 1
     else: db["analytics"][m_key]["movie"] += 1
     
     t_flag = "s" if item_type == "tv" else "m"
     db.setdefault("history", []).insert(0, {"t": t_flag, "i": item_id, "e": detail, "d": now_str})
-    
     st.session_state.last_action = {"t": item_type, "i": item_id, "e": detail}
     
-    tv_h = [h for h in db["history"] if h.get("t") == "s"][:100]
-    mov_h = [h for h in db["history"] if h.get("t") == "m"][:100]
-    db["history"] = tv_h + mov_h
+    db["history"] = [h for h in db["history"] if h.get("t") == "s"][:100] + [h for h in db["history"] if h.get("t") == "m"][:100]
+    save_db()
+
+def mark_season_watched(show_id, s_num, ep_list):
+    db = st.session_state.db
+    now_str = get_dubai_time().strftime('%Y-%m-%d %H:%M:%S')
+    m_key = get_dubai_time().strftime('%Y-%m')
+    db.setdefault("analytics", {}).setdefault(m_key, {"tv": 0, "movie": 0})
+    
+    for s in db["shows"]:
+        if str(s["id"]) == str(show_id):
+            for ep in ep_list:
+                if ep not in s["watched_episodes"]:
+                    s["watched_episodes"].append(ep)
+                    db["analytics"][m_key]["tv"] += 1
+                    db.setdefault("history", []).insert(0, {"t": "s", "i": show_id, "e": ep, "d": now_str})
+            break
+    
+    st.session_state.last_action = None 
+    db["history"] = [h for h in db["history"] if h.get("t") == "s"][:100] + [h for h in db["history"] if h.get("t") == "m"][:100]
     save_db()
 
 def remove_watch(item_type, item_id, detail=""):
     db = st.session_state.db
     t_flag = "s" if item_type == "tv" else "m"
-    
-    # Unmark from History
     for idx, h in enumerate(db.get("history", [])):
         if h.get("t") == t_flag and str(h.get("i")) == str(item_id) and str(h.get("e", "")) == str(detail):
             removed = db["history"].pop(idx)
@@ -491,12 +487,10 @@ def remove_watch(item_type, item_id, detail=""):
             except: pass
             break
             
-    # Unmark from Library State
     if item_type == "tv":
         for show in db.get("shows", []):
             if str(show.get("id")) == str(item_id):
-                if detail in show.get("watched_episodes", []):
-                    show["watched_episodes"].remove(detail)
+                if detail in show.get("watched_episodes", []): show["watched_episodes"].remove(detail)
                 break
     else:
         for m in db.get("movies", []):
@@ -505,135 +499,35 @@ def remove_watch(item_type, item_id, detail=""):
                 break
     save_db()
 
-# --- AUTOMATED POP-UP RECAP ENGINE (MONTHLY & YEARLY AUTOMATION) ---
-@st.dialog("🌙 Monthly Wrap-Up")
-def show_monthly_recap_dialog(month_key, month_title, stats, recap_id):
-    st.markdown(f"## {month_title} Recap")
-    st.write("Here is a quick look at your screening inventory from last month:")
+# --- DIALOGS (ACTOR CROSS-REF) ---
+@st.dialog("Cast Connections")
+def show_actor_connections(cast_list):
+    st.write("Scan your library to see where else you know this actor from.")
+    actor_names = [a["name"] for a in cast_list]
+    sel_name = st.selectbox("Select Actor", actor_names, label_visibility="collapsed")
+    actor = next(a for a in cast_list if a["name"] == sel_name)
     
-    tv_count = stats.get("tv", 0)
-    mov_count = stats.get("movie", 0)
-    total_mins = (tv_count * 45) + (mov_count * 120)
-    hours = total_mins // 60
+    with st.spinner(f"Scanning library for {actor['name']}..."):
+        credits = fetch_api(f"https://api.themoviedb.org/3/person/{actor['id']}/combined_credits?api_key={TMDB_KEY}")
+        
+        actor_movie_ids = {str(c["id"]) for c in credits.get("cast", []) if c.get("media_type") == "movie"}
+        actor_tv_ids = {str(c["id"]) for c in credits.get("cast", []) if c.get("media_type") == "tv"}
+        
+        user_movies = [m["name"] for m in st.session_state.db["movies"] if str(m["id"]) in actor_movie_ids]
+        user_shows = [s["name"] for s in st.session_state.db["shows"] if str(s["id"]) in actor_tv_ids]
     
-    c1, c2 = st.columns(2)
-    with c1:
-        st.metric("📺 Episodes Logged", f"{tv_count} eps")
+    st.divider()
+    img_url = f"https://image.tmdb.org/t/p/w185{actor['profile_path']}" if actor.get("profile_path") else "https://via.placeholder.com/185x278/222222/888888?text=No+Photo"
+    c1, c2 = st.columns([1,3])
+    with c1: st.image(img_url, use_container_width=True)
     with c2:
-        st.metric("🎬 Movies Watched", f"{mov_count} titles")
-        
-    st.markdown(f"⏳ **Screen Time Investment:** ~`{hours}` hours spent streaming.")
-    
-    # Calculate most active series from logs matching that specific month frame
-    show_counts = {}
-    for h in st.session_state.db.get("history", []):
-        if h.get("t") == "s" and str(h.get("d", "")).startswith(month_key):
-            show_counts[h["i"]] = show_counts.get(h["i"], 0) + 1
-            
-    if show_counts:
-        top_show_id = max(show_counts, key=show_counts.get)
-        show = next((s for s in st.session_state.db["shows"] if str(s["id"]) == str(top_show_id)), None)
-        if show:
-            st.markdown(f"🔥 **Top Binge Focus:** *{show['name']}* ({show_counts[top_show_id]} episodes)")
-            
-    st.divider()
-    if st.button("Sweet!", use_container_width=True, key="close_month_recap_btn"):
-        st.session_state.db.setdefault("seen_recaps", []).append(recap_id)
-        save_db()
-        st.rerun()
+        if not user_movies and not user_shows:
+            st.info(f"You don't have any other titles starring **{actor['name']}** in your library.")
+        else:
+            st.success(f"**Found {len(user_movies) + len(user_shows)} matching titles in your database!**")
+            for m in user_movies: st.markdown(f"🎬 {m}")
+            for s in user_shows: st.markdown(f"📺 {s}")
 
-@st.dialog("🏆 Your Cinematic Wrapped")
-def show_yearly_recap_dialog(year, y_tv, y_mov, recap_id):
-    st.markdown(f"# 🍿 {year} YEAR IN REVIEW")
-    st.write("You smashed your theater goals last year! Check out your custom achievements:")
-    
-    total_time = (y_tv * 45) + (y_mov * 120)
-    days = total_time // 1440
-    rem_hours = (total_time % 1440) // 60
-    
-    st.markdown(f"""
-    <div style="background: linear-gradient(135deg, #FFD54F 0%, #FFC107 100%); border-radius: 14px; padding: 22px; color: black; text-align: center; margin-bottom: 15px; box-shadow: 0 4px 15px rgba(255,193,7,0.3);">
-        <div style="font-size: 2.6rem; font-weight: 900; line-height:1;">{y_tv + y_mov:,}</div>
-        <div style="font-size: 0.75rem; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; margin-top:4px;">Total Titles Inventoried</div>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    col1, col2 = st.columns(2)
-    with col1:
-        st.markdown(f"""
-        <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 15px; text-align: center;">
-            <div style="font-size: 1.4rem; font-weight: 800; color: #FFC107;">{y_tv}</div>
-            <div style="font-size: 0.65rem; color: #aaa; text-transform: uppercase; font-weight:700;">Episodes Logged</div>
-        </div>
-        """, unsafe_allow_html=True)
-    with col2:
-        st.markdown(f"""
-        <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 15px; text-align: center;">
-            <div style="font-size: 1.4rem; font-weight: 800; color: #FFC107;">{y_mov}</div>
-            <div style="font-size: 0.65rem; color: #aaa; text-transform: uppercase; font-weight:700;">Movies Checked</div>
-        </div>
-        """, unsafe_allow_html=True)
-        
-    st.markdown(f"⏳ **Time Commitment:** You dedicated total of **{days} days** and **{rem_hours} hours** to premium story arcs.")
-    
-    # Fun title tiers based on screening metrics density
-    if days > 12:
-        tier_title, tier_desc = "👑 Emperor of the Couch", "Absolute legend. Hollywood production lines should put you on their payroll."
-    elif days > 5:
-        tier_title, tier_desc = "🍿 Marathon Veteran", "You know exactly how to lock down a weekend block and demolish complex plotlines."
-    else:
-        tier_title, tier_desc = "🎬 Curation Connoisseur", "High-taste selection habits. You filter for absolute choice cinema narrative styles."
-        
-    st.markdown(f"""
-    <div style="background: rgba(255, 193, 7, 0.08); border: 1px dashed #FFC107; border-radius: 12px; padding: 15px; margin-top: 15px; text-align: center;">
-        <div style="font-size: 1.15rem; font-weight: 800; color: #FFD54F;">{tier_title}</div>
-        <div style="font-size: 0.75rem; color: #eee; margin-top: 5px; line-height:1.3;">{tier_desc}</div>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    st.divider()
-    if st.button("Claim Achievement Status", use_container_width=True, key="close_year_recap_btn"):
-        st.session_state.db.setdefault("seen_recaps", []).append(recap_id)
-        save_db()
-        st.rerun()
-
-def evaluate_and_trigger_recaps():
-    if "recaps_checked" in st.session_state: return
-    st.session_state.recaps_checked = True
-    
-    db = st.session_state.db
-    seen = db.setdefault("seen_recaps", [])
-    now = get_dubai_time()
-    
-    # 1. Monthly Automation Engine (Targeting immediate previous calendar month)
-    first_of_this_month = now.replace(day=1)
-    last_day_of_prev_month = first_of_this_month - timedelta(days=1)
-    prev_month_key = last_day_of_prev_month.strftime("%Y-%m")
-    prev_month_name = last_day_of_prev_month.strftime("%B %Y")
-    
-    month_recap_id = f"monthly-{prev_month_key}"
-    if month_recap_id not in seen:
-        stats = db.get("analytics", {}).get(prev_month_key, {"tv": 0, "movie": 0})
-        if stats["tv"] > 0 or stats["movie"] > 0:
-            show_monthly_recap_dialog(prev_month_key, prev_month_name, stats, month_recap_id)
-            return
-            
-    # 2. Yearly Automation Engine (Targeting immediate previous full year block)
-    prev_year_num = now.year - 1
-    year_recap_id = f"yearly-{prev_year_num}"
-    if year_recap_id not in seen:
-        y_tv, y_mov = 0, 0
-        for k, v in db.get("analytics", {}).items():
-            if k.startswith(str(prev_year_num)):
-                y_tv += v.get("tv", 0)
-                y_mov += v.get("movie", 0)
-        if y_tv > 0 or y_mov > 0:
-            show_yearly_recap_dialog(prev_year_num, y_tv, y_mov, year_recap_id)
-            return
-
-evaluate_and_trigger_recaps()
-
-# --- HELPERS ---
 def render_badges(items, is_gold=False):
     css_class = "badge badge-gold" if is_gold else "badge"
     html = "".join([f'<span class="{css_class}">{item}</span>' for item in items])
@@ -657,16 +551,10 @@ def show_cast_horizontal(cast_list, limit=12):
     html += '</div>'
     html = html.replace('\n', '')
     st.markdown(html, unsafe_allow_html=True)
+    
+    if st.button("🔍 Cross-Reference Cast", use_container_width=True):
+        show_actor_connections(cast_list)
 
-def parse_tvtime_date(d_str):
-    if not d_str: return "2000-01-01 12:00:00"
-    try:
-        clean_str = str(d_str).replace("Z", "").replace("T", " ").split(".")[0]
-        dt = datetime.strptime(clean_str, "%Y-%m-%d %H:%M:%S")
-        return dt.strftime("%Y-%m-%d %H:%M:%S")
-    except: return "2000-01-01 12:00:00"
-
-# --- DIALOGS ---
 @st.dialog("Episode Details")
 def show_episode_details(show_id, show_name, ep_code, ep_data=None, is_watched=False):
     if not ep_data:
@@ -690,11 +578,10 @@ def show_episode_details(show_id, show_name, ep_code, ep_data=None, is_watched=F
     
     current_show = next((s for s in st.session_state.db["shows"] if str(s["id"]) == str(show_id)), None)
     btn_disabled = (current_show is None)
-    if btn_disabled:
-        st.warning("➕ Add this show to your library to track episodes!")
+    if btn_disabled: st.warning("➕ Add this show to your library to track episodes!")
         
     btn_label = "❌ Unmark as Watched" if is_watched else "✅ Mark as Watched"
-    if st.button(btn_label, use_container_width=True, key=f"dlg_btn_tv_{show_id}_{ep_code}", disabled=btn_disabled):
+    if st.button(btn_label, use_container_width=True, disabled=btn_disabled):
         for s in st.session_state.db["shows"]:
             if str(s["id"]) == str(show_id):
                 if is_watched and ep_code in s["watched_episodes"]: 
@@ -725,14 +612,28 @@ def manage_show_dialog(show_id, show_name, details):
     st.markdown("#### Episodes")
     
     current_show = next((s for s in st.session_state.db["shows"] if str(s["id"]) == str(show_id)), None)
-    if not current_show:
-        st.warning("➕ Add this show to your library to track episodes!")
+    if not current_show: st.warning("➕ Add this show to your library to track episodes!")
         
     s_nums = [s["season_number"] for s in details.get("seasons", []) if s["season_number"] > 0]
     if s_nums:
-        sel_s = st.selectbox("Select Season", s_nums, key=f"dlg_s_{show_id}")
+        # --- UI UPGRADE: THE BINGE CLEAR NUKE BUTTON ---
+        c1, c2 = st.columns([1,1])
+        with c1:
+            sel_s = st.selectbox("Select Season", s_nums, key=f"dlg_s_{show_id}", label_visibility="collapsed")
+            
         s_data = fetch_api(f"https://api.themoviedb.org/3/tv/{show_id}/season/{sel_s}?api_key={TMDB_KEY}")
         watched_list = current_show.get("watched_episodes", []) if current_show else []
+        ep_codes = [f"S{sel_s}E{ep['episode_number']}" for ep in s_data.get("episodes", [])]
+        unwatched_in_season = [e for e in ep_codes if e not in watched_list]
+        
+        with c2:
+            if current_show and unwatched_in_season:
+                if st.button("✅ Mark Season Watched", use_container_width=True):
+                    mark_season_watched(show_id, sel_s, unwatched_in_season)
+                    st.rerun()
+            elif current_show and not unwatched_in_season:
+                st.button("✔️ Season Complete", disabled=True, use_container_width=True)
+
         for ep in s_data.get("episodes", []):
             e_code = f"S{sel_s}E{ep['episode_number']}"
             is_watched = e_code in watched_list
@@ -779,11 +680,10 @@ def show_movie_details(m_id, m_name, details=None, is_watched=False):
     
     current_movie = next((m for m in st.session_state.db["movies"] if str(m["id"]) == str(m_id)), None)
     btn_disabled = (current_movie is None)
-    if btn_disabled:
-        st.warning("➕ Add this movie to your library to mark it as watched!")
+    if btn_disabled: st.warning("➕ Add this movie to your library to mark it as watched!")
         
     btn_label = "❌ Unmark as Watched" if is_watched else "✅ Mark as Watched"
-    if st.button(btn_label, use_container_width=True, key=f"dlg_btn_mov_{m_id}", disabled=btn_disabled):
+    if st.button(btn_label, use_container_width=True, disabled=btn_disabled):
         for m in st.session_state.db["movies"]:
             if str(m["id"]) == str(m_id):
                 m["watched"] = not is_watched
@@ -793,32 +693,97 @@ def show_movie_details(m_id, m_name, details=None, is_watched=False):
         st.rerun()
 
 # ==========================================
-# GLOBAL UNDO TOAST CONTROLLER (AUTO-FADING)
+# RECAP ENGINE
 # ==========================================
+@st.dialog("🌙 Monthly Wrap-Up")
+def show_monthly_recap_dialog(month_key, month_title, stats, recap_id):
+    st.markdown(f"## {month_title} Recap")
+    st.write("Here is a quick look at your screening inventory from last month:")
+    tv_count = stats.get("tv", 0); mov_count = stats.get("movie", 0)
+    hours = ((tv_count * 45) + (mov_count * 120)) // 60
+    
+    c1, c2 = st.columns(2)
+    with c1: st.metric("📺 Episodes Logged", f"{tv_count} eps")
+    with c2: st.metric("🎬 Movies Watched", f"{mov_count} titles")
+    st.markdown(f"⏳ **Screen Time Investment:** ~`{hours}` hours spent streaming.")
+    
+    show_counts = {}
+    for h in st.session_state.db.get("history", []):
+        if h.get("t") == "s" and str(h.get("d", "")).startswith(month_key):
+            show_counts[h["i"]] = show_counts.get(h["i"], 0) + 1
+            
+    if show_counts:
+        top_show_id = max(show_counts, key=show_counts.get)
+        show = next((s for s in st.session_state.db["shows"] if str(s["id"]) == str(top_show_id)), None)
+        if show: st.markdown(f"🔥 **Top Binge Focus:** *{show['name']}* ({show_counts[top_show_id]} episodes)")
+            
+    st.divider()
+    if st.button("Sweet!", use_container_width=True):
+        st.session_state.db.setdefault("seen_recaps", []).append(recap_id); save_db(); st.rerun()
+
+@st.dialog("🏆 Your Cinematic Wrapped")
+def show_yearly_recap_dialog(year, y_tv, y_mov, recap_id):
+    st.markdown(f"# 🍿 {year} YEAR IN REVIEW")
+    st.write("You smashed your theater goals last year! Check out your custom achievements:")
+    total_time = (y_tv * 45) + (y_mov * 120)
+    days = total_time // 1440; rem_hours = (total_time % 1440) // 60
+    
+    st.markdown(f"""<div style="background: linear-gradient(135deg, #FFD54F 0%, #FFC107 100%); border-radius: 14px; padding: 22px; color: black; text-align: center; margin-bottom: 15px; box-shadow: 0 4px 15px rgba(255,193,7,0.3);"><div style="font-size: 2.6rem; font-weight: 900; line-height:1;">{y_tv + y_mov:,}</div><div style="font-size: 0.75rem; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; margin-top:4px;">Total Titles Inventoried</div></div>""", unsafe_allow_html=True)
+    c1, c2 = st.columns(2)
+    with c1: st.markdown(f"""<div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 15px; text-align: center;"><div style="font-size: 1.4rem; font-weight: 800; color: #FFC107;">{y_tv}</div><div style="font-size: 0.65rem; color: #aaa; text-transform: uppercase; font-weight:700;">Episodes Logged</div></div>""", unsafe_allow_html=True)
+    with c2: st.markdown(f"""<div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 15px; text-align: center;"><div style="font-size: 1.4rem; font-weight: 800; color: #FFC107;">{y_mov}</div><div style="font-size: 0.65rem; color: #aaa; text-transform: uppercase; font-weight:700;">Movies Checked</div></div>""", unsafe_allow_html=True)
+    st.markdown(f"⏳ **Time Commitment:** You dedicated total of **{days} days** and **{rem_hours} hours** to premium story arcs.")
+    
+    if days > 12: tier_title, tier_desc = "👑 Emperor of the Couch", "Absolute legend. Hollywood production lines should put you on their payroll."
+    elif days > 5: tier_title, tier_desc = "🍿 Marathon Veteran", "You know exactly how to lock down a weekend block and demolish complex plotlines."
+    else: tier_title, tier_desc = "🎬 Curation Connoisseur", "High-taste selection habits. You filter for absolute choice cinema narrative styles."
+        
+    st.markdown(f"""<div style="background: rgba(255, 193, 7, 0.08); border: 1px dashed #FFC107; border-radius: 12px; padding: 15px; margin-top: 15px; text-align: center;"><div style="font-size: 1.15rem; font-weight: 800; color: #FFD54F;">{tier_title}</div><div style="font-size: 0.75rem; color: #eee; margin-top: 5px; line-height:1.3;">{tier_desc}</div></div>""", unsafe_allow_html=True)
+    st.divider()
+    if st.button("Claim Achievement Status", use_container_width=True):
+        st.session_state.db.setdefault("seen_recaps", []).append(recap_id); save_db(); st.rerun()
+
+def evaluate_and_trigger_recaps():
+    if "recaps_checked" in st.session_state: return
+    st.session_state.recaps_checked = True
+    db = st.session_state.db
+    seen = db.setdefault("seen_recaps", [])
+    now = get_dubai_time()
+    
+    first_of_this_month = now.replace(day=1)
+    last_day_of_prev_month = first_of_this_month - timedelta(days=1)
+    prev_month_key = last_day_of_prev_month.strftime("%Y-%m")
+    prev_month_name = last_day_of_prev_month.strftime("%B %Y")
+    
+    month_recap_id = f"monthly-{prev_month_key}"
+    if month_recap_id not in seen:
+        stats = db.get("analytics", {}).get(prev_month_key, {"tv": 0, "movie": 0})
+        if stats["tv"] > 0 or stats["movie"] > 0:
+            show_monthly_recap_dialog(prev_month_key, prev_month_name, stats, month_recap_id)
+            return
+            
+    prev_year_num = now.year - 1
+    year_recap_id = f"yearly-{prev_year_num}"
+    if year_recap_id not in seen:
+        y_tv, y_mov = 0, 0
+        for k, v in db.get("analytics", {}).items():
+            if k.startswith(str(prev_year_num)):
+                y_tv += v.get("tv", 0); y_mov += v.get("movie", 0)
+        if y_tv > 0 or y_mov > 0:
+            show_yearly_recap_dialog(prev_year_num, y_tv, y_mov, year_recap_id)
+            return
+
+evaluate_and_trigger_recaps()
+
 if st.session_state.last_action:
     la = st.session_state.last_action
-    
-    st.markdown("""
-    <style>
-        @keyframes fadeOutUndo {
-            0% { opacity: 1; max-height: 200px; transform: scaleY(1); }
-            80% { opacity: 1; max-height: 200px; transform: scaleY(1); }
-            100% { opacity: 0; max-height: 0px; margin: 0; padding: 0; overflow: hidden; pointer-events: none; transform: scaleY(0); border: none; }
-        }
-        div[data-testid="stVerticalBlock"]:has(#undo-wrapper) {
-            animation: fadeOutUndo 5s forwards !important;
-            transform-origin: top;
-        }
-    </style>
-    """, unsafe_allow_html=True)
-    
+    st.markdown("""<style>@keyframes fadeOutUndo { 0% { opacity: 1; max-height: 200px; transform: scaleY(1); } 80% { opacity: 1; max-height: 200px; transform: scaleY(1); } 100% { opacity: 0; max-height: 0px; margin: 0; padding: 0; overflow: hidden; pointer-events: none; transform: scaleY(0); border: none; } } div[data-testid="stVerticalBlock"]:has(#undo-wrapper) { animation: fadeOutUndo 5s forwards !important; transform-origin: top; }</style>""", unsafe_allow_html=True)
     with st.container():
         st.markdown('<span id="undo-wrapper"></span>', unsafe_allow_html=True)
         st.success(f"Watched! ✅")
         if st.button(f"↩️ Undo Last Action", use_container_width=True):
             remove_watch(la["t"], la["i"], la["e"])
-            st.session_state.last_action = None
-            st.rerun()
+            st.session_state.last_action = None; st.rerun()
 
 # --- APP NAVIGATION BAR ---
 t_next, t_soon, t_search, t_tv, t_movies, t_profile = st.tabs(["🔥 Next", "📅 Soon", "🔍 Search", "📺 TV", "🎬 Movies", "👤 Profile"])
@@ -1325,7 +1290,11 @@ with t_tv:
                             with st.container(border=True):
                                 display_poster(show.get("poster_path"), width=185)
                                 st.markdown(f'<div class="grid-title" title="{show["name"]}">{show["name"]}</div>', unsafe_allow_html=True)
-                                st.progress(min(w_eps / t_eps, 1.0) if t_eps > 0 else 0.0)
+                                
+                                # --- UI UPGRADE: INLINE PERCENTAGE PROGRESS BAR ---
+                                perc = min(w_eps / t_eps, 1.0) if t_eps > 0 else 0.0
+                                st.markdown(f'<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:2px;"><div style="font-size:0.55rem; color:#888;">PROGRESS</div><div style="font-size:0.55rem; color:#FFC107; font-weight:bold;">{int(perc*100)}%</div></div>', unsafe_allow_html=True)
+                                st.progress(perc)
                                 
                                 st.markdown('<div class="movie-wall-btn">', unsafe_allow_html=True)
                                 
@@ -1456,7 +1425,6 @@ with t_profile:
     total_mins = total_tv_mins + total_mov_mins
     months = total_mins // 43800; days = (total_mins % 43800) // 1440; hours = (total_mins % 1440) // 60
     
-    # --- REDESIGNED SLEEK PROFILE METRICS ---
     html_stats = f"""
     <div style="display: flex; gap: 10px; margin-bottom: 10px;">
         <div style="flex: 1; background-color: rgba(255,255,255,0.05); border-radius: 12px; padding: 15px; text-align: center; border: 1px solid rgba(255,255,255,0.1);">
@@ -1486,24 +1454,20 @@ with t_profile:
     st.markdown(html_stats, unsafe_allow_html=True)
     st.divider()
     
-    # --- CHRONOLOGICAL TIMELINE SLER DATA MAP ---
     st.markdown("### 📊 Watch Activity")
     chart_tab1, chart_tab2 = st.tabs(["📺 Series Activity", "🎬 Movie Activity"])
     analytics = st.session_state.db.get("analytics", {})
     
     last_12_months = []
     try:
-        for i in range(11, -1, -1):
-            last_12_months.append(get_dubai_time() - pd.DateOffset(months=i))
+        for i in range(11, -1, -1): last_12_months.append(get_dubai_time() - pd.DateOffset(months=i))
     except:
-        for i in range(11, -1, -1):
-            last_12_months.append(get_dubai_time() - timedelta(days=30*i))
+        for i in range(11, -1, -1): last_12_months.append(get_dubai_time() - timedelta(days=30*i))
             
     data_tv = []
     data_mov = []
     for dt in last_12_months:
-        m_key = dt.strftime('%Y-%m') 
-        label = dt.strftime('%Y-%m')
+        m_key = dt.strftime('%Y-%m'); label = dt.strftime('%Y-%m')
         stats = analytics.get(m_key, {"tv": 0, "movie": 0})
         data_tv.append({"Month": label, "Episodes": stats["tv"]})
         data_mov.append({"Month": label, "Movies": stats["movie"]})
@@ -1511,19 +1475,15 @@ with t_profile:
     df_tv = pd.DataFrame(data_tv).sort_values("Month")
     df_mov = pd.DataFrame(data_mov).sort_values("Month")
     
-    # --- UPGRADED ALTAIR GRAPH MARK OVERLAYS (READABLE VAL LABELS) ---
     with chart_tab1:
         if not df_tv.empty and df_tv["Episodes"].sum() > 0:
             chart_tv = alt.Chart(df_tv).mark_bar(color="#FFC107", cornerRadiusTopLeft=6, cornerRadiusTopRight=6).encode(
                 x=alt.X("Month:N", title="Month", axis=alt.Axis(labelAngle=-45, labelColor="#aaa", titleColor="#aaa")),
                 y=alt.Y("Episodes:Q", title="Episodes Watched", axis=alt.Axis(labelColor="#aaa", titleColor="#aaa"))
             )
-            text_tv = chart_tv.mark_text(
-                align='center', baseline='bottom', dy=-5, color='#EDEDED', fontSize=10, fontWeight='bold'
-            ).encode(text='Episodes:Q')
+            text_tv = chart_tv.mark_text(align='center', baseline='bottom', dy=-5, color='#EDEDED', fontSize=10, fontWeight='bold').encode(text='Episodes:Q')
             st.altair_chart((chart_tv + text_tv).properties(height=260), use_container_width=True)
-        else:
-            st.info("No series log history available for the last 12 months.")
+        else: st.info("No series log history available for the last 12 months.")
         
     with chart_tab2:
         if not df_mov.empty and df_mov["Movies"].sum() > 0:
@@ -1531,16 +1491,12 @@ with t_profile:
                 x=alt.X("Month:N", title="Month", axis=alt.Axis(labelAngle=-45, labelColor="#aaa", titleColor="#aaa")),
                 y=alt.Y("Movies:Q", title="Movies Watched", axis=alt.Axis(labelColor="#aaa", titleColor="#aaa"))
             )
-            text_mov = chart_mov.mark_text(
-                align='center', baseline='bottom', dy=-5, color='#EDEDED', fontSize=10, fontWeight='bold'
-            ).encode(text='Movies:Q')
+            text_mov = chart_mov.mark_text(align='center', baseline='bottom', dy=-5, color='#EDEDED', fontSize=10, fontWeight='bold').encode(text='Movies:Q')
             st.altair_chart((chart_mov + text_mov).properties(height=260), use_container_width=True)
-        else:
-            st.info("No movie log history available for the last 12 months.")
+        else: st.info("No movie log history available for the last 12 months.")
 
     st.divider()
     
-    # --- PURE NATIVE TV TIME WATCH HISTORY FEED ---
     st.markdown("### 📜 Watch History Journal")
     h_tv, h_mov = st.tabs(["📺 Series", "🎬 Movies"])
     
@@ -1562,32 +1518,20 @@ with t_profile:
                 for h, dt, h_idx in items:
                     show = next((s for s in st.session_state.db["shows"] if str(s["id"]) == str(h.get("i"))), None)
                     if show:
-                        s_name = show["name"]
-                        poster = show.get("poster_path", "")
+                        s_name = show["name"]; poster = show.get("poster_path", "")
                     else:
                         s_data = fetch_api(f"https://api.themoviedb.org/3/tv/{h.get('i')}?api_key={TMDB_KEY}")
-                        s_name = s_data.get("name", "Unknown Series")
-                        poster = s_data.get("poster_path", "")
+                        s_name = s_data.get("name", "Unknown Series"); poster = s_data.get("poster_path", "")
                         
                     ep_code = h.get('e', '')
                     poster_url = f"https://image.tmdb.org/t/p/w92{poster}" if poster else "https://via.placeholder.com/92x138/222222/555555?text=No+Img"
                     
-                    html = f"""
-                    <div style="display: flex; align-items: center; margin-bottom: 12px; background-color: transparent; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 8px;">
-                        <img src="{poster_url}" style="width: 45px; height: 68px; border-radius: 4px; object-fit: cover; margin-right: 14px; box-shadow: 0 2px 4px rgba(0,0,0,0.5);">
-                        <div style="display: flex; flex-direction: column; justify-content: center;">
-                            <div style="font-size: 0.95rem; font-weight: 700; color: #FFFFFF; margin-bottom: 2px; line-height: 1.2;">{s_name}</div>
-                            <div style="font-size: 0.75rem; font-weight: 600; color: #FFC107; margin-bottom: 2px;">{ep_code}</div>
-                            <div style="font-size: 0.7rem; color: #888888;">{dt.strftime('%b %d, %Y • %I:%M %p')}</div>
-                        </div>
-                    </div>
-                    """
+                    html = f"""<div style="display: flex; align-items: center; margin-bottom: 12px; background-color: transparent; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 8px;"><img src="{poster_url}" style="width: 45px; height: 68px; border-radius: 4px; object-fit: cover; margin-right: 14px; box-shadow: 0 2px 4px rgba(0,0,0,0.5);"><div style="display: flex; flex-direction: column; justify-content: center;"><div style="font-size: 0.95rem; font-weight: 700; color: #FFFFFF; margin-bottom: 2px; line-height: 1.2;">{s_name}</div><div style="font-size: 0.75rem; font-weight: 600; color: #FFC107; margin-bottom: 2px;">{ep_code}</div><div style="font-size: 0.7rem; color: #888888;">{dt.strftime('%b %d, %Y • %I:%M %p')}</div></div></div>"""
                     st.markdown(html, unsafe_allow_html=True)
                                 
             if len(tv_hist) > st.session_state.hist_tv_limit:
                 if st.button("Load More Series", use_container_width=True, key="load_more_tv_hist"):
-                    st.session_state.hist_tv_limit += 20
-                    st.rerun()
+                    st.session_state.hist_tv_limit += 20; st.rerun()
                     
     with h_mov:
         mov_hist = [h for h in history_sorted if h.get("t") == "m"]
@@ -1605,35 +1549,22 @@ with t_profile:
                 for h, dt, h_idx in items:
                     mov = next((m for m in st.session_state.db["movies"] if str(m["id"]) == str(h.get("i"))), None)
                     if mov:
-                        m_name = mov["name"]
-                        poster = mov.get("poster_path", "")
+                        m_name = mov["name"]; poster = mov.get("poster_path", "")
                     else:
                         m_data = fetch_api(f"https://api.themoviedb.org/3/movie/{h.get('i')}?api_key={TMDB_KEY}")
-                        m_name = m_data.get("title", "Unknown Movie")
-                        poster = m_data.get("poster_path", "")
+                        m_name = m_data.get("title", "Unknown Movie"); poster = m_data.get("poster_path", "")
                         
                     poster_url = f"https://image.tmdb.org/t/p/w92{poster}" if poster else "https://via.placeholder.com/92x138/222222/555555?text=No+Img"
                     
-                    html = f"""
-                    <div style="display: flex; align-items: center; margin-bottom: 12px; background-color: transparent; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 8px;">
-                        <img src="{poster_url}" style="width: 45px; height: 68px; border-radius: 4px; object-fit: cover; margin-right: 14px; box-shadow: 0 2px 4px rgba(0,0,0,0.5);">
-                        <div style="display: flex; flex-direction: column; justify-content: center;">
-                            <div style="font-size: 0.95rem; font-weight: 700; color: #FFFFFF; margin-bottom: 2px; line-height: 1.2;">{m_name}</div>
-                            <div style="font-size: 0.75rem; font-weight: 600; color: #FFC107; margin-bottom: 2px;">Movie</div>
-                            <div style="font-size: 0.7rem; color: #888888;">{dt.strftime('%b %d, %Y • %I:%M %p')}</div>
-                        </div>
-                    </div>
-                    """
+                    html = f"""<div style="display: flex; align-items: center; margin-bottom: 12px; background-color: transparent; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 8px;"><img src="{poster_url}" style="width: 45px; height: 68px; border-radius: 4px; object-fit: cover; margin-right: 14px; box-shadow: 0 2px 4px rgba(0,0,0,0.5);"><div style="display: flex; flex-direction: column; justify-content: center;"><div style="font-size: 0.95rem; font-weight: 700; color: #FFFFFF; margin-bottom: 2px; line-height: 1.2;">{m_name}</div><div style="font-size: 0.75rem; font-weight: 600; color: #FFC107; margin-bottom: 2px;">Movie</div><div style="font-size: 0.7rem; color: #888888;">{dt.strftime('%b %d, %Y • %I:%M %p')}</div></div></div>"""
                     st.markdown(html, unsafe_allow_html=True)
 
             if len(mov_hist) > st.session_state.hist_mov_limit:
                 if st.button("Load More Movies", use_container_width=True, key="load_more_mov_hist"):
-                    st.session_state.hist_mov_limit += 20
-                    st.rerun()
+                    st.session_state.hist_mov_limit += 20; st.rerun()
 
     st.divider()
     
-    # --- TV TIME DATA IMPORTER (SUPABASE EDITION) ---
     with st.expander("⚙️ Import TV Time Data"):
         st.warning("Ensure you keep the app open until the progress bar reaches 100%.")
         wipe_db = st.checkbox("Wipe current library before importing", value=True, key="wipe_chk")
@@ -1642,9 +1573,7 @@ with t_profile:
         
         if st.button("Start Safe Import", key="start_import_btn"):
             if m_file or t_file:
-                prog = st.progress(0)
-                stat_txt = st.empty()
-                
+                prog = st.progress(0); stat_txt = st.empty()
                 new_db = {
                     "movies": [] if wipe_db else st.session_state.db.get("movies", []),
                     "shows": [] if wipe_db else st.session_state.db.get("shows", []),
@@ -1653,7 +1582,6 @@ with t_profile:
                     "seen_recaps": [] if wipe_db else st.session_state.db.get("seen_recaps", [])
                 }
                 
-                # Process Movies
                 if m_file:
                     stat_txt.text("Processing Movies... fetching data safely.")
                     try:
@@ -1673,34 +1601,22 @@ with t_profile:
                                     if res.get("results"): res["movie_results"] = [res["results"][0]]
                                     
                                 if res.get("movie_results"):
-                                    match = res["movie_results"][0]
-                                    tmdb_id = match["id"]
-                                    title = match.get("title", raw_title)
-                                    poster = match.get("poster_path", "")
-                                    release_date = match.get("release_date", "")
-                                    is_watched = m.get("is_watched", False)
+                                    match = res["movie_results"][0]; tmdb_id = match["id"]; title = match.get("title", raw_title)
+                                    poster = match.get("poster_path", ""); release_date = match.get("release_date", ""); is_watched = m.get("is_watched", False)
                                     
                                     if not any(str(movie["id"]) == str(tmdb_id) for movie in new_db["movies"]):
-                                        new_db["movies"].append({
-                                            "id": tmdb_id, "name": title, "watched": is_watched,
-                                            "poster_path": poster if poster else "",
-                                            "release_date": release_date if release_date else "",
-                                            "runtime": 120
-                                        })
+                                        new_db["movies"].append({"id": tmdb_id, "name": title, "watched": is_watched, "poster_path": poster if poster else "", "release_date": release_date if release_date else "", "runtime": 120})
                                         if is_watched:
                                             w_dt_raw = m.get("watched_at")
                                             w_dt = parse_tvtime_date(w_dt_raw) if w_dt_raw else get_dubai_time().strftime("%Y-%m-%d %H:%M:%S")
                                             m_key = datetime.strptime(w_dt, "%Y-%m-%d %H:%M:%S").strftime("%Y-%m")
-                                            
-                                            new_db["analytics"].setdefault(m_key, {"tv": 0, "movie": 0})
-                                            new_db["analytics"][m_key]["movie"] += 1
+                                            new_db["analytics"].setdefault(m_key, {"tv": 0, "movie": 0}); new_db["analytics"][m_key]["movie"] += 1
                                             new_db["history"].append({"t": "m", "i": tmdb_id, "e": "", "d": w_dt})
-                            except Exception as item_error: continue 
+                            except: continue 
                     except Exception as e: st.error(f"Error processing movies: {e}")
                 
                 if m_file and t_file: prog.progress(0)
                 
-                # Process Shows
                 if t_file:
                     stat_txt.text("Processing Series... fetching data safely.")
                     try:
@@ -1720,12 +1636,8 @@ with t_profile:
                                     if res.get("results"): res["tv_results"] = [res["results"][0]]
                                     
                                 if res.get("tv_results"):
-                                    match = res["tv_results"][0]
-                                    tmdb_id = match["id"]
-                                    title = match.get("name", raw_title)
-                                    poster = match.get("poster_path", "")
-                                    first_air_date = match.get("first_air_date", "")
-                                    watched_eps = []
+                                    match = res["tv_results"][0]; tmdb_id = match["id"]; title = match.get("name", raw_title)
+                                    poster = match.get("poster_path", ""); first_air_date = match.get("first_air_date", ""); watched_eps = []
                                     
                                     is_new_show = not any(str(show["id"]) == str(tmdb_id) for show in new_db["shows"])
                                     if is_new_show:
@@ -1737,44 +1649,30 @@ with t_profile:
                                         s_num = season.get("number")
                                         for ep in season.get("episodes", []):
                                             if ep.get("is_watched"):
-                                                e_code = f"S{s_num}E{ep.get('number')}"
-                                                watched_eps.append(e_code)
+                                                e_code = f"S{s_num}E{ep.get('number')}"; watched_eps.append(e_code)
                                                 w_dt_raw = ep.get("watched_at")
                                                 w_dt = parse_tvtime_date(w_dt_raw) if w_dt_raw else get_dubai_time().strftime("%Y-%m-%d %H:%M:%S")
                                                 m_key = datetime.strptime(w_dt, "%Y-%m-%d %H:%M:%S").strftime("%Y-%m")
                                                 
-                                                new_db["analytics"].setdefault(m_key, {"tv": 0, "movie": 0})
-                                                new_db["analytics"][m_key]["tv"] += 1
+                                                new_db["analytics"].setdefault(m_key, {"tv": 0, "movie": 0}); new_db["analytics"][m_key]["tv"] += 1
                                                 new_db["history"].append({"t": "s", "i": tmdb_id, "e": e_code, "d": w_dt})
                                                 
                                     if is_new_show:
-                                        new_db["shows"].append({
-                                            "id": tmdb_id, "name": title, "watched_episodes": watched_eps,
-                                            "poster_path": poster if poster else "",
-                                            "first_air_date": first_air_date if first_air_date else "",
-                                            "total_episodes": t_eps
-                                        })
+                                        new_db["shows"].append({"id": tmdb_id, "name": title, "watched_episodes": watched_eps, "poster_path": poster if poster else "", "first_air_date": first_air_date if first_air_date else "", "total_episodes": t_eps})
                                     else:
                                         for show in new_db["shows"]:
-                                            if str(show["id"]) == str(tmdb_id):
-                                                show["watched_episodes"] = list(set(show["watched_episodes"] + watched_eps))
-                                                break
-                            except Exception as item_error: continue 
+                                            if str(show["id"]) == str(tmdb_id): show["watched_episodes"] = list(set(show["watched_episodes"] + watched_eps)); break
+                            except: continue 
                     except Exception as e: st.error(f"Error processing series: {e}")
                 
                 new_db["history"].sort(key=lambda x: x.get("d", "2000-01-01 12:00:00"), reverse=True)
-                tv_h = [h for h in new_db["history"] if h.get("t") == "s"][:100]
-                mov_h = [h for h in new_db["history"] if h.get("t") == "m"][:100]
+                tv_h = [h for h in new_db["history"] if h.get("t") == "s"][:100]; mov_h = [h for h in new_db["history"] if h.get("t") == "m"][:100]
                 new_db["history"] = tv_h + mov_h
-                
                 st.session_state.db = new_db
                 
                 if save_db():
                     stat_txt.text("✅ Mass Import & Supabase Sync Complete!")
                     st.toast("Library successfully imported.")
-                    time.sleep(1.5)
-                    st.rerun()
-                else:
-                    stat_txt.text("🛑 Import finished, but the cloud save failed. See error above.")
-            else:
-                st.error("Please upload at least one JSON file first.")
+                    time.sleep(1.5); st.rerun()
+                else: stat_txt.text("🛑 Import finished, but the cloud save failed. See error above.")
+            else: st.error("Please upload at least one JSON file first.")
