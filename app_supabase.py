@@ -45,6 +45,12 @@ st.markdown("""
     img { border-radius: 8px !important; }
     [data-testid="stProgressBar"] > div > div { background: linear-gradient(135deg, #FFD54F 0%, #FFC107 100%) !important; }
     
+    /* --- AGGRESSIVE SPACE SQUEEZE (COMPACTION) --- */
+    [data-testid="stVerticalBlock"] { gap: 0.4rem !important; }
+    hr { margin: 0.5rem 0 !important; }
+    h1, h2, h3, h4, h5, h6 { padding-bottom: 0rem !important; padding-top: 0.2rem !important; margin-bottom: 0 !important; }
+    .stMarkdown p { margin-bottom: 0.2rem !important; }
+    
     /* --- SLICK NATIVE iOS-STYLE FULL WIDTH CONTROLS --- */
     div[data-testid="stRadio"] { width: 100% !important; }
     div[data-testid="stRadio"] > div { width: 100% !important; }
@@ -112,11 +118,6 @@ st.markdown("""
         border: 1px solid rgba(255, 255, 255, 0.1) !important;
         box-shadow: 0px 8px 24px rgba(0, 0, 0, 0.6) !important; 
         padding: 0.3rem !important;
-    }
-    
-    /* --- SQUEEZE EMPTY SPACE OUT OF GRIDS --- */
-    div[data-testid="column"] > div[data-testid="stVerticalBlock"] {
-        gap: 0.25rem !important; 
     }
     
     /* --- PRIMARY ACTION OVERRIDE (Tabs & Standard Buttons) --- */
@@ -393,7 +394,6 @@ def pack_db(db):
         packed["h"].append([1 if h.get("t") == "s" else 0, h.get("i"), h.get("e", ""), h.get("d")])
     for k, v in db.get("analytics", {}).items():
         packed["a"][k] = [v.get("tv", 0), v.get("movie", 0)]
-    # Pack viewed recaps list to save across server boots
     packed["r"] = db.get("seen_recaps", [])
     return packed
 
@@ -650,10 +650,11 @@ def show_cast_horizontal(cast_list, limit=12):
     html = '<div style="display: flex; overflow-x: auto; gap: 14px; padding-bottom: 10px; scrollbar-width: none; -ms-overflow-style: none;">'
     for actor in cast_list[:limit]:
         img_url = f"https://image.tmdb.org/t/p/w185{actor['profile_path']}" if actor.get("profile_path") else "https://via.placeholder.com/185x278/222222/888888?text=No+Photo"
+        char_name = str(actor.get('character', '')).replace('"', '&quot;').replace("'", "&#39;")
         safe_name = str(actor.get('name', '')).replace('"', '&quot;').replace("'", "&#39;")
         encoded_name = str(actor.get('name', '')).replace(" ", "+")
         imdb_url = f"https://www.imdb.com/find/?q={encoded_name}"
-        html += f'<div style="flex: 0 0 85px; width: 85px; text-align: center;"><a href="{imdb_url}" target="_blank" style="text-decoration: none; color: inherit;"><img src="{img_url}" style="width: 85px; height: 127px; border-radius: 8px; object-fit: cover; box-shadow: 0 4px 6px rgba(0,0,0,0.3); margin-bottom: 6px;"><div style="font-size: 0.65rem; font-weight: 600; color: #E0E0E0; line-height: 1.2; white-space: pre-wrap;">{safe_name}</div></a></div>'
+        html += f'<div style="flex: 0 0 85px; width: 85px; text-align: center;"><a href="{imdb_url}" target="_blank" style="text-decoration: none; color: inherit;"><img src="{img_url}" style="width: 85px; height: 127px; border-radius: 8px; object-fit: cover; box-shadow: 0 4px 6px rgba(0,0,0,0.3); margin-bottom: 6px;"><div style="font-size: 0.55rem; color: #FFC107; font-weight: 700; line-height: 1.1; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{char_name}</div><div style="font-size: 0.6rem; font-weight: 600; color: #E0E0E0; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{safe_name}</div></a></div>'
     html += '</div>'
     html = html.replace('\n', '')
     st.markdown(html, unsafe_allow_html=True)
@@ -1511,11 +1512,11 @@ with t_profile:
     df_tv = pd.DataFrame(data_tv).sort_values("Month")
     df_mov = pd.DataFrame(data_mov).sort_values("Month")
     
-    # --- UPGRADED ALTAIR GRAPH MARK OVERLAYS (READABLE VAL LABELS) ---
+    # --- UPGRADED ALTAIR GRAPH MARK OVERLAYS (VERTICAL LABELS) ---
     with chart_tab1:
         if not df_tv.empty and df_tv["Episodes"].sum() > 0:
             chart_tv = alt.Chart(df_tv).mark_bar(color="#FFC107", cornerRadiusTopLeft=6, cornerRadiusTopRight=6).encode(
-                x=alt.X("Month:N", title="Month", axis=alt.Axis(labelAngle=-45, labelColor="#aaa", titleColor="#aaa")),
+                x=alt.X("Month:N", title=None, axis=alt.Axis(labelAngle=-90, labelColor="#aaa", labelFontSize=9)),
                 y=alt.Y("Episodes:Q", title="Episodes Watched", axis=alt.Axis(labelColor="#aaa", titleColor="#aaa"))
             )
             text_tv = chart_tv.mark_text(
@@ -1528,7 +1529,7 @@ with t_profile:
     with chart_tab2:
         if not df_mov.empty and df_mov["Movies"].sum() > 0:
             chart_mov = alt.Chart(df_mov).mark_bar(color="#555555", cornerRadiusTopLeft=6, cornerRadiusTopRight=6).encode(
-                x=alt.X("Month:N", title="Month", axis=alt.Axis(labelAngle=-45, labelColor="#aaa", titleColor="#aaa")),
+                x=alt.X("Month:N", title=None, axis=alt.Axis(labelAngle=-90, labelColor="#aaa", labelFontSize=9)),
                 y=alt.Y("Movies:Q", title="Movies Watched", axis=alt.Axis(labelColor="#aaa", titleColor="#aaa"))
             )
             text_mov = chart_mov.mark_text(
