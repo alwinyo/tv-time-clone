@@ -86,6 +86,7 @@ st.markdown("""
     div[data-testid="stHorizontalBlock"]:has(.carousel-marker)::-webkit-scrollbar, div[data-testid="stColumns"]:has(.carousel-marker)::-webkit-scrollbar { display: none; }
     div[data-testid="column"]:has(.carousel-marker), div[data-testid="stColumn"]:has(.carousel-marker) { flex: 0 0 110px !important; width: 110px !important; min-width: 110px !important; padding: 0 !important; display: block !important; }
 
+    /* --- INVISIBLE NATIVE BUTTON HACK FOR CAST --- */
     div[data-testid="stHorizontalBlock"]:has(.carousel-marker-cast), div[data-testid="stColumns"]:has(.carousel-marker-cast) { display: flex !important; flex-direction: row !important; overflow-x: auto !important; flex-wrap: nowrap !important; scrollbar-width: none; padding-bottom: 10px !important; gap: 10px !important; }
     div[data-testid="stHorizontalBlock"]:has(.carousel-marker-cast)::-webkit-scrollbar, div[data-testid="stColumns"]:has(.carousel-marker-cast)::-webkit-scrollbar { display: none; }
     div[data-testid="column"]:has(.carousel-marker-cast), div[data-testid="stColumn"]:has(.carousel-marker-cast) { flex: 0 0 85px !important; width: 85px !important; min-width: 85px !important; padding: 0 !important; display: block !important; text-align: center !important; }
@@ -361,7 +362,11 @@ def show_cast_horizontal(cast_list, key_prefix, limit=15):
         with cols[idx]:
             st.markdown('<span class="carousel-marker-cast"></span>', unsafe_allow_html=True)
             img_url = f"https://image.tmdb.org/t/p/w185{actor['profile_path']}" if actor.get("profile_path") else "https://via.placeholder.com/185x278/222222/888888?text=No+Photo"
-            st.markdown(f'<img src="{img_url}" style="width: 85px; height: 127px; border-radius: 8px; object-fit: cover; box-shadow: 0 4px 6px rgba(0,0,0,0.3); margin-bottom: 6px;">', unsafe_allow_html=True)
+            
+            # Hybrid Link Logic: Image goes to IMDb, button opens in-app Pokedex
+            encoded_name = str(actor.get('name', '')).replace(" ", "+")
+            imdb_url = f"https://www.imdb.com/find/?q={encoded_name}"
+            st.markdown(f'<a href="{imdb_url}" target="_blank"><img src="{img_url}" style="width: 85px; height: 127px; border-radius: 8px; object-fit: cover; box-shadow: 0 4px 6px rgba(0,0,0,0.3); margin-bottom: 6px; transition: transform 0.2s;"></a>', unsafe_allow_html=True)
             
             char_name = str(actor.get('character', '')).strip()
             if char_name: st.markdown(f'<div style="font-size: 0.55rem; color: #FFC107; font-weight: 700; line-height: 1.1; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{char_name}</div>', unsafe_allow_html=True)
@@ -560,7 +565,8 @@ def show_episode_details(show_id, show_name, ep_code, ep_data=None, is_watched=F
 def manage_show_dialog(show_id, show_name, details):
     display_poster(details.get("backdrop_path"), width=500)
     st.markdown(f"### {show_name}")
-    render_badges([details.get('status')] + [g["name"] for g in details.get("genres", [])])
+    genres = [g["name"] for g in details.get("genres", [])]
+    render_badges([details.get('status')] + genres)
     st.write(details.get("overview", "No overview available."))
     
     providers = fetch_api(f"https://api.themoviedb.org/3/tv/{show_id}/watch/providers?api_key={TMDB_KEY}")
@@ -1327,7 +1333,7 @@ with t_profile:
                 grouped_tv = {}
                 for h_idx, h in enumerate(tv_hist[:st.session_state.hist_tv_limit]):
                     try:
-                        dt = datetime.strptime(h["d"], "%Y-%m-%d %H:%M:%S")
+                        dt = datetime.strptime(h["d"], '%Y-%m-%d %H:%M:%S')
                         grouped_tv.setdefault(dt.strftime('%B %Y'), []).append((h, dt, h_idx))
                     except: pass
                 for month_str, items in grouped_tv.items():
