@@ -273,17 +273,35 @@ def remove_watch(item_type, item_id, detail=""):
                 break
     save_db()
 
-def calc_time_remaining(date_str):
+# --- SMART NETWORK OFFSET ENGINE ---
+def calc_time_remaining(date_str, media_type="movie", details=None):
     if not date_str: return "Soon"
     try:
-        target = datetime.strptime(date_str, '%Y-%m-%d')
+        base_target = datetime.strptime(date_str, '%Y-%m-%d')
+        offset_hours = 28 # Default US Broadcast (4 AM Next Day Dubai)
+        
+        if media_type == "tv" and details:
+            networks = [n.get("name", "").lower() for n in details.get("networks", [])]
+            origin = details.get("origin_country", [])
+            streaming = ["netflix", "amazon", "apple", "disney", "hulu", "paramount"]
+            
+            if any(any(sp in n for sp in streaming) for n in networks):
+                offset_hours = 12 # Noon Dubai (Midnight PT)
+            elif "KR" in origin or "JP" in origin:
+                offset_hours = 17 # 5 PM Dubai
+        elif media_type == "movie":
+            offset_hours = 12 # Movies usually Midnight PT / Noon Dubai
+            
+        target = base_target + timedelta(hours=offset_hours)
         diff = target - get_dubai_time()
+        
         if diff.days > 0: return f"In {diff.days}d {diff.seconds // 3600}h"
         elif diff.days == 0 and (diff.seconds // 3600) > 0: return f"In {diff.seconds // 3600}h"
-        else: return "Today"
+        elif diff.total_seconds() > 0: return "In <1h"
+        else: return "Out Now"
     except: return "Soon"
 
-# --- TOP-LEVEL GLOBAL CALLBACKS (CRASH PREVENTION) ---
+# --- TOP-LEVEL GLOBAL CALLBACKS ---
 def cb_watch_tv_feed(sid, sname, ecode):
     for s in st.session_state.db["shows"]:
         if str(s["id"]) == str(sid):
@@ -337,6 +355,9 @@ def cb_undo_action(t, i, e):
     st.session_state.last_action = None
     st.session_state.prompt_review = None
 
+def cb_clear_search():
+    st.session_state.search_query_input = ""
+
 # --- GLOBAL SAFE UNDO BANNER ---
 if st.session_state.last_action and not st.session_state.prompt_review:
     la = st.session_state.last_action
@@ -363,7 +384,6 @@ def show_cast_horizontal(cast_list, key_prefix, limit=15):
             st.markdown('<span class="carousel-marker-cast"></span>', unsafe_allow_html=True)
             img_url = f"https://image.tmdb.org/t/p/w185{actor['profile_path']}" if actor.get("profile_path") else "https://via.placeholder.com/185x278/222222/888888?text=No+Photo"
             
-            # Hybrid Link Logic: Image goes to IMDb, button opens in-app Pokedex
             encoded_name = str(actor.get('name', '')).replace(" ", "+")
             imdb_url = f"https://www.imdb.com/find/?q={encoded_name}"
             st.markdown(f'<a href="{imdb_url}" target="_blank"><img src="{img_url}" style="width: 85px; height: 127px; border-radius: 8px; object-fit: cover; box-shadow: 0 4px 6px rgba(0,0,0,0.3); margin-bottom: 6px; transition: transform 0.2s;"></a>', unsafe_allow_html=True)
@@ -437,17 +457,19 @@ def show_monthly_recap_dialog(month_key, month_title, stats, recap_id):
     with c2: st.metric("🎬 Movies Watched", f"{mov_count} titles")
     st.markdown(f"⏳ **Screen Time Investment:** ~`{total_mins // 60}` hours spent streaming.")
     
-    show_counts, plat_counts = {}, {}
+    show_counts, plat_counts, feel_counts = {}, {}, {}
     for h in st.session_state.db.get("history", []):
         if str(h.get("d", "")).startswith(month_key):
             if h.get("t") == "s": show_counts[h["i"]] = show_counts.get(h["i"], 0) + 1
             if h.get("p") and h.get("p") != "None": plat_counts[h["p"]] = plat_counts.get(h["p"], 0) + 1
+            if h.get("f") and h.get("f") != "None": feel_counts[h["f"]] = feel_counts.get(h["f"], 0) + 1
             
     if show_counts:
         top_show_id = max(show_counts, key=show_counts.get)
         show = next((s for s in st.session_state.db["shows"] if str(s["id"]) == str(top_show_id)), None)
         if show: st.markdown(f"🔥 **Top Binge Focus:** *{show['name']}* ({show_counts[top_show_id]} episodes)")
     if plat_counts: st.markdown(f"📡 **Platform Loyalty:** Most watched on **{max(plat_counts, key=plat_counts.get)}**")
+    if feel_counts: st.markdown(f"🎭 **Monthly Vibe:** **{max(feel_counts, key=feel_counts.get)}**")
             
     st.divider()
     if st.button("Sweet!", use_container_width=True, key="close_month_recap_btn"):
@@ -467,6 +489,33 @@ def show_yearly_recap_dialog(year, y_tv, y_mov, recap_id):
         
     st.markdown(f"⏳ **Time Commitment:** You dedicated total of **{days} days** and **{(total_time % 1440) // 60} hours** to premium story arcs.")
     
+    y_hist = [h for h in st.session_state.db.get("history", []) if str(h.get("d", "")).startswith(str(year))]
+    date_counts, plat_counts, feel_counts, show_counts, ratings = {}, {}, {}, {}, []
+    
+    for h in y_hist:
+        d_only = h["d"][:10]
+        date_counts[d_only] = date_counts.get(d_only, 0) + 1
+        if h.get("p") and h.get("p") != "None": plat_counts[h["p"]] = plat_counts.get(h["p"], 0) + 1
+        if h.get("f") and h.get("f") != "None": feel_counts[h["f"]] = feel_counts.get(h["f"], 0) + 1
+        if h["t"] == "s": show_counts[h["i"]] = show_counts.get(h["i"], 0) + 1
+        if h.get("r", 0) > 0: ratings.append(h["r"])
+        
+    st.divider()
+    st.markdown("### The Deep Dive")
+    if ratings: st.markdown(f"⭐ **Average Rating:** {round(sum(ratings)/len(ratings), 1)} / 5.0")
+    if plat_counts: st.markdown(f"📡 **Top Platform:** {max(plat_counts, key=plat_counts.get)}")
+    if feel_counts: st.markdown(f"🎭 **Top Vibe:** {max(feel_counts, key=feel_counts.get)}")
+    if date_counts: 
+        max_d, max_c = max(date_counts.items(), key=lambda x: x[1])
+        st.markdown(f"🔥 **Ultimate Binge Day:** {max_c} items on {max_d}")
+        
+    if show_counts:
+        st.markdown("**🏆 Top 3 Shows:**")
+        top_shows = sorted(show_counts.items(), key=lambda x: x[1], reverse=True)[:3]
+        for sid, sc in top_shows:
+            s_obj = next((s for s in st.session_state.db["shows"] if str(s["id"]) == str(sid)), None)
+            if s_obj: st.markdown(f"- {s_obj['name']} ({sc} eps)")
+
     if days > 12: tier_title, tier_desc = "👑 Emperor of the Couch", "Absolute legend. Hollywood production lines should put you on their payroll."
     elif days > 5: tier_title, tier_desc = "🍿 Marathon Veteran", "You know exactly how to lock down a weekend block and demolish complex plotlines."
     else: tier_title, tier_desc = "🎬 Curation Connoisseur", "High-taste selection habits. You filter for absolute choice cinema narrative styles."
@@ -835,7 +884,7 @@ with t_soon:
                             with st.container(border=True):
                                 display_poster(show.get("poster_path") or details.get('poster_path'), width=185)
                                 st.markdown(f'<div class="grid-title" title="{show["name"]}">{show["name"]}</div>', unsafe_allow_html=True)
-                                st.markdown(f'<div style="text-align:center; font-size:0.65rem; color:#FFC107; margin-bottom:5px; font-weight:600;">{ep_code} • {calc_time_remaining(item["date"])}</div>', unsafe_allow_html=True)
+                                st.markdown(f'<div style="text-align:center; font-size:0.65rem; color:#FFC107; margin-bottom:5px; font-weight:600;">{ep_code} • {calc_time_remaining(item["date"], "tv", details)}</div>', unsafe_allow_html=True)
                                 st.markdown('<div class="movie-wall-btn">', unsafe_allow_html=True)
                                 st.button("✔️ Watch", key=f"s_w_tv_{show['id']}_{ep_code}_{idx}", on_click=cb_watch_tv_feed, args=(show['id'], show['name'], ep_code), use_container_width=True)
                                 if st.button("ℹ️ Info", key=f"s_i_tv_{show['id']}_{ep_code}_{idx}", use_container_width=True):
@@ -870,7 +919,7 @@ with t_soon:
                             with st.container(border=True):
                                 display_poster(m.get('poster_path'), width=185)
                                 st.markdown(f'<div class="grid-title" title="{m["name"]}">{m["name"]}</div>', unsafe_allow_html=True)
-                                st.markdown(f'<div style="text-align:center; font-size:0.65rem; color:#FFC107; margin-bottom:5px; font-weight:600;">{calc_time_remaining(item["date"])}</div>', unsafe_allow_html=True)
+                                st.markdown(f'<div style="text-align:center; font-size:0.65rem; color:#FFC107; margin-bottom:5px; font-weight:600;">{calc_time_remaining(item["date"], "movie")}</div>', unsafe_allow_html=True)
                                 st.markdown('<div class="movie-wall-btn">', unsafe_allow_html=True)
                                 st.button("✔️ Watch", key=f"s_w_mov_{m['id']}_{idx}", on_click=cb_watch_mov_feed, args=(m['id'], m['name']), use_container_width=True)
                                 if st.button("ℹ️ Info", key=f"s_i_mov_{m['id']}_{idx}", use_container_width=True):
@@ -886,7 +935,13 @@ with t_soon:
 # ==========================================
 with t_search:
     st.markdown("<h3 class='tab-title'>Discover</h3>", unsafe_allow_html=True)
-    search_query = st_keyup("Search", debounce=2000, key="search_query_input", placeholder="Search TV shows, movies, actors...", label_visibility="collapsed")
+    
+    # --- DYNAMIC SEARCH WITH CLEAR BUTTON ---
+    c_search, c_clear = st.columns([85, 15])
+    with c_search:
+        search_query = st_keyup("Search", debounce=2000, key="search_query_input", placeholder="Search TV shows, movies...", label_visibility="collapsed")
+    with c_clear:
+        st.button("✖", key="clear_search_btn", on_click=cb_clear_search, disabled=(not search_query), use_container_width=True)
 
     if search_query:
         search_type = st.selectbox("Search in:", ["TV Shows", "Movies"], label_visibility="collapsed", key="search_filter_box")
@@ -1171,6 +1226,14 @@ with t_profile:
         avg_tv_r = round(sum(tv_ratings)/len(tv_ratings), 1) if tv_ratings else 0.0
         avg_mov_r = round(sum(mov_ratings)/len(mov_ratings), 1) if mov_ratings else 0.0
         
+        plat_counts, feel_counts = {}, {}
+        for h in history_sorted:
+            if h.get("p") and h.get("p") != "None": plat_counts[h["p"]] = plat_counts.get(h["p"], 0) + 1
+            if h.get("f") and h.get("f") != "None": feel_counts[h["f"]] = feel_counts.get(h["f"], 0) + 1
+            
+        top_plat_global = max(plat_counts, key=plat_counts.get) if plat_counts else "N/A"
+        top_feel_global = max(feel_counts, key=feel_counts.get) if feel_counts else "N/A"
+        
         st.markdown(f"""
         <div style="display: flex; gap: 10px; margin-bottom: 10px; margin-top: 10px;">
             <div style="flex: 1; background-color: rgba(255,255,255,0.05); border-radius: 12px; padding: 15px; text-align: center; border: 1px solid rgba(255,255,255,0.1);">
@@ -1206,6 +1269,16 @@ with t_profile:
                 <div style="font-size: 0.65rem; color: #aaa; text-transform: uppercase; font-weight: 600; margin-top: 4px;">Avg TV / Movie ⭐</div>
             </div>
         </div>
+        <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+            <div style="flex: 1; background-color: rgba(255,255,255,0.05); border-radius: 12px; padding: 15px; text-align: center; border: 1px solid rgba(255,255,255,0.1);">
+                <div style="font-size: 1.1rem; font-weight: 800; color: #FFC107; line-height: 1.2;">{top_plat_global}</div>
+                <div style="font-size: 0.65rem; color: #aaa; text-transform: uppercase; font-weight: 600; margin-top: 4px;">Top Platform</div>
+            </div>
+            <div style="flex: 1; background-color: rgba(255,255,255,0.05); border-radius: 12px; padding: 15px; text-align: center; border: 1px solid rgba(255,255,255,0.1);">
+                <div style="font-size: 1.1rem; font-weight: 800; color: #FFC107; line-height: 1.2;">{top_feel_global}</div>
+                <div style="font-size: 0.65rem; color: #aaa; text-transform: uppercase; font-weight: 600; margin-top: 4px;">Signature Vibe</div>
+            </div>
+        </div>
         """, unsafe_allow_html=True)
 
     with t_prof_health:
@@ -1214,14 +1287,23 @@ with t_profile:
         thirty_days_ago = get_dubai_time() - timedelta(days=30)
         seven_days_ago = get_dubai_time() - timedelta(days=7)
         
+        watched_dates = set()
         for h in history_sorted:
             try:
                 h_dt = datetime.strptime(h["d"], "%Y-%m-%d %H:%M:%S")
+                watched_dates.add(h_dt.date())
                 if h_dt >= thirty_days_ago: mins_last_30 += 45 if h["t"] == "s" else 120
                 if h_dt >= seven_days_ago and h["t"] == "s": eps_last_7 += 1
             except: pass
             
         daily_avg_mins = mins_last_30 / 30.0 if mins_last_30 > 0 else 1.0
+        
+        streak = 0
+        curr_d = get_dubai_time().date()
+        if curr_d not in watched_dates: curr_d -= timedelta(days=1)
+        while curr_d in watched_dates:
+            streak += 1
+            curr_d -= timedelta(days=1)
         
         stagnant_shows, almost_finished = [], []
         for s in st.session_state.db["shows"]:
@@ -1252,11 +1334,13 @@ with t_profile:
         st.progress(completion_pct / 100.0)
         st.caption(f"**Total Library Completion:** {completion_pct}%")
         
-        c1, c2 = st.columns(2)
+        c1, c2, c3 = st.columns(3)
         with c1:
-            st.markdown(f"""<div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 15px; text-align: center; margin-top: 15px;"><div style="font-size: 1.8rem; font-weight: 800; color: #FFC107;">{days_to_clear} <span style="font-size:0.8rem; color:#aaa;">Days</span></div><div style="font-size: 0.65rem; color: #aaa; text-transform: uppercase; font-weight:700;">To Clear Backlog</div></div>""", unsafe_allow_html=True)
+            st.markdown(f"""<div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 15px 5px; text-align: center; margin-top: 15px;"><div style="font-size: 1.5rem; font-weight: 800; color: #FFC107;">{days_to_clear} <span style="font-size:0.7rem; color:#aaa;">Days</span></div><div style="font-size: 0.60rem; color: #aaa; text-transform: uppercase; font-weight:700;">To Clear Backlog</div></div>""", unsafe_allow_html=True)
         with c2:
-            st.markdown(f"""<div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 15px; text-align: center; margin-top: 15px;"><div style="font-size: 1.8rem; font-weight: 800; color: #FFC107;">{eps_last_7} <span style="font-size:0.8rem; color:#aaa;">Eps</span></div><div style="font-size: 0.65rem; color: #aaa; text-transform: uppercase; font-weight:700;">Binge Velocity (7 Days)</div></div>""", unsafe_allow_html=True)
+            st.markdown(f"""<div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 15px 5px; text-align: center; margin-top: 15px;"><div style="font-size: 1.5rem; font-weight: 800; color: #FFC107;">{eps_last_7} <span style="font-size:0.7rem; color:#aaa;">Eps</span></div><div style="font-size: 0.60rem; color: #aaa; text-transform: uppercase; font-weight:700;">Binge Velocity</div></div>""", unsafe_allow_html=True)
+        with c3:
+            st.markdown(f"""<div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 15px 5px; text-align: center; margin-top: 15px;"><div style="font-size: 1.5rem; font-weight: 800; color: #FFC107;">{streak} <span style="font-size:0.7rem; color:#aaa;">Days</span></div><div style="font-size: 0.60rem; color: #aaa; text-transform: uppercase; font-weight:700;">Current Streak</div></div>""", unsafe_allow_html=True)
 
         if almost_finished:
             st.markdown("#### 🏁 Almost Finished")
@@ -1265,7 +1349,7 @@ with t_profile:
         if stagnant_shows:
             st.markdown("#### ⚠️ Stagnant Stock Warning")
             st.info(f"You have {len(stagnant_shows)} abandoned shows in your inventory. Consider dropping them to clean your backlog.")
-            for s in stagnant_shows[:5]: st.markdown(f"• **{s['name']}** *(Ignored > 90 days)*")
+            for s in stagnant_shows[:5]: st.markdown(f"• **{s['name']}**")
 
     with t_prof_graphs:
         c_tab1, c_tab2, c_tab3 = st.tabs(["Activity", "Platforms", "Ratings"])
