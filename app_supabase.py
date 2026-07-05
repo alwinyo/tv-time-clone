@@ -326,7 +326,7 @@ st.markdown("""
 def get_dubai_time():
     return datetime.utcnow() + timedelta(hours=4)
 
-# --- PAGINATION STATES ---
+# --- PAGINATION & ACTION STATES ---
 if "next_tv_limit" not in st.session_state: st.session_state.next_tv_limit = 30
 if "next_mov_limit" not in st.session_state: st.session_state.next_mov_limit = 30
 if "soon_tv_limit" not in st.session_state: st.session_state.soon_tv_limit = 30
@@ -338,7 +338,7 @@ if "mov_lib_limit" not in st.session_state: st.session_state.mov_lib_limit = 50
 if "c_limits" not in st.session_state: st.session_state.c_limits = {}
 if "rec_show" not in st.session_state: st.session_state.rec_show = None 
 if "last_action" not in st.session_state: st.session_state.last_action = None
-if "rate_item" not in st.session_state: st.session_state.rate_item = None
+if "undo_shown" not in st.session_state: st.session_state.undo_shown = False
 
 # --- SUPABASE DATABASE PIPELINE ---
 TMDB_KEY = st.secrets["TMDB_KEY"]
@@ -501,6 +501,7 @@ def log_watch(item_type, item_id, detail=""):
     db.setdefault("history", []).insert(0, {"t": t_flag, "i": item_id, "e": detail, "d": now_str, "r": 0, "f": "", "p": ""})
     
     st.session_state.last_action = {"t": item_type, "i": item_id, "e": detail}
+    st.session_state.undo_shown = False
     
     tv_h = [h for h in db["history"] if h.get("t") == "s"][:100]
     mov_h = [h for h in db["history"] if h.get("t") == "m"][:100]
@@ -511,7 +512,6 @@ def remove_watch(item_type, item_id, detail=""):
     db = st.session_state.db
     t_flag = "s" if item_type == "tv" else "m"
     
-    # Unmark from History
     for idx, h in enumerate(db.get("history", [])):
         if h.get("t") == t_flag and str(h.get("i")) == str(item_id) and str(h.get("e", "")) == str(detail):
             removed = db["history"].pop(idx)
@@ -522,7 +522,6 @@ def remove_watch(item_type, item_id, detail=""):
             except: pass
             break
             
-    # Unmark from Library State
     if item_type == "tv":
         for show in db.get("shows", []):
             if str(show.get("id")) == str(item_id):
@@ -549,14 +548,13 @@ def calc_time_remaining(date_str):
         else: return "Today"
     except: return "Soon"
 
-# --- TOP-LEVEL GLOBAL CALLBACKS (CRASH PREVENTION & AUTO-POP) ---
+# --- TOP-LEVEL GLOBAL CALLBACKS (CRASH PREVENTION) ---
 def cb_watch_tv(sid, ecode):
     for s in st.session_state.db["shows"]:
         if str(s["id"]) == str(sid):
             if ecode not in s["watched_episodes"]:
                 s["watched_episodes"].append(ecode)
                 log_watch("tv", sid, ecode)
-                st.session_state.rate_item = {"t": "tv", "id": sid, "e": ecode}
             break
 
 def cb_watch_mov(mid):
@@ -565,17 +563,16 @@ def cb_watch_mov(mid):
             if not mv.get("watched"):
                 mv["watched"] = True
                 log_watch("movie", mid)
-                st.session_state.rate_item = {"t": "movie", "id": mid}
             break
-            
+
 def cb_delete_tv(sid):
     st.session_state.db["shows"] = [s for s in st.session_state.db["shows"] if str(s["id"]) != str(sid)]
     save_db()
-    
+
 def cb_delete_mov(mid):
     st.session_state.db["movies"] = [mv for mv in st.session_state.db["movies"] if str(mv["id"]) != str(mid)]
     save_db()
-    
+
 def cb_toggle_episode(sid, ecode):
     chkd = st.session_state.get(f"chk_dlg_{sid}_{ecode}", False)
     for s in st.session_state.db["shows"]:
@@ -588,8 +585,13 @@ def cb_toggle_episode(sid, ecode):
                 remove_watch("tv", sid, ecode)
             break
 
+def cb_undo_action():
+    la = st.session_state.get("last_action")
+    if la: remove_watch(la["t"], la["i"], la["e"])
+    st.session_state.last_action = None
+    st.session_state.undo_shown = False
 
-# --- AUTOMATED POP-UP RECAP ENGINE (MONTHLY & YEARLY AUTOMATION) ---
+# --- AUTOMATED POP-UP RECAP ENGINE ---
 @st.dialog("🌙 Monthly Wrap-Up")
 def show_monthly_recap_dialog(month_key, month_title, stats, recap_id):
     st.markdown(f"## {month_title} Recap")
@@ -601,10 +603,8 @@ def show_monthly_recap_dialog(month_key, month_title, stats, recap_id):
     hours = total_mins // 60
     
     c1, c2 = st.columns(2)
-    with c1:
-        st.metric("📺 Episodes Logged", f"{tv_count} eps")
-    with c2:
-        st.metric("🎬 Movies Watched", f"{mov_count} titles")
+    with c1: st.metric("📺 Episodes Logged", f"{tv_count} eps")
+    with c2: st.metric("🎬 Movies Watched", f"{mov_count} titles")
         
     st.markdown(f"⏳ **Screen Time Investment:** ~`{hours}` hours spent streaming.")
     
@@ -743,7 +743,7 @@ def show_cast_horizontal(cast_list, limit=12):
 
 # --- DIALOGS ---
 @st.dialog("Episode Details")
-def show_episode_details(show_id, show_name, ep_code, ep_data=None):
+def show_episode_details(show_id, show_name, ep_code, ep_data=None, is_watched=False):
     if not ep_data:
         try:
             s_num = ep_code.split('E')[0].replace('S', '')
@@ -759,8 +759,6 @@ def show_episode_details(show_id, show_name, ep_code, ep_data=None):
     
     current_show = next((s for s in st.session_state.db["shows"] if str(s["id"]) == str(show_id)), None)
     btn_disabled = (current_show is None)
-    
-    is_watched = current_show and ep_code in current_show.get("watched_episodes", [])
     
     if is_watched:
         h_log = next((h for h in st.session_state.db.get("history", []) if h.get("t")=="s" and str(h.get("i"))==str(show_id) and h.get("e")==ep_code), None)
@@ -804,15 +802,17 @@ def show_episode_details(show_id, show_name, ep_code, ep_data=None):
     if btn_disabled: st.warning("➕ Add this show to your library to track episodes!")
         
     btn_label = "❌ Unmark as Watched" if is_watched else "✅ Mark as Watched"
-    def toggle_watch():
-        if is_watched:
-            current_show["watched_episodes"].remove(ep_code)
-            remove_watch("tv", show_id, ep_code)
-        else:
-            current_show["watched_episodes"].append(ep_code)
-            log_watch("tv", show_id, ep_code)
-            st.session_state.rate_item = {"t": "tv", "id": show_id, "e": ep_code}
-    st.button(btn_label, use_container_width=True, key=f"dlg_btn_tv_{show_id}_{ep_code}", disabled=btn_disabled, on_click=toggle_watch)
+    if st.button(btn_label, use_container_width=True, key=f"dlg_btn_tv_{show_id}_{ep_code}", disabled=btn_disabled):
+        for s in st.session_state.db["shows"]:
+            if str(s["id"]) == str(show_id):
+                if is_watched and ep_code in s["watched_episodes"]: 
+                    s["watched_episodes"].remove(ep_code)
+                    remove_watch("tv", show_id, ep_code)
+                elif not is_watched and ep_code not in s["watched_episodes"]: 
+                    s["watched_episodes"].append(ep_code)
+                    log_watch("tv", show_id, ep_code)
+                break
+        st.rerun()
 
 @st.dialog("Manage Show")
 def manage_show_dialog(show_id, show_name, details):
@@ -860,7 +860,7 @@ def manage_show_dialog(show_id, show_name, details):
     show_cast_horizontal(credits.get("cast", []), limit=15)
 
 @st.dialog("Movie Details")
-def show_movie_details(m_id, m_name, details=None):
+def show_movie_details(m_id, m_name, details=None, is_watched=False):
     if not details:
         details = fetch_api(f"https://api.themoviedb.org/3/movie/{m_id}?api_key={TMDB_KEY}")
         
@@ -872,8 +872,6 @@ def show_movie_details(m_id, m_name, details=None):
     
     current_movie = next((m for m in st.session_state.db["movies"] if str(m["id"]) == str(m_id)), None)
     btn_disabled = (current_movie is None)
-    
-    is_watched = current_movie and current_movie.get("watched", False)
     
     if is_watched:
         h_log = next((h for h in st.session_state.db.get("history", []) if h.get("t")=="m" and str(h.get("i"))==str(m_id)), None)
@@ -916,52 +914,43 @@ def show_movie_details(m_id, m_name, details=None):
     if btn_disabled: st.warning("➕ Add this movie to your library to mark it as watched!")
         
     btn_label = "❌ Unmark as Watched" if is_watched else "✅ Mark as Watched"
-    def toggle_watch():
-        if is_watched:
-            current_movie["watched"] = False
-            remove_watch("movie", m_id)
-        else:
-            current_movie["watched"] = True
-            log_watch("movie", m_id)
-            st.session_state.rate_item = {"t": "movie", "id": m_id}
-    st.button(btn_label, use_container_width=True, key=f"dlg_btn_mov_{m_id}", disabled=btn_disabled, on_click=toggle_watch)
+    if st.button(btn_label, use_container_width=True, key=f"dlg_btn_mov_{m_id}", disabled=btn_disabled):
+        for m in st.session_state.db["movies"]:
+            if str(m["id"]) == str(m_id):
+                m["watched"] = not is_watched
+                if m["watched"]: log_watch("movie", m_id)
+                else: remove_watch("movie", m_id)
+                break
+        st.rerun()
 
-# --- AUTO-POP INTERCEPTOR ---
-if st.session_state.get("rate_item"):
-    ri = st.session_state.rate_item
-    st.session_state.rate_item = None
-    if ri["t"] == "tv":
-        show_episode_details(ri["id"], "Episode", ri["e"])
+# ==========================================
+# GLOBAL UNDO TOAST CONTROLLER (STATE-LOCKED)
+# ==========================================
+if st.session_state.get("last_action"):
+    if not st.session_state.get("undo_shown"):
+        st.markdown("""
+        <style>
+            @keyframes fadeOutUndo {
+                0% { opacity: 1; max-height: 200px; transform: scaleY(1); margin-bottom: 10px; }
+                80% { opacity: 1; max-height: 200px; transform: scaleY(1); margin-bottom: 10px; }
+                100% { opacity: 0; max-height: 0px; margin: 0; padding: 0; overflow: hidden; pointer-events: none; transform: scaleY(0); border: none; }
+            }
+            div[data-testid="stVerticalBlock"]:has(#undo-wrapper) {
+                animation: fadeOutUndo 5s forwards !important;
+                transform-origin: top;
+            }
+        </style>
+        """, unsafe_allow_html=True)
+        
+        with st.container():
+            st.markdown('<span id="undo-wrapper"></span>', unsafe_allow_html=True)
+            st.success(f"Watched! ✅")
+            st.button(f"↩️ Undo Last Action", on_click=cb_undo_action, use_container_width=True)
+            
+        st.session_state.undo_shown = True
     else:
-        show_movie_details(ri["id"], "Movie")
-
-# ==========================================
-# GLOBAL UNDO TOAST CONTROLLER (AUTO-FADING)
-# ==========================================
-if st.session_state.last_action:
-    la = st.session_state.last_action
-    
-    st.markdown("""
-    <style>
-        @keyframes fadeOutUndo {
-            0% { opacity: 1; max-height: 200px; transform: scaleY(1); }
-            80% { opacity: 1; max-height: 200px; transform: scaleY(1); }
-            100% { opacity: 0; max-height: 0px; margin: 0; padding: 0; overflow: hidden; pointer-events: none; transform: scaleY(0); border: none; }
-        }
-        div[data-testid="stVerticalBlock"]:has(#undo-wrapper):not(:has(div[data-testid="stVerticalBlock"]:has(#undo-wrapper))) {
-            animation: fadeOutUndo 5s forwards !important;
-            transform-origin: top;
-        }
-    </style>
-    """, unsafe_allow_html=True)
-    
-    with st.container():
-        st.markdown('<span id="undo-wrapper"></span>', unsafe_allow_html=True)
-        st.success(f"Watched! ✅")
-        if st.button(f"↩️ Undo Last Action", use_container_width=True):
-            remove_watch(la["t"], la["i"], la["e"])
-            st.session_state.last_action = None
-            st.rerun()
+        st.session_state.last_action = None
+        st.session_state.undo_shown = False
 
 # --- APP NAVIGATION BAR ---
 t_next, t_soon, t_search, t_tv, t_movies, t_profile = st.tabs(["🔥 Next", "📅 Soon", "🔍 Search", "📺 TV", "🎬 Movies", "👤 Profile"])
@@ -1062,7 +1051,7 @@ with t_next:
                                 st.markdown('<div class="movie-wall-btn">', unsafe_allow_html=True)
                                 st.button("✔️ Watch", key=f"n_w_tv_{show['id']}_{ep_code}_{idx}", on_click=cb_watch_tv, args=(show['id'], ep_code), use_container_width=True)
                                 if st.button("ℹ️ Info", key=f"n_i_tv_{show['id']}_{ep_code}_{idx}", use_container_width=True):
-                                    show_episode_details(show['id'], show['name'], ep_code, ep)
+                                    show_episode_details(show['id'], show['name'], ep_code, ep, is_watched=False)
                                 st.markdown('</div>', unsafe_allow_html=True)
                                 
             if len(up_next_tv) > st.session_state.next_tv_limit:
@@ -1102,7 +1091,7 @@ with t_next:
                                 st.markdown('<div class="movie-wall-btn">', unsafe_allow_html=True)
                                 st.button("✔️ Watch", key=f"n_w_mov_{m['id']}_{idx}", on_click=cb_watch_mov, args=(m['id'],), use_container_width=True)
                                 if st.button("ℹ️ Info", key=f"n_i_mov_{m['id']}_{idx}", use_container_width=True):
-                                    show_movie_details(m['id'], m['name'], details=None)
+                                    show_movie_details(m['id'], m['name'], details=None, is_watched=False)
                                 st.markdown('</div>', unsafe_allow_html=True)
                         
             if len(up_next_mov) > st.session_state.next_mov_limit:
@@ -1166,7 +1155,7 @@ with t_soon:
                                 st.markdown('<div class="movie-wall-btn">', unsafe_allow_html=True)
                                 st.button("✔️ Watch", key=f"s_w_tv_{show['id']}_{ep_code}_{idx}", on_click=cb_watch_tv, args=(show['id'], ep_code), use_container_width=True)
                                 if st.button("ℹ️ Info", key=f"s_i_tv_{show['id']}_{ep_code}_{idx}", use_container_width=True):
-                                    show_episode_details(show['id'], show['name'], ep_code, ep)
+                                    show_episode_details(show['id'], show['name'], ep_code, ep, is_watched=False)
                                 st.markdown('</div>', unsafe_allow_html=True)
 
             if len(soon_tv) > st.session_state.soon_tv_limit:
@@ -1207,7 +1196,7 @@ with t_soon:
                                 st.markdown('<div class="movie-wall-btn">', unsafe_allow_html=True)
                                 st.button("✔️ Watch", key=f"s_w_mov_{m['id']}_{idx}", on_click=cb_watch_mov, args=(m['id'],), use_container_width=True)
                                 if st.button("ℹ️ Info", key=f"s_i_mov_{m['id']}_{idx}", use_container_width=True):
-                                    show_movie_details(m['id'], m['name'], details=None)
+                                    show_movie_details(m['id'], m['name'], details=None, is_watched=False)
                                 st.markdown('</div>', unsafe_allow_html=True)
 
             if len(soon_mov) > st.session_state.soon_mov_limit:
@@ -1274,7 +1263,7 @@ with t_search:
                                 if st.button("ℹ️ INFO", key=f"inf_{item_id}_{i+j}", use_container_width=True):
                                     details = fetch_api(f"https://api.themoviedb.org/3/{'tv' if is_tv else 'movie'}/{item_id}?api_key={TMDB_KEY}")
                                     if is_tv: manage_show_dialog(item_id, title, details)
-                                    else: show_movie_details(item_id, title, details)
+                                    else: show_movie_details(item_id, title, details, is_watched=False)
                                 
                                 st.markdown('</div>', unsafe_allow_html=True)
     else:
@@ -1330,7 +1319,7 @@ with t_search:
                     if st.button("ℹ️ INFO", key=f"c_inf_{c_type}_{item_id}_{idx}", use_container_width=True):
                         details = fetch_api(f"https://api.themoviedb.org/3/{c_type}/{item_id}?api_key={TMDB_KEY}")
                         if c_type == "tv": manage_show_dialog(item_id, i_title, details)
-                        else: show_movie_details(item_id, i_title, details)
+                        else: show_movie_details(item_id, i_title, details, is_watched=False)
                             
                     st.markdown('</div>', unsafe_allow_html=True)
             
@@ -1533,12 +1522,12 @@ with t_movies:
                                     bc1, bc2 = st.columns(2)
                                     with bc1:
                                         if st.button("ℹ️ INFO", key=f"m_mgr_{m['id']}", use_container_width=True):
-                                            show_movie_details(m['id'], m['name'], details=None)
+                                            show_movie_details(m['id'], m['name'], details=None, is_watched=is_watched)
                                     with bc2:
                                         st.button("🗑️ DEL", key=f"m_del_{m['id']}", on_click=cb_delete_mov, args=(m['id'],), use_container_width=True)
                                 else:
                                     if st.button("ℹ️ INFO", key=f"m_mgr_{m['id']}", use_container_width=True):
-                                        show_movie_details(m['id'], m['name'], details=None)
+                                        show_movie_details(m['id'], m['name'], details=None, is_watched=is_watched)
                                     
                                 st.markdown('</div>', unsafe_allow_html=True)
                                 
@@ -1690,7 +1679,7 @@ with t_profile:
                     poster_url = f"https://image.tmdb.org/t/p/w92{poster}" if poster else "https://via.placeholder.com/92x138/222222/555555?text=No+Img"
                     
                     html = f"""
-                    <div style="display: flex; align-items: center; margin-bottom: 12px; background-color: transparent; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 8px;">
+                    <div style="display: flex; align-items: center; margin-bottom: 6px; background-color: transparent; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 6px;">
                         <img src="{poster_url}" style="width: 45px; height: 68px; border-radius: 4px; object-fit: cover; margin-right: 14px; box-shadow: 0 2px 4px rgba(0,0,0,0.5);">
                         <div style="display: flex; flex-direction: column; justify-content: center;">
                             <div style="font-size: 0.95rem; font-weight: 700; color: #FFFFFF; margin-bottom: 2px; line-height: 1.2;">{s_name}</div>
@@ -1699,7 +1688,14 @@ with t_profile:
                         </div>
                     </div>
                     """
-                    st.markdown(html, unsafe_allow_html=True)
+                    
+                    c_left, c_right = st.columns([5, 1])
+                    with c_left:
+                        st.markdown(html, unsafe_allow_html=True)
+                    with c_right:
+                        st.markdown("<div style='height: 18px;'></div>", unsafe_allow_html=True)
+                        if st.button("📝", key=f"h_r_tv_{h['i']}_{ep_code}_{h_idx}", help="Rate & Review"):
+                            show_episode_details(h['i'], s_name, ep_code, ep_data=None, is_watched=True)
                                 
             if len(tv_hist) > st.session_state.hist_tv_limit:
                 if st.button("Load More Series", use_container_width=True, key="load_more_tv_hist"):
@@ -1736,7 +1732,7 @@ with t_profile:
                     poster_url = f"https://image.tmdb.org/t/p/w92{poster}" if poster else "https://via.placeholder.com/92x138/222222/555555?text=No+Img"
                     
                     html = f"""
-                    <div style="display: flex; align-items: center; margin-bottom: 12px; background-color: transparent; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 8px;">
+                    <div style="display: flex; align-items: center; margin-bottom: 6px; background-color: transparent; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 6px;">
                         <img src="{poster_url}" style="width: 45px; height: 68px; border-radius: 4px; object-fit: cover; margin-right: 14px; box-shadow: 0 2px 4px rgba(0,0,0,0.5);">
                         <div style="display: flex; flex-direction: column; justify-content: center;">
                             <div style="font-size: 0.95rem; font-weight: 700; color: #FFFFFF; margin-bottom: 2px; line-height: 1.2;">{m_name}</div>
@@ -1745,7 +1741,14 @@ with t_profile:
                         </div>
                     </div>
                     """
-                    st.markdown(html, unsafe_allow_html=True)
+                    
+                    c_left, c_right = st.columns([5, 1])
+                    with c_left:
+                        st.markdown(html, unsafe_allow_html=True)
+                    with c_right:
+                        st.markdown("<div style='height: 18px;'></div>", unsafe_allow_html=True)
+                        if st.button("📝", key=f"h_r_mov_{h['i']}_{h_idx}", help="Rate & Review"):
+                            show_movie_details(h['i'], m_name, details=None, is_watched=True)
 
             if len(mov_hist) > st.session_state.hist_mov_limit:
                 if st.button("Load More Movies", use_container_width=True, key="load_more_mov_hist"):
