@@ -1009,6 +1009,10 @@ with t_search:
             limit = st.session_state.c_limits.get(title, 10)
             render_items, show_load_more = items[:limit], limit < len(items)
             cols = st.columns(len(render_items) + (1 if show_load_more else 0))
+            
+            # Make the carousel title safe to use as an internal ID key
+            safe_title = "".join(e for e in title if e.isalnum())
+            
             for idx, item in enumerate(render_items):
                 with cols[idx]:
                     st.markdown('<span class="carousel-marker"></span>', unsafe_allow_html=True)
@@ -1021,14 +1025,14 @@ with t_search:
                     added = any(str(x["id"]) == str(item_id) for x in st.session_state.db["shows" if c_type == "tv" else "movies"])
                         
                     if not added:
-                        if st.button("➕ ADD", key=f"c_add_{c_type}_{item_id}_{idx}", use_container_width=True):
+                        if st.button("➕ ADD", key=f"c_add_{safe_title}_{item_id}_{idx}", use_container_width=True):
                             details = fetch_api(f"https://api.themoviedb.org/3/{c_type}/{item_id}?api_key={TMDB_KEY}")
                             if c_type == "tv": st.session_state.db["shows"].append({"id": item_id, "name": i_title, "watched_episodes": get_watched_from_history("tv", item_id), "poster_path": details.get("poster_path", ""), "first_air_date": details.get("first_air_date", ""), "total_episodes": details.get("number_of_episodes", 1), "dropped": False})
                             else: st.session_state.db["movies"].append({"id": item_id, "name": i_title, "watched": get_watched_from_history("movie", item_id), "poster_path": details.get("poster_path", ""), "release_date": details.get("release_date", ""), "runtime": details.get("runtime", 0), "dropped": False})
                             if save_db(): st.rerun()
-                    else: st.button("✔️ ADDED", key=f"c_dsb_{c_type}_{item_id}_{idx}", disabled=True, use_container_width=True)
+                    else: st.button("✔️ ADDED", key=f"c_dsb_{safe_title}_{item_id}_{idx}", disabled=True, use_container_width=True)
                     
-                    if st.button("ℹ️ INFO", key=f"c_inf_{c_type}_{item_id}_{idx}", use_container_width=True):
+                    if st.button("ℹ️ INFO", key=f"c_inf_{safe_title}_{item_id}_{idx}", use_container_width=True):
                         st.session_state.active_actor = None
                         details = fetch_api(f"https://api.themoviedb.org/3/{c_type}/{item_id}?api_key={TMDB_KEY}")
                         if c_type == "tv": manage_show_dialog(item_id, i_title, details)
@@ -1038,7 +1042,7 @@ with t_search:
             if show_load_more:
                 with cols[-1]:
                     st.markdown('<span class="carousel-marker"></span><div style="height: 60px;"></div>', unsafe_allow_html=True)
-                    if st.button("➕ More", key=f"c_more_{title}", use_container_width=True):
+                    if st.button("➕ More", key=f"c_more_{safe_title}", use_container_width=True):
                         st.session_state.c_limits[title] = limit + 10; st.rerun()
 
         if selected_genre == "🔥 Trending":
