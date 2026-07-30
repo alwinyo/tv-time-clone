@@ -742,14 +742,22 @@ with t_next:
         except: pass
     
     if next_filter == "📺 Series":
+        needs_heal_next = False
         up_next_tv = []
         for show in st.session_state.db["shows"]:
             if show.get("dropped", False): continue
             w_eps = len(show.get("watched_episodes", []))
             t_eps = show.get("total_episodes", 1)
-            if w_eps >= t_eps and t_eps > 0: continue
             
             details = fetch_api(f"https://api.themoviedb.org/3/tv/{show['id']}?api_key={TMDB_KEY}")
+            tmdb_total = details.get("number_of_episodes", t_eps)
+            
+            if tmdb_total != t_eps and tmdb_total > 0:
+                show["total_episodes"] = tmdb_total
+                needs_heal_next = True
+                
+            if w_eps >= tmdb_total and tmdb_total > 0: continue
+            
             watched_set = set(show.get("watched_episodes", []))
             highest_s, highest_e = -1, -1
             for code in watched_set:
@@ -786,6 +794,8 @@ with t_next:
                             break
                     if candidate_skipped: break
                 if candidate_skipped: up_next_tv.append(candidate_skipped)
+                
+        if needs_heal_next: save_db()
 
         if next_sort == "Alphabetical": up_next_tv.sort(key=lambda x: x["item"]["name"].lower())
         elif next_sort == "Release Date": up_next_tv.sort(key=lambda x: x["date"] or "1900-01-01", reverse=True)
@@ -865,14 +875,22 @@ with t_soon:
     st.divider()
     
     if soon_filter == "📺 Series":
+        needs_heal_soon = False
         soon_tv = []
         for show in st.session_state.db["shows"]:
             if show.get("dropped", False): continue
             w_eps = len(show.get("watched_episodes", []))
             t_eps = show.get("total_episodes", 1)
-            if w_eps >= t_eps and t_eps > 0: continue
             
             details = fetch_api(f"https://api.themoviedb.org/3/tv/{show['id']}?api_key={TMDB_KEY}")
+            tmdb_total = details.get("number_of_episodes", t_eps)
+            
+            if tmdb_total != t_eps and tmdb_total > 0:
+                show["total_episodes"] = tmdb_total
+                needs_heal_soon = True
+                
+            if w_eps >= tmdb_total and tmdb_total > 0: continue
+            
             found_next = False
             watched_set = set(show.get("watched_episodes", []))
             for s_info in [s for s in details.get("seasons", []) if s["season_number"] > 0]:
@@ -883,6 +901,8 @@ with t_soon:
                     if ep_code not in watched_set and air_date and air_date > TODAY:
                         soon_tv.append({"item": show, "details": details, "ep": ep, "code": ep_code, "date": air_date})
                         found_next = True; break
+                        
+        if needs_heal_soon: save_db()
 
         if soon_sort == "Alphabetical": soon_tv.sort(key=lambda x: x["item"]["name"].lower())
         else: soon_tv.sort(key=lambda x: x["date"] or "2099-01-01", reverse=False)
@@ -1393,7 +1413,7 @@ with t_profile:
                     except: pass
 
         total_mov_db = len(st.session_state.db["movies"])
-        watched_mov_db = sum(1 for m in st.session_state.db["movies"] if m.get("watched"))
+        watched_mov_db = sum(1 for m in st.session_state.db["movies"] if m.get("watched") and not m.get("dropped"))
         backlog_mins = ((total_ep_db - watched_ep_db) * 45) + ((total_mov_db - watched_mov_db) * 120)
         days_to_clear = int(backlog_mins / daily_avg_mins) if daily_avg_mins > 0 else 999
         total_items = total_ep_db + total_mov_db
