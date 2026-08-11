@@ -475,8 +475,12 @@ def show_monthly_recap_dialog(month_key, month_title, stats, recap_id):
     if feel_counts: st.markdown(f"🎭 **Monthly Vibe:** **{max(feel_counts, key=feel_counts.get)}**")
             
     st.divider()
-    if st.button("Sweet!", use_container_width=True, key="close_month_recap_btn"):
-        st.session_state.db.setdefault("seen_recaps", []).append(recap_id); save_db(); st.rerun()
+    is_seen = recap_id in st.session_state.db.get("seen_recaps", [])
+    if st.button("✖ Close Recap" if is_seen else "Sweet!", use_container_width=True, key=f"close_month_recap_{recap_id}"):
+        if not is_seen:
+            st.session_state.db.setdefault("seen_recaps", []).append(recap_id)
+            save_db()
+        st.rerun()
 
 @st.dialog("🏆 Your Cinematic Wrapped")
 def show_yearly_recap_dialog(year, y_tv, y_mov, recap_id):
@@ -525,8 +529,12 @@ def show_yearly_recap_dialog(year, y_tv, y_mov, recap_id):
         
     st.markdown(f"""<div style="background: rgba(255, 193, 7, 0.08); border: 1px dashed #FFC107; border-radius: 12px; padding: 15px; margin-top: 15px; text-align: center;"><div style="font-size: 1.15rem; font-weight: 800; color: #FFD54F;">{tier_title}</div><div style="font-size: 0.75rem; color: #eee; margin-top: 5px; line-height:1.3;">{tier_desc}</div></div>""", unsafe_allow_html=True)
     st.divider()
-    if st.button("Claim Achievement Status", use_container_width=True, key="close_year_recap_btn"):
-        st.session_state.db.setdefault("seen_recaps", []).append(recap_id); save_db(); st.rerun()
+    is_seen = recap_id in st.session_state.db.get("seen_recaps", [])
+    if st.button("✖ Close Recap" if is_seen else "Claim Achievement Status", use_container_width=True, key=f"close_year_recap_{recap_id}"):
+        if not is_seen:
+            st.session_state.db.setdefault("seen_recaps", []).append(recap_id)
+            save_db()
+        st.rerun()
 
 def evaluate_and_trigger_recaps():
     if "recaps_checked" in st.session_state: return
@@ -1283,7 +1291,7 @@ with t_movies:
 # ==========================================
 with t_profile:
     st.markdown("<h3 class='tab-title'>Control Center</h3>", unsafe_allow_html=True)
-    t_prof_stats, t_prof_health, t_prof_graphs, t_prof_hist, t_prof_set = st.tabs(["Stats", "Health", "Graphs", "Journal", "Import"])
+    t_prof_stats, t_prof_health, t_prof_graphs, t_prof_hist, t_prof_recaps, t_prof_set = st.tabs(["Stats", "Health", "Graphs", "Journal", "Recaps", "Import"])
 
     history_sorted = sorted(st.session_state.db.get("history", []), key=lambda x: x.get("d", "2000-01-01 12:00:00"), reverse=True)
 
@@ -1349,8 +1357,8 @@ with t_profile:
         </div>
         <div style="display: flex; gap: 10px; margin-bottom: 10px;">
             <div style="flex: 1; background-color: rgba(255,255,255,0.05); border-radius: 12px; padding: 15px; text-align: center; border: 1px solid rgba(255,255,255,0.1);">
-                <div style="font-size: 1.4rem; font-weight: 800; color: #FFC107; line-height: 1;">{commit_ratio}%</div>
-                <div style="font-size: 0.65rem; color: #aaa; text-transform: uppercase; font-weight: 600; margin-top: 4px;">Commitment Ratio</div>
+                <div style="font-size: 1.4rem; font-weight: 800; color: #FFC107; line-height: 1;">{completed_shows} <span style="font-size:0.8rem; color:#aaa;">/ {started_shows}</span></div>
+                <div style="font-size: 0.65rem; color: #aaa; text-transform: uppercase; font-weight: 600; margin-top: 4px;">Shows Finished / Active</div>
             </div>
             <div style="flex: 1; background-color: rgba(255,255,255,0.05); border-radius: 12px; padding: 15px; text-align: center; border: 1px solid rgba(255,255,255,0.1);">
                 <div style="font-size: 1.4rem; font-weight: 800; color: #FFC107; line-height: 1;">{avg_tv_r} <span style="font-size:0.8rem; color:#aaa;">/ {avg_mov_r}</span></div>
@@ -1582,6 +1590,31 @@ with t_profile:
                 if len(mov_hist) > st.session_state.hist_mov_limit:
                     if st.button("Load More Movies", use_container_width=True, key="load_more_mov_hist"):
                         st.session_state.hist_mov_limit += 20; st.rerun()
+
+    with t_prof_recaps:
+        seen_recaps = sorted(list(set(st.session_state.db.get("seen_recaps", []))), reverse=True)
+        if not seen_recaps:
+            st.info("No recaps available yet. Keep watching to unlock your monthly and yearly wraps!")
+        else:
+            st.markdown("#### 🎞️ Your Cinematic Archive")
+            for r_id in seen_recaps:
+                if r_id.startswith("monthly-"):
+                    m_key = r_id.replace("monthly-", "")
+                    try: m_title = datetime.strptime(m_key, "%Y-%m").strftime("%B %Y")
+                    except: m_title = m_key
+                    stats = st.session_state.db.get("analytics", {}).get(m_key, {"tv": 0, "movie": 0})
+                    if st.button(f"📅 {m_title} Wrap-Up", key=f"btn_recap_{r_id}", use_container_width=True):
+                        show_monthly_recap_dialog(m_key, m_title, stats, r_id)
+                        
+                elif r_id.startswith("yearly-"):
+                    year_str = r_id.replace("yearly-", "")
+                    y_tv, y_mov = 0, 0
+                    for k, v in st.session_state.db.get("analytics", {}).items():
+                        if k.startswith(year_str): 
+                            y_tv += v.get("tv", 0)
+                            y_mov += v.get("movie", 0)
+                    if st.button(f"🏆 {year_str} YEAR IN REVIEW", key=f"btn_recap_{r_id}", use_container_width=True):
+                        show_yearly_recap_dialog(int(year_str), y_tv, y_mov, r_id)
 
     with t_prof_set:
         with st.expander("⚙️ Import TV Time Data", expanded=True):
