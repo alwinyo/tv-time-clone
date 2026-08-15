@@ -13,7 +13,7 @@ import altair as alt
 # Mobile-friendly layout configuration
 st.set_page_config(page_title="My TV Time", layout="centered", initial_sidebar_state="collapsed")
 
-# --- MOBILE-FIRST TARGETED CSS OVERHAUL ---
+# --- PREMIUM MOBILE-FIRST CSS OVERHAUL ---
 st.markdown("""
 <style>
     #MainMenu {visibility: hidden !important;}
@@ -32,8 +32,6 @@ st.markdown("""
     }
     
     .block-container { padding: 1rem 0.5rem 5rem 0.5rem !important; max-width: 100vw !important; overflow-x: hidden !important; }
-    img { border-radius: 8px !important; box-shadow: 0 4px 10px rgba(0,0,0,0.4) !important; }
-    [data-testid="stProgressBar"] > div > div { background: linear-gradient(135deg, #FFD54F 0%, #FFC107 100%) !important; }
     
     [data-testid="stVerticalBlock"] { gap: 0.6rem !important; }
     hr { margin: 0.8rem 0 !important; border-color: rgba(255, 255, 255, 0.1) !important; }
@@ -43,71 +41,62 @@ st.markdown("""
     h3 { color: #FFD54F !important; font-weight: 800 !important; letter-spacing: -0.5px !important; }
     h3.tab-title { margin-top: -0.8rem !important; padding-top: 0 !important; }
     
-    div[data-testid="column"] > div[data-testid="stVerticalBlock"] { gap: 0.25rem !important; }
-    div[data-testid="stRadio"] { width: 100% !important; }
-    div[data-testid="stRadio"] > div { width: 100% !important; }
-    
-    div[role="radiogroup"] {
-        display: flex !important; flex-direction: row !important; background-color: rgba(0, 0, 0, 0.7) !important; border-radius: 16px !important;
-        border: 1px solid rgba(255, 255, 255, 0.05) !important; box-shadow: inset 0px 4px 10px rgba(0,0,0,0.8) !important;
-        padding: 4px !important; width: 100% !important; box-sizing: border-box !important;
+    /* --- SEAMLESS ACTION BUTTONS --- */
+    .action-bar div.stButton > button { 
+        background: rgba(20, 22, 28, 0.9) !important; border: 1px solid rgba(255, 255, 255, 0.05) !important; 
+        border-top: none !important; border-radius: 0 0 8px 8px !important; color: #aaa !important; 
+        font-size: 0.55rem !important; font-weight: 700 !important; padding: 4px 1px !important; margin-top: -8px !important; 
+        text-transform: uppercase; letter-spacing: 0.2px !important; min-height: 1.8rem !important; 
+        width: 100% !important; transition: all 0.2s !important; 
     }
+    .action-bar div.stButton > button:hover, .action-bar div.stButton > button:active { 
+        background: linear-gradient(135deg, #FFD54F 0%, #FFC107 100%) !important; color: #000 !important; 
+        box-shadow: 0 4px 10px rgba(255, 193, 7, 0.3) !important; 
+    }
+    
+    /* --- PILL NAVIGATION (DISCOVER) --- */
+    div[role="radiogroup"] {
+        display: flex !important; flex-direction: row !important; background-color: transparent !important; 
+        border: none !important; box-shadow: none !important; padding: 0 !important; 
+        width: 100% !important; overflow-x: auto !important; scrollbar-width: none; gap: 8px !important;
+    }
+    div[role="radiogroup"]::-webkit-scrollbar { display: none; }
     div[role="radiogroup"] > label {
-        flex: 1 1 0px !important; display: flex !important; justify-content: center !important; padding: 8px 0px !important; border-radius: 12px !important; margin: 0 !important; transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1) !important; min-width: 0 !important;
+        flex: 0 0 auto !important; background: rgba(255,255,255,0.05) !important; border: 1px solid rgba(255,255,255,0.1) !important;
+        border-radius: 20px !important; padding: 6px 16px !important; margin: 0 !important; transition: all 0.2s !important;
     }
     div[role="radiogroup"] > label > div:first-child { display: none !important; }
-    div[role="radiogroup"] > label:has(input:checked) { background: linear-gradient(135deg, #FFD54F 0%, #FFC107 100%) !important; box-shadow: 0 4px 15px rgba(255, 193, 7, 0.4) !important; border: none !important; }
-    div[role="radiogroup"] > label:has(input:checked) p { color: #000 !important; font-weight: 800 !important; text-shadow: none !important; }
-    div[role="radiogroup"] > label p { font-size: 0.8rem !important; font-weight: 600 !important; margin: 0 !important; color: #888 !important; white-space: nowrap !important; overflow: hidden !important; text-overflow: clip !important; }
+    div[role="radiogroup"] > label:has(input:checked) { background: #FFC107 !important; border-color: #FFC107 !important; box-shadow: 0 4px 10px rgba(255, 193, 7, 0.3) !important; }
+    div[role="radiogroup"] > label:has(input:checked) p { color: #000 !important; font-weight: 800 !important; }
+    div[role="radiogroup"] > label p { font-size: 0.75rem !important; font-weight: 600 !important; margin: 0 !important; color: #EDEDED !important; white-space: nowrap !important; }
     
-    div[data-baseweb="select"] > div:first-child {
-        background-color: rgba(0, 0, 0, 0.7) !important; border-radius: 14px !important; border: 1px solid rgba(255, 255, 255, 0.05) !important; box-shadow: inset 0px 4px 10px rgba(0,0,0,0.8) !important; padding: 4px !important;
-    }
-    
-    [data-testid="stVerticalBlockBorderWrapper"] {
-        background: linear-gradient(145deg, rgba(30, 32, 40, 0.6) 0%, rgba(15, 17, 22, 0.8) 100%) !important; backdrop-filter: blur(12px) !important;
-        -webkit-backdrop-filter: blur(12px) !important; border-radius: 12px !important; border: 1px solid rgba(255, 255, 255, 0.1) !important; box-shadow: 0px 8px 24px rgba(0, 0, 0, 0.6) !important; padding: 0.3rem !important;
-    }
-    
-    button[kind="primary"] { background: linear-gradient(135deg, #FFD54F 0%, #FFC107 100%) !important; color: #000 !important; border: none !important; border-radius: 20px !important; font-weight: 800 !important; box-shadow: 0 4px 15px rgba(255, 193, 7, 0.4) !important; letter-spacing: 0.5px !important; }
-    button[kind="secondary"] { background-color: rgba(255, 255, 255, 0.05) !important; color: #F8F9FA !important; border: 1px solid rgba(255, 255, 255, 0.1) !important; border-radius: 20px !important; font-weight: 700 !important; letter-spacing: 0.5px !important; transition: all 0.2s ease !important; }
-    button[kind="secondary"]:hover { border-color: rgba(255, 193, 7, 0.5) !important; color: #FFD54F !important; }
-    
-    .movie-wall-btn div.stButton > button { background: rgba(255, 255, 255, 0.05) !important; backdrop-filter: blur(5px) !important; -webkit-backdrop-filter: blur(5px) !important; border: 1px solid rgba(255, 255, 255, 0.08) !important; border-radius: 6px !important; color: #E0E0E0 !important; font-size: 0.50rem !important; font-weight: 700 !important; padding: 4px 1px !important; margin: 0 !important; text-transform: uppercase; letter-spacing: -0.2px !important; min-height: 1.8rem !important; line-height: 1; width: 100% !important; white-space: nowrap !important; overflow: hidden !important; text-overflow: clip !important; transition: all 0.2s !important; }
-    .movie-wall-btn div.stButton > button:hover, .movie-wall-btn div.stButton > button:active { transform: scale(0.95); background: linear-gradient(135deg, #FFD54F 0%, #FFC107 100%) !important; color: #000 !important; border-color: #FFC107 !important; box-shadow: 0 0 10px rgba(255, 193, 7, 0.5) !important; }
-    
+    /* --- TABS OVERHAUL --- */
     div[data-testid="stTabs"] > div[data-baseweb="tab-list"], div[data-testid="stTabs"] > div[role="tablist"] { display: flex !important; width: 100vw !important; max-width: 100% !important; margin-left: -0.5rem !important; padding: 0 0 5px 0 !important; gap: 0 !important; overflow-x: hidden !important; background-color: rgba(8, 9, 12, 0.85) !important; backdrop-filter: blur(12px) !important; -webkit-backdrop-filter: blur(12px) !important; border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important; }
     div[data-testid="stTabs"] button[role="tab"] { flex: 1 1 0px !important; min-width: 0 !important; padding: 10px 0px !important; margin: 0 !important; border-radius: 0 !important; transition: all 0.3s ease !important; }
     div[data-testid="stTabs"] button[role="tab"] p { font-size: 0.55rem !important; font-weight: 700 !important; text-align: center !important; margin: 0 auto !important; white-space: nowrap !important; letter-spacing: -0.4px !important; overflow: hidden !important; text-overflow: clip !important; color: #888 !important; transition: all 0.3s ease !important; }
     div[data-testid="stTabs"] button[role="tab"][aria-selected="true"] { border-bottom: 3px solid #FFC107 !important; background: linear-gradient(to top, rgba(255, 193, 7, 0.15) 0%, transparent 100%) !important; box-shadow: inset 0px -10px 15px -10px rgba(255, 193, 7, 0.5) !important; }
     div[data-testid="stTabs"] button[role="tab"][aria-selected="true"] p { color: #FFD54F !important; text-shadow: 0px 0px 10px rgba(255, 193, 7, 0.6) !important; }
     
-    div[data-testid="stHorizontalBlock"]:has(.carousel-marker), div[data-testid="stColumns"]:has(.carousel-marker) { display: flex !important; flex-direction: row !important; overflow-x: auto !important; flex-wrap: nowrap !important; scrollbar-width: none; padding-bottom: 15px !important; gap: 12px !important; }
+    /* --- CAROUSEL HACKS --- */
+    div[data-testid="stHorizontalBlock"]:has(.carousel-marker), div[data-testid="stColumns"]:has(.carousel-marker) { display: flex !important; flex-direction: row !important; overflow-x: auto !important; flex-wrap: nowrap !important; scrollbar-width: none; padding-bottom: 15px !important; gap: 10px !important; }
     div[data-testid="stHorizontalBlock"]:has(.carousel-marker)::-webkit-scrollbar, div[data-testid="stColumns"]:has(.carousel-marker)::-webkit-scrollbar { display: none; }
-    div[data-testid="column"]:has(.carousel-marker), div[data-testid="stColumn"]:has(.carousel-marker) { flex: 0 0 110px !important; width: 110px !important; min-width: 110px !important; padding: 0 !important; display: block !important; }
+    div[data-testid="column"]:has(.carousel-marker), div[data-testid="stColumn"]:has(.carousel-marker) { flex: 0 0 115px !important; width: 115px !important; min-width: 115px !important; padding: 0 !important; display: block !important; }
 
-    /* --- INVISIBLE NATIVE BUTTON HACK FOR CAST --- */
-    div[data-testid="stHorizontalBlock"]:has(.carousel-marker-cast), div[data-testid="stColumns"]:has(.carousel-marker-cast) { display: flex !important; flex-direction: row !important; overflow-x: auto !important; flex-wrap: nowrap !important; scrollbar-width: none; padding-bottom: 10px !important; gap: 10px !important; }
-    div[data-testid="stHorizontalBlock"]:has(.carousel-marker-cast)::-webkit-scrollbar, div[data-testid="stColumns"]:has(.carousel-marker-cast)::-webkit-scrollbar { display: none; }
-    div[data-testid="column"]:has(.carousel-marker-cast), div[data-testid="stColumn"]:has(.carousel-marker-cast) { flex: 0 0 85px !important; width: 85px !important; min-width: 85px !important; padding: 0 !important; display: block !important; text-align: center !important; }
-    div[data-testid="column"]:has(.carousel-marker-cast) div[data-testid="stButton"] button { background: transparent !important; border: none !important; box-shadow: none !important; padding: 0 !important; margin: 0 !important; color: #E0E0E0 !important; font-size: 0.6rem !important; font-weight: 600 !important; line-height: 1.2 !important; white-space: nowrap !important; overflow: hidden !important; text-overflow: ellipsis !important; height: auto !important; min-height: 0 !important; width: 100% !important; display: block !important; }
-    div[data-testid="column"]:has(.carousel-marker-cast) div[data-testid="stButton"] button:hover { color: #FFC107 !important; transform: none !important; text-decoration: underline !important;}
-    
-    /* --- INLINE SEARCH CLEAR BUTTON OVERRIDE --- */
+    /* --- NATIVE SEARCH CLEAR BUTTON --- */
     div[data-testid="stVerticalBlock"]:has(> div > div > .search-container-hook) { position: relative !important; }
     div:has(> .clear-btn-hook) + div { position: absolute !important; right: 8px !important; top: 7px !important; width: 26px !important; z-index: 100 !important; }
     div:has(> .clear-btn-hook) + div button { background: rgba(255,255,255,0.08) !important; border: none !important; box-shadow: none !important; color: #aaa !important; padding: 0 !important; min-height: 26px !important; height: 26px !important; width: 26px !important; border-radius: 50% !important; font-size: 0.7rem !important; display: flex !important; align-items: center !important; justify-content: center !important; margin: 0 !important; line-height: 1 !important; }
     div:has(> .clear-btn-hook) + div button:hover { background: rgba(255, 193, 7, 0.3) !important; color: #FFD54F !important; }
 
     @media (max-width: 992px) {
-        div[data-testid="stHorizontalBlock"]:has(.grid-3-col), div[data-testid="stColumns"]:has(.grid-3-col) { display: flex !important; flex-direction: row !important; flex-wrap: nowrap !important; gap: 2% !important; }
-        div[data-testid="column"]:has(.grid-3-col), div[data-testid="stColumn"]:has(.grid-3-col) { width: 32% !important; flex: 1 1 32% !important; min-width: 0 !important; padding: 0 !important; display: block !important; }
+        div[data-testid="stHorizontalBlock"]:has(.grid-3-col), div[data-testid="stColumns"]:has(.grid-3-col) { display: flex !important; flex-direction: row !important; flex-wrap: nowrap !important; gap: 3% !important; }
+        div[data-testid="column"]:has(.grid-3-col), div[data-testid="stColumn"]:has(.grid-3-col) { width: 31% !important; flex: 1 1 31% !important; min-width: 0 !important; padding: 0 !important; display: block !important; }
         div[data-testid="stHorizontalBlock"]:has(.grid-2-col), div[data-testid="stColumns"]:has(.grid-2-col) { display: flex !important; flex-direction: row !important; flex-wrap: nowrap !important; gap: 4% !important; }
         div[data-testid="column"]:has(.grid-2-col), div[data-testid="stColumn"]:has(.grid-2-col) { width: 48% !important; flex: 1 1 48% !important; min-width: 0 !important; padding: 0 !important; display: block !important; }
-        div[role="dialog"] { width: 95vw !important; max-width: 95vw !important; margin: 0 auto !important; padding: 1rem !important; background: rgba(15, 17, 22, 0.95) !important; backdrop-filter: blur(20px) !important; -webkit-backdrop-filter: blur(20px) !important; border: 1px solid rgba(255, 255, 255, 0.1) !important; }
+        div[role="dialog"] { width: 95vw !important; max-width: 95vw !important; margin: 0 auto !important; padding: 0 !important; background: rgba(15, 17, 22, 0.95) !important; backdrop-filter: blur(20px) !important; -webkit-backdrop-filter: blur(20px) !important; border: 1px solid rgba(255, 255, 255, 0.1) !important; overflow: hidden !important;}
+        div[role="dialog"] > div:first-child { padding: 0 15px 20px 15px !important; }
     }
-    .grid-title { font-size: 0.65rem !important; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: center; margin-top: 2px; margin-bottom: 2px; line-height: 1.2; color: #ddd; }
-    .badge { display: inline-block; background-color: rgba(255,255,255,0.1); color: #FFFFFF; padding: 3px 8px; border-radius: 12px; font-size: 0.7rem; font-weight: 600; margin-right: 4px; margin-bottom: 6px; border: 1px solid rgba(255,255,255,0.05); }
+    .badge { display: inline-block; background-color: rgba(255,255,255,0.1); color: #FFFFFF; padding: 3px 8px; border-radius: 12px; font-size: 0.65rem; font-weight: 600; margin-right: 4px; margin-bottom: 6px; border: 1px solid rgba(255,255,255,0.05); }
     .badge-gold { background: linear-gradient(135deg, #FFD54F 0%, #FFC107 100%); color: #000000; border: none; box-shadow: 0 2px 6px rgba(255, 193, 7, 0.3); }
 </style>
 """, unsafe_allow_html=True)
@@ -138,7 +127,9 @@ SUPABASE_KEY = st.secrets["SUPABASE_KEY"]
 DB_ENDPOINT = f"{SUPABASE_URL}/rest/v1/tv_time_data?id=eq.1"
 HEADERS = {"apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}", "Content-Type": "application/json", "Prefer": "return=representation"}
 TODAY = get_dubai_time().strftime('%Y-%m-%d')
-PREMIUM_EMOTIONS = ["None", "🤯 Mind Blown", "😂 Hilarious", "😭 Emotional", "😍 Loved it", "😡 Frustrated", "😴 Bored", "🍿 Pure Hype", "🧠 Genius Plot", "💔 Heartbroken", "🤬 Plot Armor / Trash", "🫣 Edge of Seat", "📈 Peak Cinema"]
+PREMIUM_EMOTIONS = ["None", "🤯 Mind Blown", "😂 Hilarious", "😭 Emotional", "😍 Loved it", "😡 Frustrated", "😴 Bored", "🍿 Pure Hype", "🧠 Genius Plot", "💔 Heartbroken", "🤬 Trash", "🫣 Edge of Seat", "📈 Peak Cinema"]
+
+GENRE_MAP = {28:"Action", 12:"Adventure", 16:"Animation", 35:"Comedy", 80:"Crime", 99:"Documentary", 18:"Drama", 10751:"Family", 14:"Fantasy", 36:"History", 27:"Horror", 10402:"Music", 9648:"Mystery", 10749:"Romance", 878:"Sci-Fi", 10770:"TV Movie", 53:"Thriller", 10752:"War", 37:"Western", 10759:"Action", 10762:"Kids", 10765:"Sci-Fi", 10766:"Soap", 10767:"Talk", 10768:"Politics"}
 
 @st.cache_data(ttl=43200)
 def fetch_api(url):
@@ -363,89 +354,46 @@ def cb_clear_lib_tv(): st.session_state.lib_tv_reset_ctr += 1
 def cb_clear_lib_mov(): st.session_state.lib_mov_reset_ctr += 1
 def cb_toggle_ep_info(sid, ecode): st.session_state[f"view_info_{sid}_{ecode}"] = not st.session_state.get(f"view_info_{sid}_{ecode}", False)
 
-# --- GLOBAL SAFE UNDO BANNER ---
-if st.session_state.last_action and not st.session_state.prompt_review:
-    la = st.session_state.last_action
-    with st.container(border=True):
-        c1, c2, c3 = st.columns([6, 2, 2])
-        with c1: st.success("✅ Logged successfully!")
-        with c2: st.button("↩️ Undo", key="undo_btn", on_click=cb_undo_action, args=(la["t"], la["i"], la["e"]), use_container_width=True)
-        with c3: st.button("✖", key="dismiss_undo", on_click=cb_clear_action, use_container_width=True)
-
-# --- HELPERS ---
+# --- VISUAL HELPERS ---
 def render_badges(items, is_gold=False):
     css_class = "badge badge-gold" if is_gold else "badge"
     st.markdown("".join([f'<span class="{css_class}">{item}</span>' for item in items]), unsafe_allow_html=True)
 
-def display_poster(path, width=185):
-    if path and str(path).lower() not in ["none", "null", ""]: st.image(f"https://image.tmdb.org/t/p/w{width}{path}", use_container_width=True)
-    else: st.markdown(f'<div style="background-color: rgba(255,255,255,0.05); border-radius:8px; width:100%; aspect-ratio: 2/3; display:flex; align-items:center; justify-content:center; color:#555; font-size:0.8rem; text-align:center; margin-bottom:5px;">No Image</div>', unsafe_allow_html=True)
-
-def show_cast_horizontal(cast_list, key_prefix, limit=15):
-    if not cast_list: return
-    cols = st.columns(len(cast_list[:limit]))
-    for idx, actor in enumerate(cast_list[:limit]):
-        with cols[idx]:
-            st.markdown('<span class="carousel-marker-cast"></span>', unsafe_allow_html=True)
-            img_url = f"https://image.tmdb.org/t/p/w185{actor['profile_path']}" if actor.get("profile_path") else "https://via.placeholder.com/185x278/222222/888888?text=No+Photo"
-            encoded_name = str(actor.get('name', '')).replace(" ", "+")
-            imdb_url = f"https://www.imdb.com/find/?q={encoded_name}"
-            st.markdown(f'<a href="{imdb_url}" target="_blank"><img src="{img_url}" style="width: 85px; height: 127px; border-radius: 8px; object-fit: cover; box-shadow: 0 4px 6px rgba(0,0,0,0.3); margin-bottom: 6px; transition: transform 0.2s;"></a>', unsafe_allow_html=True)
-            char_name = str(actor.get('character', '')).strip()
-            if char_name: st.markdown(f'<div style="font-size: 0.55rem; color: #FFC107; font-weight: 700; line-height: 1.1; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{char_name}</div>', unsafe_allow_html=True)
-            st.button(actor.get('name', 'Unknown'), key=f"cast_{key_prefix}_{actor['id']}_{idx}", on_click=cb_set_active_actor, args=(actor['id'],), use_container_width=True)
-
-def render_inline_actor_pokedex(actor_id):
-    details = fetch_api(f"https://api.themoviedb.org/3/person/{actor_id}?api_key={TMDB_KEY}")
-    credits = fetch_api(f"https://api.themoviedb.org/3/person/{actor_id}/combined_credits?api_key={TMDB_KEY}")
+def render_poster_card(title, poster_path, subtitle="", progress_pct=-1.0):
+    img_url = f"https://image.tmdb.org/t/p/w342{poster_path}" if poster_path else "https://via.placeholder.com/342x513/222222/555555?text=No+Poster"
+    prog_html = f'<div style="position: absolute; bottom: 0; left: 0; height: 4px; width: {min(progress_pct, 1.0)*100}%; background: #FFC107; box-shadow: 0 0 8px #FFC107; z-index: 10;"></div>' if progress_pct >= 0 else ''
+    sub_html = f'<div style="color: #FFC107; font-weight: 700; font-size: 0.6rem; margin-top: 2px;">{subtitle}</div>' if subtitle else ''
     
-    db_shows = {str(s["id"]): s for s in st.session_state.db["shows"]}
-    db_movies = {str(m["id"]): m for m in st.session_state.db["movies"]}
+    st.markdown(f"""
+    <div style="position: relative; border-radius: 8px 8px 0 0; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.5); aspect-ratio: 2/3; background-color: #111;">
+        <img src="{img_url}" style="width: 100%; height: 100%; object-fit: cover; display: block;">
+        <div style="position: absolute; bottom: 0; left: 0; right: 0; height: 50%; background: linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0) 100%); z-index: 1;"></div>
+        <div style="position: absolute; bottom: 10px; left: 10px; right: 10px; z-index: 2;">
+            <div style="color: white; font-weight: 800; font-size: 0.75rem; line-height: 1.2; text-shadow: 0 2px 4px rgba(0,0,0,0.8); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">{title}</div>
+            {sub_html}
+        </div>
+        {prog_html}
+    </div>
+    """, unsafe_allow_html=True)
+
+def render_apple_tv_header(backdrop_path, poster_path, title, badges_html):
+    bg = f"https://image.tmdb.org/t/p/w780{backdrop_path}" if backdrop_path else f"https://image.tmdb.org/t/p/w342{poster_path}"
+    post = f"https://image.tmdb.org/t/p/w185{poster_path}" if poster_path else "https://via.placeholder.com/185x278/222222/555555?text=No+Poster"
     
-    owned_items = []
-    seen_ids = set()
-    for c in credits.get("cast", []):
-        cid = str(c["id"])
-        if c["media_type"] == "tv" and cid in db_shows and cid not in seen_ids:
-            owned_items.append({"id": cid, "title": db_shows[cid]["name"], "type": "tv", "poster": db_shows[cid].get("poster_path")})
-            seen_ids.add(cid)
-        elif c["media_type"] == "movie" and cid in db_movies and cid not in seen_ids:
-            owned_items.append({"id": cid, "title": db_movies[cid]["name"], "type": "movie", "poster": db_movies[cid].get("poster_path")})
-            seen_ids.add(cid)
-            
-    st.markdown("<hr style='margin: 0.5rem 0; border-color: #FFC107;'>", unsafe_allow_html=True)
-    with st.container(border=True):
-        col_title, col_btn = st.columns([8, 2])
-        with col_title: st.markdown(f"<h4 style='color: #FFD54F;'>{details.get('name', 'Actor Profile')}</h4>", unsafe_allow_html=True)
-        with col_btn: st.button("✖ Close", key=f"close_act_{actor_id}", on_click=cb_close_active_actor, use_container_width=True)
-        
-        c1, c2 = st.columns([1, 2])
-        with c1: display_poster(details.get("profile_path"), width=185)
-        with c2:
-            st.caption(f"**Born:** {details.get('birthday', 'Unknown')}")
-            bio = details.get("biography", "")
-            if len(bio) > 150: bio = bio[:150] + "..."
-            st.write(bio if bio else "No biography available.")
-            
-        if owned_items:
-            st.markdown(f"**📚 In Your Library ({len(owned_items)})**")
-            cols = st.columns(len(owned_items))
-            for idx, item in enumerate(owned_items):
-                with cols[idx]:
-                    st.markdown('<span class="carousel-marker"></span>', unsafe_allow_html=True)
-                    display_poster(item.get("poster"), width=154)
-                    st.markdown(f'<div class="grid-title" title="{item["title"]}">{item["title"]}</div>', unsafe_allow_html=True)
-        
-        st.markdown("**🌟 Famous Roles**")
-        top_credits = sorted(credits.get("cast", []), key=lambda x: x.get("popularity", 0), reverse=True)[:10]
-        if top_credits:
-            cols = st.columns(len(top_credits))
-            for idx, item in enumerate(top_credits):
-                with cols[idx]:
-                    st.markdown('<span class="carousel-marker"></span>', unsafe_allow_html=True)
-                    display_poster(item.get("poster_path"), width=154)
-                    i_title = item.get("name") if item.get("media_type") == "tv" else item.get("title")
-                    st.markdown(f'<div class="grid-title" title="{i_title}">{i_title}</div>', unsafe_allow_html=True)
+    st.markdown(f"""
+    <div style="margin: -24px -24px 0 -24px; position: relative; overflow: hidden;">
+        <div style="width: 100%; height: 220px; background-image: url('{bg}'); background-size: cover; background-position: center; filter: brightness(0.6) blur({0 if backdrop_path else 15}px);"></div>
+        <div style="position: absolute; bottom: 0; left: 0; right: 0; height: 120px; background: linear-gradient(to top, rgba(15,17,22,1) 0%, rgba(15,17,22,0) 100%);"></div>
+        <div style="position: absolute; bottom: -20px; left: 20px; right: 20px; display: flex; align-items: flex-end; gap: 15px; z-index: 10;">
+            <img src="{post}" style="width: 105px; height: 157px; border-radius: 8px; box-shadow: 0 8px 20px rgba(0,0,0,0.8); border: 1px solid rgba(255,255,255,0.1); object-fit: cover;">
+            <div style="padding-bottom: 25px; flex: 1; min-width: 0;">
+                <div style="margin: 0; padding: 0; font-size: 1.4rem; font-weight: 800; line-height: 1.1; text-shadow: 0 2px 4px rgba(0,0,0,0.8); color: white; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">{title}</div>
+                <div style="margin-top: 6px;">{badges_html}</div>
+            </div>
+        </div>
+    </div>
+    <div style="height: 35px;"></div>
+    """, unsafe_allow_html=True)
 
 # --- RECAP ENGINE ---
 @st.dialog("🌙 Monthly Wrap-Up")
@@ -568,9 +516,10 @@ def show_episode_details(show_id, show_name, ep_code, ep_data=None, is_watched=F
             ep_data = fetch_api(f"https://api.themoviedb.org/3/tv/{show_id}/season/{s_num}/episode/{e_num}?api_key={TMDB_KEY}")
         except: ep_data = {}
         
-    display_poster(ep_data.get("still_path"), width=500)
-    st.markdown(f"### {ep_data.get('name', 'Untitled Episode')}")
-    render_badges([ep_code, f"⭐ {ep_data.get('vote_average', 0.0)}"], is_gold=True)
+    s_details = fetch_api(f"https://api.themoviedb.org/3/tv/{show_id}?api_key={TMDB_KEY}")
+    badges = f'<span class="badge badge-gold">{ep_code}</span><span class="badge">⭐ {ep_data.get("vote_average", 0.0)}</span>'
+    render_apple_tv_header(ep_data.get("still_path") or s_details.get("backdrop_path"), s_details.get("poster_path"), ep_data.get('name', 'Untitled Episode'), badges)
+    
     st.caption(f"**Aired:** {ep_data.get('air_date', 'N/A')}")
     st.write(ep_data.get("overview", "No synopsis available for this episode yet."))
     
@@ -621,10 +570,9 @@ def show_episode_details(show_id, show_name, ep_code, ep_data=None, is_watched=F
 
 @st.dialog("Manage Show")
 def manage_show_dialog(show_id, show_name, details):
-    display_poster(details.get("backdrop_path"), width=500)
-    st.markdown(f"### {show_name}")
-    genres = [g["name"] for g in details.get("genres", [])]
-    render_badges([details.get('status')] + genres)
+    badges = f'<span class="badge badge-gold">{details.get("status")}</span>' + "".join([f'<span class="badge">{g["name"]}</span>' for g in details.get("genres", [])])
+    render_apple_tv_header(details.get("backdrop_path"), details.get("poster_path"), show_name, badges)
+    
     st.write(details.get("overview", "No overview available."))
     
     providers = fetch_api(f"https://api.themoviedb.org/3/tv/{show_id}/watch/providers?api_key={TMDB_KEY}")
@@ -670,9 +618,10 @@ def manage_show_dialog(show_id, show_name, details):
 @st.dialog("Movie Details")
 def show_movie_details(m_id, m_name, details=None, is_watched=False):
     if not details: details = fetch_api(f"https://api.themoviedb.org/3/movie/{m_id}?api_key={TMDB_KEY}")
-    display_poster(details.get("backdrop_path"), width=500)
-    st.markdown(f"### {m_name}")
-    render_badges([f"{details.get('runtime', 0)} mins"] + [g["name"] for g in details.get("genres", [])])
+    
+    badges = f'<span class="badge badge-gold">{details.get("runtime", 0)} mins</span>' + "".join([f'<span class="badge">{g["name"]}</span>' for g in details.get("genres", [])])
+    render_apple_tv_header(details.get("backdrop_path"), details.get("poster_path"), m_name, badges)
+    
     st.write(details.get("overview", "No synopsis available."))
     
     current_movie = next((m for m in st.session_state.db["movies"] if str(m["id"]) == str(m_id)), None)
@@ -811,8 +760,33 @@ with t_next:
 
         if not up_next_tv: st.info("You are completely caught up on series! 🎉")
         else:
+            # HERO BANNER LOGIC
+            hero = up_next_tv[0]
+            h_show, h_details, h_ep, h_code = hero["item"], hero["details"], hero["ep"], hero["code"]
+            h_bg = f"https://image.tmdb.org/t/p/w780{h_details.get('backdrop_path')}" if h_details.get('backdrop_path') else f"https://image.tmdb.org/t/p/w342{h_show.get('poster_path')}"
+            
+            st.markdown(f"""
+            <div style="position: relative; border-radius: 12px; overflow: hidden; margin-bottom: 5px; box-shadow: 0 8px 24px rgba(0,0,0,0.6); height: 220px;">
+                <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background-image: url('{h_bg}'); background-size: cover; background-position: center; filter: brightness(0.6);"></div>
+                <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: linear-gradient(to top, rgba(15,17,22,1) 0%, rgba(15,17,22,0.2) 60%, rgba(15,17,22,0) 100%);"></div>
+                <div style="position: absolute; bottom: 20px; left: 20px; right: 20px;">
+                    <div style="color: #FFC107; font-weight: 800; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px;">Up Next</div>
+                    <div style="color: white; font-weight: 900; font-size: 1.8rem; line-height: 1.1; text-shadow: 0 2px 8px rgba(0,0,0,0.8); margin-bottom: 5px;">{h_show['name']}</div>
+                    <div style="color: #ccc; font-weight: 600; font-size: 0.85rem;">{h_code} • {h_ep.get('name', 'Episode')}</div>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            c_h1, c_h2 = st.columns([7, 3])
+            with c_h1: st.button("▶ Resume Watching", key=f"hero_w_tv_{h_show['id']}", on_click=cb_watch_tv_feed, args=(h_show['id'], h_show['name'], h_code), use_container_width=True, type="primary")
+            with c_h2: 
+                if st.button("ℹ️ Info", key=f"hero_i_tv_{h_show['id']}", use_container_width=True): st.session_state.active_actor = None; show_episode_details(h_show['id'], h_show['name'], h_code, h_ep, is_watched=False)
+            
+            st.markdown("<div style='height: 15px;'></div>", unsafe_allow_html=True)
+            
+            # THE REST OF THE GRID
             limit = st.session_state.next_tv_limit
-            for i in range(0, len(up_next_tv[:limit]), 3):
+            for i in range(1, len(up_next_tv[:limit]), 3):
                 cols = st.columns(3)
                 for j in range(3):
                     idx = i + j
@@ -821,13 +795,12 @@ with t_next:
                         if idx < len(up_next_tv[:limit]):
                             item = up_next_tv[idx]
                             show, details, ep, ep_code = item["item"], item["details"], item["ep"], item["code"]
-                            display_poster(show.get("poster_path") or details.get('poster_path'), width=185)
-                            st.markdown(f'<div class="grid-title" title="{show["name"]}">{show["name"]}</div>', unsafe_allow_html=True)
-                            st.markdown(f'<div style="text-align:center; font-size:0.7rem; color:#aaa; margin-bottom:5px; font-weight:600;">{ep_code}</div>', unsafe_allow_html=True)
-                            st.markdown('<div class="movie-wall-btn">', unsafe_allow_html=True)
-                            st.button("✔️ Watch", key=f"n_w_tv_{show['id']}_{ep_code}_{idx}", on_click=cb_watch_tv_feed, args=(show['id'], show['name'], ep_code), use_container_width=True)
-                            if st.button("ℹ️ Info", key=f"n_i_tv_{show['id']}_{ep_code}_{idx}", use_container_width=True):
-                                st.session_state.active_actor = None; show_episode_details(show['id'], show['name'], ep_code, ep, is_watched=False)
+                            render_poster_card(show["name"], show.get("poster_path") or details.get('poster_path'), subtitle=ep_code)
+                            st.markdown('<div class="action-bar">', unsafe_allow_html=True)
+                            bc1, bc2 = st.columns(2)
+                            with bc1: st.button("✔️", key=f"n_w_tv_{show['id']}_{ep_code}_{idx}", on_click=cb_watch_tv_feed, args=(show['id'], show['name'], ep_code), use_container_width=True)
+                            with bc2: 
+                                if st.button("ℹ️", key=f"n_i_tv_{show['id']}_{ep_code}_{idx}", use_container_width=True): st.session_state.active_actor = None; show_episode_details(show['id'], show['name'], ep_code, ep, is_watched=False)
                             st.markdown('</div>', unsafe_allow_html=True)
                                 
             if len(up_next_tv) > st.session_state.next_tv_limit:
@@ -858,12 +831,12 @@ with t_next:
                         st.markdown('<span class="grid-3-col"></span>', unsafe_allow_html=True)
                         if idx < len(up_next_mov[:limit]):
                             m = up_next_mov[idx]["item"]
-                            display_poster(m.get('poster_path'), width=185)
-                            st.markdown(f'<div class="grid-title" title="{m["name"]}">{m["name"]}</div>', unsafe_allow_html=True)
-                            st.markdown('<div class="movie-wall-btn">', unsafe_allow_html=True)
-                            st.button("✔️ Watch", key=f"n_w_mov_{m['id']}_{idx}", on_click=cb_watch_mov_feed, args=(m['id'], m['name']), use_container_width=True)
-                            if st.button("ℹ️ Info", key=f"n_i_mov_{m['id']}_{idx}", use_container_width=True):
-                                st.session_state.active_actor = None; show_movie_details(m['id'], m['name'], details=None, is_watched=False)
+                            render_poster_card(m["name"], m.get('poster_path'))
+                            st.markdown('<div class="action-bar">', unsafe_allow_html=True)
+                            bc1, bc2 = st.columns(2)
+                            with bc1: st.button("✔️", key=f"n_w_mov_{m['id']}_{idx}", on_click=cb_watch_mov_feed, args=(m['id'], m['name']), use_container_width=True)
+                            with bc2:
+                                if st.button("ℹ️", key=f"n_i_mov_{m['id']}_{idx}", use_container_width=True): st.session_state.active_actor = None; show_movie_details(m['id'], m['name'], details=None, is_watched=False)
                             st.markdown('</div>', unsafe_allow_html=True)
                         
             if len(up_next_mov) > st.session_state.next_mov_limit:
@@ -925,13 +898,12 @@ with t_soon:
                         if idx < len(soon_tv[:limit]):
                             item = soon_tv[idx]
                             show, details, ep, ep_code = item["item"], item["details"], item["ep"], item["code"]
-                            display_poster(show.get("poster_path") or details.get('poster_path'), width=185)
-                            st.markdown(f'<div class="grid-title" title="{show["name"]}">{show["name"]}</div>', unsafe_allow_html=True)
-                            st.markdown(f'<div style="text-align:center; font-size:0.65rem; color:#FFC107; margin-bottom:5px; font-weight:600;">{ep_code} • {calc_time_remaining(item["date"])}</div>', unsafe_allow_html=True)
-                            st.markdown('<div class="movie-wall-btn">', unsafe_allow_html=True)
-                            st.button("✔️ Watch", key=f"s_w_tv_{show['id']}_{ep_code}_{idx}", on_click=cb_watch_tv_feed, args=(show['id'], show['name'], ep_code), use_container_width=True)
-                            if st.button("ℹ️ Info", key=f"s_i_tv_{show['id']}_{ep_code}_{idx}", use_container_width=True):
-                                st.session_state.active_actor = None; show_episode_details(show['id'], show['name'], ep_code, ep, is_watched=False)
+                            render_poster_card(show["name"], show.get("poster_path") or details.get('poster_path'), subtitle=f"{ep_code} • {calc_time_remaining(item['date'])}")
+                            st.markdown('<div class="action-bar">', unsafe_allow_html=True)
+                            bc1, bc2 = st.columns(2)
+                            with bc1: st.button("✔️", key=f"s_w_tv_{show['id']}_{ep_code}_{idx}", on_click=cb_watch_tv_feed, args=(show['id'], show['name'], ep_code), use_container_width=True)
+                            with bc2:
+                                if st.button("ℹ️", key=f"s_i_tv_{show['id']}_{ep_code}_{idx}", use_container_width=True): st.session_state.active_actor = None; show_episode_details(show['id'], show['name'], ep_code, ep, is_watched=False)
                             st.markdown('</div>', unsafe_allow_html=True)
 
             if len(soon_tv) > st.session_state.soon_tv_limit:
@@ -960,13 +932,12 @@ with t_soon:
                         if idx < len(soon_mov[:limit]):
                             item = soon_mov[idx]
                             m = item["item"]
-                            display_poster(m.get('poster_path'), width=185)
-                            st.markdown(f'<div class="grid-title" title="{m["name"]}">{m["name"]}</div>', unsafe_allow_html=True)
-                            st.markdown(f'<div style="text-align:center; font-size:0.65rem; color:#FFC107; margin-bottom:5px; font-weight:600;">{calc_time_remaining(item["date"])}</div>', unsafe_allow_html=True)
-                            st.markdown('<div class="movie-wall-btn">', unsafe_allow_html=True)
-                            st.button("✔️ Watch", key=f"s_w_mov_{m['id']}_{idx}", on_click=cb_watch_mov_feed, args=(m['id'], m['name']), use_container_width=True)
-                            if st.button("ℹ️ Info", key=f"s_i_mov_{m['id']}_{idx}", use_container_width=True):
-                                st.session_state.active_actor = None; show_movie_details(m['id'], m['name'], details=None, is_watched=False)
+                            render_poster_card(m["name"], m.get('poster_path'), subtitle=calc_time_remaining(item["date"]))
+                            st.markdown('<div class="action-bar">', unsafe_allow_html=True)
+                            bc1, bc2 = st.columns(2)
+                            with bc1: st.button("✔️", key=f"s_w_mov_{m['id']}_{idx}", on_click=cb_watch_mov_feed, args=(m['id'], m['name']), use_container_width=True)
+                            with bc2:
+                                if st.button("ℹ️", key=f"s_i_mov_{m['id']}_{idx}", use_container_width=True): st.session_state.active_actor = None; show_movie_details(m['id'], m['name'], details=None, is_watched=False)
                             st.markdown('</div>', unsafe_allow_html=True)
 
             if len(soon_mov) > st.session_state.soon_mov_limit:
@@ -1001,34 +972,36 @@ with t_search:
                             item_id = item["id"]
                             title = item.get("name") if search_type == "TV Shows" else item.get("title")
                             
-                            display_poster(item.get("poster_path"), width=185)
-                            st.markdown(f'<div class="grid-title" title="{title}">{title}</div>', unsafe_allow_html=True)
-                            st.markdown('<div class="movie-wall-btn">', unsafe_allow_html=True)
+                            render_poster_card(title, item.get("poster_path"))
+                            st.markdown('<div class="action-bar">', unsafe_allow_html=True)
                             is_tv = (search_type == "TV Shows")
                             added = any(str(x["id"]) == str(item_id) for x in st.session_state.db["shows" if is_tv else "movies"])
                             
-                            if not added:
-                                if st.button("➕ ADD", key=f"add_{item_id}_{i+j}", use_container_width=True):
+                            bc1, bc2 = st.columns(2)
+                            with bc1:
+                                if not added:
+                                    if st.button("➕", key=f"add_{item_id}_{i+j}", use_container_width=True):
+                                        details = fetch_api(f"https://api.themoviedb.org/3/{'tv' if is_tv else 'movie'}/{item_id}?api_key={TMDB_KEY}")
+                                        if is_tv: st.session_state.db["shows"].append({"id": item_id, "name": title, "watched_episodes": get_watched_from_history("tv", item_id), "poster_path": details.get("poster_path", ""), "first_air_date": details.get("first_air_date", ""), "total_episodes": details.get("number_of_episodes", 1), "dropped": False})
+                                        else: st.session_state.db["movies"].append({"id": item_id, "name": title, "watched": get_watched_from_history("movie", item_id), "poster_path": details.get("poster_path", ""), "release_date": details.get("release_date", ""), "runtime": details.get("runtime", 0), "dropped": False})
+                                        if save_db(): st.rerun()
+                                else: st.button("✔️", key=f"dsb_{item_id}_{i+j}", disabled=True, use_container_width=True)
+                            with bc2:
+                                if st.button("ℹ️", key=f"inf_{item_id}_{i+j}", use_container_width=True):
+                                    st.session_state.active_actor = None
                                     details = fetch_api(f"https://api.themoviedb.org/3/{'tv' if is_tv else 'movie'}/{item_id}?api_key={TMDB_KEY}")
-                                    if is_tv: st.session_state.db["shows"].append({"id": item_id, "name": title, "watched_episodes": get_watched_from_history("tv", item_id), "poster_path": details.get("poster_path", ""), "first_air_date": details.get("first_air_date", ""), "total_episodes": details.get("number_of_episodes", 1), "dropped": False})
-                                    else: st.session_state.db["movies"].append({"id": item_id, "name": title, "watched": get_watched_from_history("movie", item_id), "poster_path": details.get("poster_path", ""), "release_date": details.get("release_date", ""), "runtime": details.get("runtime", 0), "dropped": False})
-                                    if save_db(): st.rerun()
-                            else: st.button("✔️ ADDED", key=f"dsb_{item_id}_{i+j}", disabled=True, use_container_width=True)
-                            
-                            if st.button("ℹ️ INFO", key=f"inf_{item_id}_{i+j}", use_container_width=True):
-                                st.session_state.active_actor = None
-                                details = fetch_api(f"https://api.themoviedb.org/3/{'tv' if is_tv else 'movie'}/{item_id}?api_key={TMDB_KEY}")
-                                if is_tv: manage_show_dialog(item_id, title, details)
-                                else: show_movie_details(item_id, title, details, is_watched=False)
+                                    if is_tv: manage_show_dialog(item_id, title, details)
+                                    else: show_movie_details(item_id, title, details, is_watched=False)
                             st.markdown('</div>', unsafe_allow_html=True)
     else:
-        genre_options = ["🔥 Trending", "🤣 Comedy", "💥 Action", "🐉 Sci-Fi/Fantasy", "🔪 Thriller", "👻 Horror"]
-        selected_genre = st.selectbox("Filters", genre_options, label_visibility="collapsed")
+        # THE PILL FILTER NAVIGATION
+        genre_options = ["🔥 Trending", "🤣 Comedy", "💥 Action", "🐉 Sci-Fi", "🔪 Thriller", "👻 Horror"]
+        selected_genre = st.radio("Filters", genre_options, label_visibility="collapsed", horizontal=True)
         st.divider()
 
         def render_carousel(title, items, c_type):
             if not items: return
-            st.markdown(f"<h5 style='margin-bottom:0;'>{title}</h5>", unsafe_allow_html=True)
+            st.markdown(f"<h5 style='margin-bottom:5px;'>{title}</h5>", unsafe_allow_html=True)
             limit = st.session_state.c_limits.get(title, 10)
             render_items, show_load_more = items[:limit], limit < len(items)
             cols = st.columns(len(render_items) + (1 if show_load_more else 0))
@@ -1038,27 +1011,28 @@ with t_search:
             for idx, item in enumerate(render_items):
                 with cols[idx]:
                     st.markdown('<span class="carousel-marker"></span>', unsafe_allow_html=True)
-                    display_poster(item.get("poster_path"), width=154)
                     i_title = item.get("name") if c_type == "tv" else item.get("title")
-                    st.markdown(f'<div class="grid-title" title="{i_title}">{i_title}</div>', unsafe_allow_html=True)
-                    st.markdown('<div class="movie-wall-btn">', unsafe_allow_html=True)
+                    render_poster_card(i_title, item.get("poster_path"))
+                    st.markdown('<div class="action-bar">', unsafe_allow_html=True)
                     
                     item_id = item["id"]
                     added = any(str(x["id"]) == str(item_id) for x in st.session_state.db["shows" if c_type == "tv" else "movies"])
-                        
-                    if not added:
-                        if st.button("➕ ADD", key=f"c_add_{safe_title}_{item_id}_{idx}", use_container_width=True):
-                            details = fetch_api(f"https://api.themoviedb.org/3/{c_type}/{item_id}?api_key={TMDB_KEY}")
-                            if c_type == "tv": st.session_state.db["shows"].append({"id": item_id, "name": i_title, "watched_episodes": get_watched_from_history("tv", item_id), "poster_path": details.get("poster_path", ""), "first_air_date": details.get("first_air_date", ""), "total_episodes": details.get("number_of_episodes", 1), "dropped": False})
-                            else: st.session_state.db["movies"].append({"id": item_id, "name": i_title, "watched": get_watched_from_history("movie", item_id), "poster_path": details.get("poster_path", ""), "release_date": details.get("release_date", ""), "runtime": details.get("runtime", 0), "dropped": False})
-                            if save_db(): st.rerun()
-                    else: st.button("✔️ ADDED", key=f"c_dsb_{safe_title}_{item_id}_{idx}", disabled=True, use_container_width=True)
                     
-                    if st.button("ℹ️ INFO", key=f"c_inf_{safe_title}_{item_id}_{idx}", use_container_width=True):
-                        st.session_state.active_actor = None
-                        details = fetch_api(f"https://api.themoviedb.org/3/{c_type}/{item_id}?api_key={TMDB_KEY}")
-                        if c_type == "tv": manage_show_dialog(item_id, i_title, details)
-                        else: show_movie_details(item_id, i_title, details, is_watched=False)
+                    bc1, bc2 = st.columns(2)    
+                    with bc1:
+                        if not added:
+                            if st.button("➕", key=f"c_add_{safe_title}_{item_id}_{idx}", use_container_width=True):
+                                details = fetch_api(f"https://api.themoviedb.org/3/{c_type}/{item_id}?api_key={TMDB_KEY}")
+                                if c_type == "tv": st.session_state.db["shows"].append({"id": item_id, "name": i_title, "watched_episodes": get_watched_from_history("tv", item_id), "poster_path": details.get("poster_path", ""), "first_air_date": details.get("first_air_date", ""), "total_episodes": details.get("number_of_episodes", 1), "dropped": False})
+                                else: st.session_state.db["movies"].append({"id": item_id, "name": i_title, "watched": get_watched_from_history("movie", item_id), "poster_path": details.get("poster_path", ""), "release_date": details.get("release_date", ""), "runtime": details.get("runtime", 0), "dropped": False})
+                                if save_db(): st.rerun()
+                        else: st.button("✔️", key=f"c_dsb_{safe_title}_{item_id}_{idx}", disabled=True, use_container_width=True)
+                    with bc2:
+                        if st.button("ℹ️", key=f"c_inf_{safe_title}_{item_id}_{idx}", use_container_width=True):
+                            st.session_state.active_actor = None
+                            details = fetch_api(f"https://api.themoviedb.org/3/{c_type}/{item_id}?api_key={TMDB_KEY}")
+                            if c_type == "tv": manage_show_dialog(item_id, i_title, details)
+                            else: show_movie_details(item_id, i_title, details, is_watched=False)
                     st.markdown('</div>', unsafe_allow_html=True)
             
             if show_load_more:
@@ -1089,8 +1063,8 @@ with t_search:
             k_mov = fetch_api(f"https://api.themoviedb.org/3/discover/movie?api_key={TMDB_KEY}&with_original_language=ko&primary_release_date.gte={start_month}&primary_release_date.lte={end_month_str}&sort_by=popularity.desc")
             if k_mov.get("results"): render_carousel(f"🇰🇷 K-Movies ({current_date.strftime('%B %Y')})", k_mov["results"], "movie")
         else:
-            genre_map_tv = {"🤣 Comedy": 35, "💥 Action": 10759, "🐉 Sci-Fi/Fantasy": 10765, "🔪 Thriller": 9648, "👻 Horror": 9648} 
-            genre_map_mov = {"🤣 Comedy": 35, "💥 Action": 28, "🐉 Sci-Fi/Fantasy": 878, "🔪 Thriller": 53, "👻 Horror": 27}
+            genre_map_tv = {"🤣 Comedy": 35, "💥 Action": 10759, "🐉 Sci-Fi": 10765, "🔪 Thriller": 9648, "👻 Horror": 9648} 
+            genre_map_mov = {"🤣 Comedy": 35, "💥 Action": 28, "🐉 Sci-Fi": 878, "🔪 Thriller": 53, "👻 Horror": 27}
             tv_g = fetch_api(f"https://api.themoviedb.org/3/discover/tv?api_key={TMDB_KEY}&with_genres={genre_map_tv[selected_genre]}&sort_by=popularity.desc")
             mov_g = fetch_api(f"https://api.themoviedb.org/3/discover/movie?api_key={TMDB_KEY}&with_genres={genre_map_mov[selected_genre]}&sort_by=popularity.desc")
             render_carousel(f"Top {selected_genre} Series", tv_g.get("results", []), "tv")
@@ -1162,24 +1136,21 @@ with t_tv:
                         st.markdown('<span class="grid-3-col"></span>', unsafe_allow_html=True)
                         if i + j < len(paginated_shows):
                             show, t_eps, w_eps = paginated_shows[i + j]
-                            display_poster(show.get("poster_path"), width=185)
-                            st.markdown(f'<div class="grid-title" title="{show["name"]}">{show["name"]}</div>', unsafe_allow_html=True)
-                            st.progress(min(w_eps / t_eps, 1.0) if t_eps > 0 else 0.0)
-                            st.markdown('<div class="movie-wall-btn">', unsafe_allow_html=True)
+                            prog_val = min(w_eps / t_eps, 1.0) if t_eps > 0 else 0.0
+                            render_poster_card(show["name"], show.get("poster_path"), progress_pct=prog_val)
+                            st.markdown('<div class="action-bar">', unsafe_allow_html=True)
                             
                             if st.session_state.tv_tab == "DROPPED":
-                                st.markdown('<span class="grid-2-col"></span>', unsafe_allow_html=True)
                                 bc1, bc2 = st.columns(2)
-                                with bc1: st.button("♻️ RESTORE", key=f"s_res_{show['id']}", on_click=cb_restore_tv, args=(show['id'],), use_container_width=True)
-                                with bc2: st.button("🗑️ DEL", key=f"s_pdel_{show['id']}", on_click=cb_perm_delete_tv, args=(show['id'],), use_container_width=True)
+                                with bc1: st.button("♻️", key=f"s_res_{show['id']}", on_click=cb_restore_tv, args=(show['id'],), use_container_width=True)
+                                with bc2: st.button("🗑️", key=f"s_pdel_{show['id']}", on_click=cb_perm_delete_tv, args=(show['id'],), use_container_width=True)
                             elif st.session_state.tv_tab == "WATCHLIST":
-                                st.markdown('<span class="grid-2-col"></span>', unsafe_allow_html=True)
                                 bc1, bc2 = st.columns(2)
                                 with bc1:
-                                    if st.button("ℹ️ INFO", key=f"s_mgr_{show['id']}", use_container_width=True):
+                                    if st.button("ℹ️", key=f"s_mgr_{show['id']}", use_container_width=True):
                                         st.session_state.active_actor = None; manage_show_dialog(show['id'], show['name'], fetch_api(f"https://api.themoviedb.org/3/tv/{show['id']}?api_key={TMDB_KEY}"))
                                 with bc2:
-                                    st.button("⚰️ DROP", key=f"s_drp_{show['id']}", on_click=cb_drop_tv, args=(show['id'],), use_container_width=True)
+                                    st.button("⚰️", key=f"s_drp_{show['id']}", on_click=cb_drop_tv, args=(show['id'],), use_container_width=True)
                             else:
                                 if st.button("ℹ️ INFO", key=f"s_mgr_{show['id']}", use_container_width=True):
                                     st.session_state.active_actor = None; manage_show_dialog(show['id'], show['name'], fetch_api(f"https://api.themoviedb.org/3/tv/{show['id']}?api_key={TMDB_KEY}"))
@@ -1252,23 +1223,20 @@ with t_movies:
                         st.markdown('<span class="grid-3-col"></span>', unsafe_allow_html=True)
                         if i + j < len(paginated_movies):
                             m, is_watched = paginated_movies[i + j]
-                            display_poster(m.get("poster_path"), width=185)
-                            st.markdown(f'<div class="grid-title" title="{m["name"]}">{m["name"]}</div>', unsafe_allow_html=True)
-                            st.markdown('<div class="movie-wall-btn">', unsafe_allow_html=True)
+                            render_poster_card(m["name"], m.get("poster_path"))
+                            st.markdown('<div class="action-bar">', unsafe_allow_html=True)
                             
                             if st.session_state.mov_tab == "DROPPED":
-                                st.markdown('<span class="grid-2-col"></span>', unsafe_allow_html=True)
                                 bc1, bc2 = st.columns(2)
-                                with bc1: st.button("♻️ RESTORE", key=f"m_res_{m['id']}", on_click=cb_restore_mov, args=(m['id'],), use_container_width=True)
-                                with bc2: st.button("🗑️ DEL", key=f"m_pdel_{m['id']}", on_click=cb_perm_delete_mov, args=(m['id'],), use_container_width=True)
+                                with bc1: st.button("♻️", key=f"m_res_{m['id']}", on_click=cb_restore_mov, args=(m['id'],), use_container_width=True)
+                                with bc2: st.button("🗑️", key=f"m_pdel_{m['id']}", on_click=cb_perm_delete_mov, args=(m['id'],), use_container_width=True)
                             elif st.session_state.mov_tab == "WATCHLIST":
-                                st.markdown('<span class="grid-2-col"></span>', unsafe_allow_html=True)
                                 bc1, bc2 = st.columns(2)
                                 with bc1:
-                                    if st.button("ℹ️ INFO", key=f"m_mgr_{m['id']}", use_container_width=True):
+                                    if st.button("ℹ️", key=f"m_mgr_{m['id']}", use_container_width=True):
                                         st.session_state.active_actor = None; show_movie_details(m['id'], m['name'], details=None, is_watched=is_watched)
                                 with bc2:
-                                    st.button("⚰️ DROP", key=f"m_drp_{m['id']}", on_click=cb_drop_mov, args=(m['id'],), use_container_width=True)
+                                    st.button("⚰️", key=f"m_drp_{m['id']}", on_click=cb_drop_mov, args=(m['id'],), use_container_width=True)
                             else:
                                 if st.button("ℹ️ INFO", key=f"m_mgr_{m['id']}", use_container_width=True):
                                     st.session_state.active_actor = None; show_movie_details(m['id'], m['name'], details=None, is_watched=is_watched)
@@ -1314,16 +1282,34 @@ with t_profile:
         avg_tv_r = round(sum(tv_ratings)/len(tv_ratings), 1) if tv_ratings else 0.0
         avg_mov_r = round(sum(mov_ratings)/len(mov_ratings), 1) if mov_ratings else 0.0
         
-        plat_counts, feel_counts = {}, {}
+        plat_counts, feel_counts, date_counts = {}, {}, {}
+        night_owl_count = 0
         for h in history_sorted:
             if h.get("p") and h.get("p") != "None": plat_counts[h["p"]] = plat_counts.get(h["p"], 0) + 1
             if h.get("f") and h.get("f") != "None": feel_counts[h["f"]] = feel_counts.get(h["f"], 0) + 1
+            try:
+                dt = datetime.strptime(h["d"], "%Y-%m-%d %H:%M:%S")
+                if 1 <= dt.hour <= 5: night_owl_count += 1
+                d_only = dt.date()
+                date_counts[d_only] = date_counts.get(d_only, 0) + 1
+            except: pass
             
         top_plat_global = max(plat_counts, key=plat_counts.get) if plat_counts else "N/A"
         top_feel_global = max(feel_counts, key=feel_counts.get) if feel_counts else "N/A"
+        max_binge_day = max(date_counts.values()) if date_counts else 0
+        
+        flairs = []
+        if night_owl_count >= 10: flairs.append("🦉 Night Owl")
+        if max_binge_day >= 6: flairs.append("🍿 Marathoner")
+        if completed_shows >= 10: flairs.append("👑 Completionist")
+        if not flairs: flairs.append("🌱 Newcomer")
+        
+        st.markdown("#### User Flair")
+        st.markdown("".join([f'<span style="background: rgba(255,255,255,0.1); color: #fff; padding: 4px 12px; border-radius: 16px; font-size: 0.75rem; font-weight: 700; margin-right: 8px; border: 1px solid rgba(255,255,255,0.1);">{f}</span>' for f in flairs]), unsafe_allow_html=True)
+        st.markdown("<div style='height: 15px;'></div>", unsafe_allow_html=True)
         
         st.markdown(f"""
-        <div style="display: flex; gap: 10px; margin-bottom: 10px; margin-top: 10px;">
+        <div style="display: flex; gap: 10px; margin-bottom: 10px;">
             <div style="flex: 1; background-color: rgba(255,255,255,0.05); border-radius: 12px; padding: 15px; text-align: center; border: 1px solid rgba(255,255,255,0.1);">
                 <div style="font-size: 1.8rem; font-weight: 800; color: #FFC107; line-height: 1;">{months}</div>
                 <div style="font-size: 0.65rem; color: #aaa; text-transform: uppercase; font-weight: 600; margin-top: 4px;">Months</div>
@@ -1441,50 +1427,67 @@ with t_profile:
             for s in stagnant_shows[:5]: st.markdown(f"• **{s['name']}**")
 
     with t_prof_graphs:
-        c_tab1, c_tab2, c_tab3 = st.tabs(["Activity", "Platforms", "Ratings"])
+        c_tab1, c_tab2, c_tab3, c_tab4 = st.tabs(["DNA", "Heatmap", "Vibe", "Ratings"])
+        
         with c_tab1:
-            analytics = st.session_state.db.get("analytics", {})
-            last_12_months = []
-            try:
-                for i in range(11, -1, -1): last_12_months.append(get_dubai_time() - pd.DateOffset(months=i))
-            except:
-                for i in range(11, -1, -1): last_12_months.append(get_dubai_time() - timedelta(days=30*i))
-            data_tv, data_mov = [], []
-            for dt in last_12_months:
-                m_key, label = dt.strftime('%Y-%m'), dt.strftime('%b \'%y')
-                stats = analytics.get(m_key, {"tv": 0, "movie": 0})
-                data_tv.append({"Month": label, "Episodes": stats["tv"]})
-                data_mov.append({"Month": label, "Movies": stats["movie"]})
-            df_tv, df_mov = pd.DataFrame(data_tv), pd.DataFrame(data_mov)
+            st.markdown("**🧬 Cinematic Taste Profile**")
+            # Fetch genres dynamically for top 10 most interacted items to save API calls
+            top_interactions = {}
+            for h in history_sorted: top_interactions[(h["t"], h["i"])] = top_interactions.get((h["t"], h["i"]), 0) + 1
+            top_10 = sorted(top_interactions.keys(), key=lambda k: top_interactions[k], reverse=True)[:10]
             
-            st.markdown("**📺 TV Series**")
-            if not df_tv.empty and df_tv["Episodes"].sum() > 0:
-                chart_tv = alt.Chart(df_tv).mark_bar(color="#FFC107", cornerRadiusTopLeft=6, cornerRadiusTopRight=6).encode(x=alt.X("Month:N", title=None, axis=alt.Axis(labelAngle=-90, labelColor="#aaa", labelFontSize=9), sort=None), y=alt.Y("Episodes:Q", title=None, axis=alt.Axis(labelColor="#aaa")))
-                text_tv = chart_tv.mark_text(align='center', baseline='bottom', dy=-5, color='#EDEDED', fontSize=10, fontWeight='bold').encode(text='Episodes:Q')
-                st.altair_chart((chart_tv + text_tv).properties(height=200), use_container_width=True)
-            else: st.info("No series history available.")
-            
-            st.markdown("**🎬 Movies**")
-            if not df_mov.empty and df_mov["Movies"].sum() > 0:
-                chart_mov = alt.Chart(df_mov).mark_bar(color="#555555", cornerRadiusTopLeft=6, cornerRadiusTopRight=6).encode(x=alt.X("Month:N", title=None, axis=alt.Axis(labelAngle=-90, labelColor="#aaa", labelFontSize=9), sort=None), y=alt.Y("Movies:Q", title=None, axis=alt.Axis(labelColor="#aaa")))
-                text_mov = chart_mov.mark_text(align='center', baseline='bottom', dy=-5, color='#EDEDED', fontSize=10, fontWeight='bold').encode(text='Movies:Q')
-                st.altair_chart((chart_mov + text_mov).properties(height=200), use_container_width=True)
-            else: st.info("No movie history available.")
-
-        with c_tab2:
-            plat_data = [h["p"] for h in history_sorted if h.get("p") and h["p"]!="None"]
-            if plat_data:
-                df_plat = pd.Series(plat_data).value_counts().reset_index()
-                df_plat.columns = ['Platform', 'Count']
-                chart_p = alt.Chart(df_plat).mark_arc(innerRadius=50).encode(
+            genre_counts = {}
+            for t, i in top_10:
+                details = fetch_api(f"https://api.themoviedb.org/3/{'tv' if t=='s' else 'movie'}/{i}?api_key={TMDB_KEY}")
+                for g in details.get("genres", []): genre_counts[g["name"]] = genre_counts.get(g["name"], 0) + 1
+                
+            if genre_counts:
+                df_g = pd.DataFrame(list(genre_counts.items()), columns=["Genre", "Count"])
+                chart_dna = alt.Chart(df_g).mark_arc(innerRadius=20, stroke="#050505", strokeWidth=2).encode(
                     theta=alt.Theta(field="Count", type="quantitative"),
-                    color=alt.Color(field="Platform", type="nominal", scale=alt.Scale(scheme='category20'), legend=alt.Legend(title=None, labelColor="#EDEDED")),
-                    tooltip=["Platform", "Count"]
+                    color=alt.Color(field="Genre", type="nominal", scale=alt.Scale(scheme='dark2'), legend=alt.Legend(title=None, labelColor="#EDEDED")),
+                    radius=alt.Radius(field="Count", scale=alt.Scale(type="sqrt", zero=True, rangeMin=20)),
+                    tooltip=["Genre", "Count"]
                 )
-                st.altair_chart(chart_p.properties(height=300), use_container_width=True)
-            else: st.info("You haven't logged any viewing platforms in your journal yet.")
+                st.altair_chart(chart_dna.properties(height=350), use_container_width=True)
+            else: st.info("Keep watching to unlock your Taste Profile DNA.")
             
+        with c_tab2:
+            st.markdown("**🔥 The Binge Matrix**")
+            heatmap_data = []
+            days_order = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+            for h in history_sorted:
+                try:
+                    dt = datetime.strptime(h["d"], "%Y-%m-%d %H:%M:%S")
+                    heatmap_data.append({"Day": dt.strftime("%A"), "Hour": dt.hour, "Count": 1})
+                except: pass
+            if heatmap_data:
+                df_heat = pd.DataFrame(heatmap_data).groupby(["Day", "Hour"]).count().reset_index()
+                chart_heat = alt.Chart(df_heat).mark_rect(rx=4, ry=4).encode(
+                    x=alt.X('Hour:O', title='Hour of Day', axis=alt.Axis(labelAngle=0, labelColor="#aaa")),
+                    y=alt.Y('Day:O', sort=days_order, title=None, axis=alt.Axis(labelColor="#aaa")),
+                    color=alt.Color('Count:Q', scale=alt.Scale(scheme='yellowgreen'), legend=None),
+                    tooltip=['Day', 'Hour', 'Count']
+                )
+                st.altair_chart(chart_heat.properties(height=300), use_container_width=True)
+            else: st.info("Not enough history to generate a binge heatmap.")
+
         with c_tab3:
+            st.markdown("**🎭 The Mood Ring**")
+            feel_data = [h["f"] for h in history_sorted if h.get("f") and h["f"]!="None"]
+            if feel_data:
+                df_feel = pd.Series(feel_data).value_counts().reset_index()
+                df_feel.columns = ['Vibe', 'Count']
+                chart_feel = alt.Chart(df_feel).mark_arc(innerRadius=60).encode(
+                    theta=alt.Theta(field="Count", type="quantitative"),
+                    color=alt.Color(field="Vibe", type="nominal", legend=alt.Legend(title=None, labelColor="#EDEDED")),
+                    tooltip=["Vibe", "Count"]
+                )
+                st.altair_chart(chart_feel.properties(height=350), use_container_width=True)
+            else: st.info("You haven't logged any emotional vibes in your journal yet.")
+            
+        with c_tab4:
+            st.markdown("**⭐ Rating Distribution**")
             rat_data = [h["r"] for h in history_sorted if h.get("r", 0) > 0]
             if rat_data:
                 df_r = pd.Series(rat_data).value_counts().reset_index()
