@@ -41,17 +41,44 @@ st.markdown("""
     h3 { color: #FFD54F !important; font-weight: 800 !important; letter-spacing: -0.5px !important; }
     h3.tab-title { margin-top: -0.8rem !important; padding-top: 0 !important; }
     
-    /* --- SEAMLESS ACTION BUTTONS --- */
-    .action-bar div.stButton > button { 
-        background: rgba(20, 22, 28, 0.9) !important; border: 1px solid rgba(255, 255, 255, 0.05) !important; 
-        border-top: none !important; border-radius: 0 0 8px 8px !important; color: #aaa !important; 
-        font-size: 0.55rem !important; font-weight: 700 !important; padding: 4px 1px !important; margin-top: -8px !important; 
-        text-transform: uppercase; letter-spacing: 0.2px !important; min-height: 1.8rem !important; 
-        width: 100% !important; transition: all 0.2s !important; 
+    /* --- SEAMLESS ACTION BUTTONS (NO ORPHAN TAGS) --- */
+    div[data-testid="column"]:has(.action-bar-hook) [data-testid="stHorizontalBlock"] {
+        gap: 0 !important;
     }
-    .action-bar div.stButton > button:hover, .action-bar div.stButton > button:active { 
+    div[data-testid="column"]:has(.action-bar-hook) div.stButton > button { 
+        background: rgba(20, 22, 28, 0.95) !important; 
+        border: 1px solid rgba(255, 255, 255, 0.05) !important; 
+        border-top: none !important; 
+        color: #aaa !important; 
+        font-size: 0.65rem !important; 
+        font-weight: 700 !important; 
+        padding: 4px 1px !important; 
+        margin-top: -15px !important; 
+        text-transform: uppercase; 
+        letter-spacing: 0.2px !important; 
+        min-height: 1.8rem !important; 
+        width: 100% !important; 
+        transition: all 0.2s !important; 
+        border-radius: 0 !important;
+    }
+    div[data-testid="column"]:has(.action-bar-hook) div[data-testid="stVerticalBlock"] div.stButton > button {
+        border-bottom-left-radius: 8px !important;
+        border-bottom-right-radius: 8px !important;
+    }
+    div[data-testid="column"]:has(.action-bar-hook) [data-testid="stHorizontalBlock"] > div[data-testid="column"]:first-child div.stButton > button {
+        border-bottom-right-radius: 0 !important;
+        border-bottom-left-radius: 8px !important;
+        border-right: 1px solid rgba(0,0,0,0.5) !important;
+    }
+    div[data-testid="column"]:has(.action-bar-hook) [data-testid="stHorizontalBlock"] > div[data-testid="column"]:last-child div.stButton > button {
+        border-bottom-left-radius: 0 !important;
+        border-bottom-right-radius: 8px !important;
+        border-left: none !important;
+    }
+    div[data-testid="column"]:has(.action-bar-hook) div.stButton > button:hover, 
+    div[data-testid="column"]:has(.action-bar-hook) div.stButton > button:active { 
         background: linear-gradient(135deg, #FFD54F 0%, #FFC107 100%) !important; color: #000 !important; 
-        box-shadow: 0 4px 10px rgba(255, 193, 7, 0.3) !important; 
+        box-shadow: 0 4px 10px rgba(255, 193, 7, 0.3) !important; border-color: transparent !important; z-index: 10;
     }
     
     /* --- PILL NAVIGATION (DISCOVER) --- */
@@ -135,8 +162,6 @@ DB_ENDPOINT = f"{SUPABASE_URL}/rest/v1/tv_time_data?id=eq.1"
 HEADERS = {"apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}", "Content-Type": "application/json", "Prefer": "return=representation"}
 TODAY = get_dubai_time().strftime('%Y-%m-%d')
 PREMIUM_EMOTIONS = ["None", "🤯 Mind Blown", "😂 Hilarious", "😭 Emotional", "😍 Loved it", "😡 Frustrated", "😴 Bored", "🍿 Pure Hype", "🧠 Genius Plot", "💔 Heartbroken", "🤬 Trash", "🫣 Edge of Seat", "📈 Peak Cinema"]
-
-GENRE_MAP = {28:"Action", 12:"Adventure", 16:"Animation", 35:"Comedy", 80:"Crime", 99:"Documentary", 18:"Drama", 10751:"Family", 14:"Fantasy", 36:"History", 27:"Horror", 10402:"Music", 9648:"Mystery", 10749:"Romance", 878:"Sci-Fi", 10770:"TV Movie", 53:"Thriller", 10752:"War", 37:"Western", 10759:"Action", 10762:"Kids", 10765:"Sci-Fi", 10766:"Soap", 10767:"Talk", 10768:"Politics"}
 
 @st.cache_data(ttl=43200)
 def fetch_api(url):
@@ -850,7 +875,6 @@ with t_next:
 
         if not up_next_tv: st.info("You are completely caught up on series! 🎉")
         else:
-            # HERO BANNER LOGIC
             hero = up_next_tv[0]
             h_show, h_details, h_ep, h_code = hero["item"], hero["details"], hero["ep"], hero["code"]
             h_bg = f"https://image.tmdb.org/t/p/w780{h_details.get('backdrop_path')}" if h_details.get('backdrop_path') else f"https://image.tmdb.org/t/p/w342{h_show.get('poster_path')}"
@@ -874,7 +898,6 @@ with t_next:
             
             st.markdown("<div style='height: 15px;'></div>", unsafe_allow_html=True)
             
-            # THE REST OF THE GRID
             limit = st.session_state.next_tv_limit
             for i in range(1, len(up_next_tv[:limit]), 3):
                 cols = st.columns(3)
@@ -886,12 +909,11 @@ with t_next:
                             item = up_next_tv[idx]
                             show, details, ep, ep_code = item["item"], item["details"], item["ep"], item["code"]
                             render_poster_card(show["name"], show.get("poster_path") or details.get('poster_path'), subtitle=ep_code)
-                            st.markdown('<div class="action-bar">', unsafe_allow_html=True)
+                            st.markdown('<span class="action-bar-hook"></span>', unsafe_allow_html=True)
                             bc1, bc2 = st.columns(2)
                             with bc1: st.button("✔️", key=f"n_w_tv_{show['id']}_{ep_code}_{idx}", on_click=cb_watch_tv_feed, args=(show['id'], show['name'], ep_code), use_container_width=True)
                             with bc2: 
                                 if st.button("ℹ️", key=f"n_i_tv_{show['id']}_{ep_code}_{idx}", use_container_width=True): st.session_state.active_actor = None; show_episode_details(show['id'], show['name'], ep_code, ep, is_watched=False)
-                            st.markdown('</div>', unsafe_allow_html=True)
                                 
             if len(up_next_tv) > st.session_state.next_tv_limit:
                 if st.button("Load More Series", use_container_width=True, key="load_more_next_tv"):
@@ -922,12 +944,11 @@ with t_next:
                         if idx < len(up_next_mov[:limit]):
                             m = up_next_mov[idx]["item"]
                             render_poster_card(m["name"], m.get('poster_path'))
-                            st.markdown('<div class="action-bar">', unsafe_allow_html=True)
+                            st.markdown('<span class="action-bar-hook"></span>', unsafe_allow_html=True)
                             bc1, bc2 = st.columns(2)
                             with bc1: st.button("✔️", key=f"n_w_mov_{m['id']}_{idx}", on_click=cb_watch_mov_feed, args=(m['id'], m['name']), use_container_width=True)
                             with bc2:
                                 if st.button("ℹ️", key=f"n_i_mov_{m['id']}_{idx}", use_container_width=True): st.session_state.active_actor = None; show_movie_details(m['id'], m['name'], details=None, is_watched=False)
-                            st.markdown('</div>', unsafe_allow_html=True)
                         
             if len(up_next_mov) > st.session_state.next_mov_limit:
                 if st.button("Load More Movies", use_container_width=True, key="load_more_next_mov"):
@@ -989,12 +1010,11 @@ with t_soon:
                             item = soon_tv[idx]
                             show, details, ep, ep_code = item["item"], item["details"], item["ep"], item["code"]
                             render_poster_card(show["name"], show.get("poster_path") or details.get('poster_path'), subtitle=f"{ep_code} • {calc_time_remaining(item['date'])}")
-                            st.markdown('<div class="action-bar">', unsafe_allow_html=True)
+                            st.markdown('<span class="action-bar-hook"></span>', unsafe_allow_html=True)
                             bc1, bc2 = st.columns(2)
                             with bc1: st.button("✔️", key=f"s_w_tv_{show['id']}_{ep_code}_{idx}", on_click=cb_watch_tv_feed, args=(show['id'], show['name'], ep_code), use_container_width=True)
                             with bc2:
                                 if st.button("ℹ️", key=f"s_i_tv_{show['id']}_{ep_code}_{idx}", use_container_width=True): st.session_state.active_actor = None; show_episode_details(show['id'], show['name'], ep_code, ep, is_watched=False)
-                            st.markdown('</div>', unsafe_allow_html=True)
 
             if len(soon_tv) > st.session_state.soon_tv_limit:
                 if st.button("Load More Upcoming Series", use_container_width=True, key="load_more_soon_tv"):
@@ -1023,12 +1043,11 @@ with t_soon:
                             item = soon_mov[idx]
                             m = item["item"]
                             render_poster_card(m["name"], m.get('poster_path'), subtitle=calc_time_remaining(item["date"]))
-                            st.markdown('<div class="action-bar">', unsafe_allow_html=True)
+                            st.markdown('<span class="action-bar-hook"></span>', unsafe_allow_html=True)
                             bc1, bc2 = st.columns(2)
                             with bc1: st.button("✔️", key=f"s_w_mov_{m['id']}_{idx}", on_click=cb_watch_mov_feed, args=(m['id'], m['name']), use_container_width=True)
                             with bc2:
                                 if st.button("ℹ️", key=f"s_i_mov_{m['id']}_{idx}", use_container_width=True): st.session_state.active_actor = None; show_movie_details(m['id'], m['name'], details=None, is_watched=False)
-                            st.markdown('</div>', unsafe_allow_html=True)
 
             if len(soon_mov) > st.session_state.soon_mov_limit:
                 if st.button("Load More Upcoming Movies", use_container_width=True, key="load_more_soon_mov"):
@@ -1063,7 +1082,7 @@ with t_search:
                             title = item.get("name") if search_type == "TV Shows" else item.get("title")
                             
                             render_poster_card(title, item.get("poster_path"))
-                            st.markdown('<div class="action-bar">', unsafe_allow_html=True)
+                            st.markdown('<span class="action-bar-hook"></span>', unsafe_allow_html=True)
                             is_tv = (search_type == "TV Shows")
                             added = any(str(x["id"]) == str(item_id) for x in st.session_state.db["shows" if is_tv else "movies"])
                             
@@ -1082,7 +1101,6 @@ with t_search:
                                     details = fetch_api(f"https://api.themoviedb.org/3/{'tv' if is_tv else 'movie'}/{item_id}?api_key={TMDB_KEY}")
                                     if is_tv: manage_show_dialog(item_id, title, details)
                                     else: show_movie_details(item_id, title, details, is_watched=False)
-                            st.markdown('</div>', unsafe_allow_html=True)
     else:
         # THE PILL FILTER NAVIGATION
         genre_options = ["🔥 Trending", "🤣 Comedy", "💥 Action", "🐉 Sci-Fi", "🔪 Thriller", "👻 Horror"]
@@ -1103,7 +1121,7 @@ with t_search:
                     st.markdown('<span class="carousel-marker"></span>', unsafe_allow_html=True)
                     i_title = item.get("name") if c_type == "tv" else item.get("title")
                     render_poster_card(i_title, item.get("poster_path"))
-                    st.markdown('<div class="action-bar">', unsafe_allow_html=True)
+                    st.markdown('<span class="action-bar-hook"></span>', unsafe_allow_html=True)
                     
                     item_id = item["id"]
                     added = any(str(x["id"]) == str(item_id) for x in st.session_state.db["shows" if c_type == "tv" else "movies"])
@@ -1123,7 +1141,6 @@ with t_search:
                             details = fetch_api(f"https://api.themoviedb.org/3/{c_type}/{item_id}?api_key={TMDB_KEY}")
                             if c_type == "tv": manage_show_dialog(item_id, i_title, details)
                             else: show_movie_details(item_id, i_title, details, is_watched=False)
-                    st.markdown('</div>', unsafe_allow_html=True)
             
             if show_load_more:
                 with cols[-1]:
@@ -1228,7 +1245,7 @@ with t_tv:
                             show, t_eps, w_eps = paginated_shows[i + j]
                             prog_val = min(w_eps / t_eps, 1.0) if t_eps > 0 else 0.0
                             render_poster_card(show["name"], show.get("poster_path"), progress_pct=prog_val)
-                            st.markdown('<div class="action-bar">', unsafe_allow_html=True)
+                            st.markdown('<span class="action-bar-hook"></span>', unsafe_allow_html=True)
                             
                             if st.session_state.tv_tab == "DROPPED":
                                 bc1, bc2 = st.columns(2)
@@ -1244,8 +1261,7 @@ with t_tv:
                             else:
                                 if st.button("ℹ️ INFO", key=f"s_mgr_{show['id']}", use_container_width=True):
                                     st.session_state.active_actor = None; manage_show_dialog(show['id'], show['name'], fetch_api(f"https://api.themoviedb.org/3/tv/{show['id']}?api_key={TMDB_KEY}"))
-                            st.markdown('</div>', unsafe_allow_html=True)
-                                
+
             if total_tv_display > st.session_state.tv_lib_limit:
                 if st.button("Load 50 More", use_container_width=True, key="load_more_tv_lib"):
                     st.session_state.tv_lib_limit += 50; st.rerun()
@@ -1314,7 +1330,7 @@ with t_movies:
                         if i + j < len(paginated_movies):
                             m, is_watched = paginated_movies[i + j]
                             render_poster_card(m["name"], m.get("poster_path"))
-                            st.markdown('<div class="action-bar">', unsafe_allow_html=True)
+                            st.markdown('<span class="action-bar-hook"></span>', unsafe_allow_html=True)
                             
                             if st.session_state.mov_tab == "DROPPED":
                                 bc1, bc2 = st.columns(2)
@@ -1330,7 +1346,6 @@ with t_movies:
                             else:
                                 if st.button("ℹ️ INFO", key=f"m_mgr_{m['id']}", use_container_width=True):
                                     st.session_state.active_actor = None; show_movie_details(m['id'], m['name'], details=None, is_watched=is_watched)
-                            st.markdown('</div>', unsafe_allow_html=True)
                                 
             if total_mov_display > st.session_state.mov_lib_limit:
                 if st.button("Load 50 More", use_container_width=True, key="load_more_mov_lib"):
