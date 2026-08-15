@@ -41,44 +41,92 @@ st.markdown("""
     h3 { color: #FFD54F !important; font-weight: 800 !important; letter-spacing: -0.5px !important; }
     h3.tab-title { margin-top: -0.8rem !important; padding-top: 0 !important; }
     
-    /* --- SEAMLESS ACTION BUTTONS --- */
-    div[data-testid="column"]:has(.action-bar-hook) [data-testid="stHorizontalBlock"] {
-        gap: 0 !important;
+    /* --- GLASSMORPHIC HOVER OVERLAY (NETFLIX STYLE) --- */
+    div[data-testid="column"]:has(.action-bar-hook) {
+        position: relative !important;
     }
+    div[data-testid="column"]:has(.action-bar-hook) > div[data-testid="stVerticalBlock"] > div[data-testid="stHorizontalBlock"] {
+        gap: 0 !important;
+        position: absolute !important;
+        bottom: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        z-index: 10 !important;
+        border-radius: 0 0 8px 8px !important;
+        overflow: hidden !important;
+    }
+    
     div[data-testid="column"]:has(.action-bar-hook) div.stButton > button { 
-        background: rgba(20, 22, 28, 0.95) !important; 
-        border: 1px solid rgba(255, 255, 255, 0.05) !important; 
-        border-top: none !important; 
-        color: #aaa !important; 
-        font-size: 0.65rem !important; 
+        background: rgba(15, 17, 22, 0.65) !important; 
+        backdrop-filter: blur(10px) !important;
+        -webkit-backdrop-filter: blur(10px) !important;
+        border: 1px solid rgba(255, 255, 255, 0.08) !important; 
+        border-top: 1px solid rgba(255, 255, 255, 0.2) !important; 
+        border-bottom: none !important;
+        color: #EDEDED !important; 
+        font-size: 0.75rem !important; 
         font-weight: 700 !important; 
-        padding: 4px 1px !important; 
-        margin-top: -15px !important; 
+        padding: 6px 1px !important; 
         text-transform: uppercase; 
-        letter-spacing: 0.2px !important; 
-        min-height: 1.8rem !important; 
+        min-height: 2.2rem !important; 
         width: 100% !important; 
-        transition: all 0.2s !important; 
+        transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1) !important; 
         border-radius: 0 !important;
     }
-    div[data-testid="column"]:has(.action-bar-hook) div[data-testid="stVerticalBlock"] div.stButton > button {
-        border-bottom-left-radius: 8px !important;
-        border-bottom-right-radius: 8px !important;
+    
+    /* Native App Haptic "Squish" Physics */
+    div[data-testid="column"]:has(.action-bar-hook) div.stButton > button:active {
+        transform: scale(0.92) !important;
     }
+    
+    div[data-testid="column"]:has(.action-bar-hook) div.stButton > button:hover { 
+        background: linear-gradient(135deg, rgba(255, 213, 79, 0.95) 0%, rgba(255, 193, 7, 0.95) 100%) !important; 
+        color: #000 !important; 
+        box-shadow: 0 4px 15px rgba(255, 193, 7, 0.4) !important; 
+        border-top-color: rgba(255, 255, 255, 0.8) !important;
+    }
+
+    /* Clean up button borders to fuse together perfectly */
     div[data-testid="column"]:has(.action-bar-hook) [data-testid="stHorizontalBlock"] > div[data-testid="column"]:first-child div.stButton > button {
-        border-bottom-right-radius: 0 !important;
-        border-bottom-left-radius: 8px !important;
-        border-right: 1px solid rgba(0,0,0,0.5) !important;
+        border-left: none !important;
+        border-right: 1px solid rgba(0,0,0,0.3) !important;
     }
     div[data-testid="column"]:has(.action-bar-hook) [data-testid="stHorizontalBlock"] > div[data-testid="column"]:last-child div.stButton > button {
-        border-bottom-left-radius: 0 !important;
-        border-bottom-right-radius: 8px !important;
-        border-left: none !important;
+        border-right: none !important;
+        border-left: 1px solid rgba(255,255,255,0.05) !important;
     }
-    div[data-testid="column"]:has(.action-bar-hook) div.stButton > button:hover, 
-    div[data-testid="column"]:has(.action-bar-hook) div.stButton > button:active { 
-        background: linear-gradient(135deg, #FFD54F 0%, #FFC107 100%) !important; color: #000 !important; 
-        box-shadow: 0 4px 10px rgba(255, 193, 7, 0.3) !important; border-color: transparent !important; z-index: 10;
+
+    /* Desktop Animation Logic */
+    @media (min-width: 993px) {
+        div[data-testid="column"]:has(.action-bar-hook) > div[data-testid="stVerticalBlock"] > div[data-testid="stHorizontalBlock"] {
+            opacity: 0;
+            transform: translateY(10px);
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+        }
+        div[data-testid="column"]:has(.action-bar-hook):hover > div[data-testid="stVerticalBlock"] > div[data-testid="stHorizontalBlock"] {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        div[data-testid="column"]:has(.action-bar-hook) .poster-text {
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1) !important;
+        }
+        /* Dynamically shift text upward when glass menu appears */
+        div[data-testid="column"]:has(.action-bar-hook):hover .poster-text {
+            transform: translateY(-38px) !important;
+        }
+    }
+
+    /* Mobile Permanent Visibility (since phones lack hover) */
+    @media (max-width: 992px) {
+        div[data-testid="column"]:has(.action-bar-hook) > div[data-testid="stVerticalBlock"] > div[data-testid="stHorizontalBlock"] {
+            opacity: 1 !important;
+            transform: translateY(0) !important;
+        }
+        div[data-testid="column"]:has(.action-bar-hook) .poster-text {
+            transform: translateY(-38px) !important;
+        }
     }
     
     /* --- PILL NAVIGATION (DISCOVER) --- */
@@ -162,6 +210,8 @@ DB_ENDPOINT = f"{SUPABASE_URL}/rest/v1/tv_time_data?id=eq.1"
 HEADERS = {"apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}", "Content-Type": "application/json", "Prefer": "return=representation"}
 TODAY = get_dubai_time().strftime('%Y-%m-%d')
 PREMIUM_EMOTIONS = ["None", "🤯 Mind Blown", "😂 Hilarious", "😭 Emotional", "😍 Loved it", "😡 Frustrated", "😴 Bored", "🍿 Pure Hype", "🧠 Genius Plot", "💔 Heartbroken", "🤬 Trash", "🫣 Edge of Seat", "📈 Peak Cinema"]
+
+GENRE_MAP = {28:"Action", 12:"Adventure", 16:"Animation", 35:"Comedy", 80:"Crime", 99:"Documentary", 18:"Drama", 10751:"Family", 14:"Fantasy", 36:"History", 27:"Horror", 10402:"Music", 9648:"Mystery", 10749:"Romance", 878:"Sci-Fi", 10770:"TV Movie", 53:"Thriller", 10752:"War", 37:"Western", 10759:"Action", 10762:"Kids", 10765:"Sci-Fi", 10766:"Soap", 10767:"Talk", 10768:"Politics"}
 
 @st.cache_data(ttl=43200)
 def fetch_api(url):
@@ -464,7 +514,9 @@ def render_inline_actor_pokedex(actor_id):
             st.button("✖ Close", key=f"close_act_{actor_id}", on_click=cb_close_active_actor, use_container_width=True)
         
         c1, c2 = st.columns([1, 2])
-        with c1: display_poster(details.get("profile_path"), width=185)
+        with c1:
+            img_url = f"https://image.tmdb.org/t/p/w185{details.get('profile_path')}" if details.get("profile_path") else "https://via.placeholder.com/185x278/222222/555555?text=No+Image"
+            st.markdown(f'<img src="{img_url}" style="width: 100%; border-radius: 8px;">', unsafe_allow_html=True)
         with c2:
             st.caption(f"**Born:** {details.get('birthday', 'Unknown')}")
             bio = details.get("biography", "")
@@ -477,9 +529,8 @@ def render_inline_actor_pokedex(actor_id):
             for idx, item in enumerate(owned_items):
                 with cols[idx]:
                     st.markdown('<span class="carousel-marker"></span>', unsafe_allow_html=True)
-                    display_poster(item.get("poster"), width=154)
-                    html_grid = f'<div class="grid-title" title="{item["title"]}">{item["title"]}</div>'
-                    st.markdown(html_grid, unsafe_allow_html=True)
+                    i_url = f"https://image.tmdb.org/t/p/w154{item.get('poster')}" if item.get('poster') else "https://via.placeholder.com/154x231/222222/555555?text=No+Image"
+                    st.markdown(f'<img src="{i_url}" style="width: 100%; border-radius: 8px; margin-bottom: 5px;"><div class="grid-title" title="{item["title"]}">{item["title"]}</div>', unsafe_allow_html=True)
         
         st.markdown("**🌟 Famous Roles**")
         top_credits = sorted(credits.get("cast", []), key=lambda x: x.get("popularity", 0), reverse=True)[:10]
@@ -488,10 +539,9 @@ def render_inline_actor_pokedex(actor_id):
             for idx, item in enumerate(top_credits):
                 with cols[idx]:
                     st.markdown('<span class="carousel-marker"></span>', unsafe_allow_html=True)
-                    display_poster(item.get("poster_path"), width=154)
+                    i_url = f"https://image.tmdb.org/t/p/w154{item.get('poster_path')}" if item.get('poster_path') else "https://via.placeholder.com/154x231/222222/555555?text=No+Image"
                     i_title = item.get("name") if item.get("media_type") == "tv" else item.get("title")
-                    html_grid = f'<div class="grid-title" title="{i_title}">{i_title}</div>'
-                    st.markdown(html_grid, unsafe_allow_html=True)
+                    st.markdown(f'<img src="{i_url}" style="width: 100%; border-radius: 8px; margin-bottom: 5px;"><div class="grid-title" title="{i_title}">{i_title}</div>', unsafe_allow_html=True)
 
 def render_poster_card(title, poster_path, subtitle="", progress_pct=-1.0):
     img_url = f"https://image.tmdb.org/t/p/w342{poster_path}" if poster_path else "https://via.placeholder.com/342x513/222222/555555?text=No+Poster"
@@ -500,10 +550,10 @@ def render_poster_card(title, poster_path, subtitle="", progress_pct=-1.0):
     sub_html = f'<div style="color: #FFC107; font-weight: 700; font-size: 0.6rem; margin-top: 2px;">{subtitle}</div>' if subtitle else ''
     
     html = (
-        f'<div style="position: relative; border-radius: 8px 8px 0 0; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.5); aspect-ratio: 2/3; background-color: #111;">'
+        f'<div style="position: relative; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.5); aspect-ratio: 2/3; background-color: #111;">'
         f'<img src="{img_url}" style="width: 100%; height: 100%; object-fit: cover; display: block;">'
-        f'<div style="position: absolute; bottom: 0; left: 0; right: 0; height: 50%; background: linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0) 100%); z-index: 1;"></div>'
-        f'<div style="position: absolute; bottom: 10px; left: 10px; right: 10px; z-index: 2;">'
+        f'<div style="position: absolute; bottom: 0; left: 0; right: 0; height: 60%; background: linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0) 100%); z-index: 1;"></div>'
+        f'<div class="poster-text" style="position: absolute; bottom: 10px; left: 10px; right: 10px; z-index: 2;">'
         f'<div style="color: white; font-weight: 800; font-size: 0.75rem; line-height: 1.2; text-shadow: 0 2px 4px rgba(0,0,0,0.8); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">{title}</div>'
         f'{sub_html}'
         f'</div>'
