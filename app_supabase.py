@@ -1510,7 +1510,7 @@ with t_profile:
                         grouped_tv.setdefault(dt.strftime('%B %Y'), []).append((h, dt, h_idx))
                     except: pass
                 for month_str, items in grouped_tv.items():
-                    st.markdown(f"<h4 style='color: #FFC107; margin-top: 1rem; margin-bottom: 0.5rem;'>{month_str}</h4>", unsafe_allow_html=True)
+                    st.markdown(f"<h4 style='color: #FFC107; margin-top: 1.5rem; margin-bottom: 0.8rem; font-weight: 800;'>{month_str}</h4>", unsafe_allow_html=True)
                     for h, dt, h_idx in items:
                         show = next((s for s in st.session_state.db["shows"] if str(s["id"]) == str(h.get("i"))), None)
                         if show: s_name, poster = show["name"], show.get("poster_path", "")
@@ -1518,23 +1518,37 @@ with t_profile:
                             s_data = fetch_api(f"https://api.themoviedb.org/3/tv/{h.get('i')}?api_key={TMDB_KEY}")
                             s_name, poster = s_data.get("name", "Unknown Series"), s_data.get("poster_path", "")
                             
-                        ep_code, r_stars, f_moji = h.get('e', ''), ("⭐" * h.get('r')) if h.get('r', 0) > 0 else "", h.get('f', '')
-                        poster_url = f"https://image.tmdb.org/t/p/w92{poster}" if poster else "https://via.placeholder.com/92x138/222222/555555?text=No+Img"
+                        ep_code = h.get('e', '')
+                        r_stars = ("⭐" * h.get('r')) if h.get('r', 0) > 0 else ""
+                        f_moji = h.get('f', '')
+                        poster_url = f"https://image.tmdb.org/t/p/w185{poster}" if poster else "https://via.placeholder.com/185x278/222222/555555?text=No+Img"
                         
-                        html = f"""
-                        <div style="display: flex; align-items: center; margin-bottom: 6px; background-color: transparent; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 6px;">
-                            <img src="{poster_url}" style="width: 45px; height: 68px; border-radius: 4px; object-fit: cover; margin-right: 14px; box-shadow: 0 2px 4px rgba(0,0,0,0.5);">
-                            <div style="display: flex; flex-direction: column; justify-content: center;">
-                                <div style="font-size: 0.95rem; font-weight: 700; color: #FFFFFF; margin-bottom: 2px; line-height: 1.2;">{s_name}</div>
-                                <div style="font-size: 0.75rem; font-weight: 600; color: #FFC107; margin-bottom: 2px;">{ep_code} <span style="color:#EDEDED; margin-left:4px;">{f"{r_stars} {f_moji}".strip()}</span></div>
-                                <div style="font-size: 0.7rem; color: #888888;">{dt.strftime('%b %d, %Y • %I:%M %p')}</div>
+                        html_card = f"""
+                        <div style="border-left: 2px solid rgba(255, 193, 7, 0.3); padding-left: 15px; margin-bottom: 5px; position: relative; padding-bottom: 5px;">
+                            <div style="position: absolute; left: -5px; top: 40px; width: 8px; height: 8px; border-radius: 50%; background: #FFC107; box-shadow: 0 0 8px #FFC107;"></div>
+                            <div style="position: relative; border-radius: 12px; overflow: hidden; padding: 12px; border: 1px solid rgba(255,255,255,0.05); background-color: rgba(15, 17, 22, 0.6);">
+                                <div style="position: absolute; top: -20px; left: -20px; right: -20px; bottom: -20px; background-image: url('{poster_url}'); background-size: cover; background-position: center; filter: blur(15px) brightness(0.3); z-index: 0;"></div>
+                                <div style="position: relative; z-index: 1; display: flex; align-items: center;">
+                                    <img src="{poster_url}" style="width: 55px; height: 82px; border-radius: 6px; box-shadow: 0 4px 10px rgba(0,0,0,0.6); margin-right: 15px; border: 1px solid rgba(255,255,255,0.1);">
+                                    <div style="flex: 1; min-width: 0;">
+                                        <div style="font-size: 1rem; font-weight: 800; color: #fff; line-height: 1.2; text-shadow: 0 2px 4px rgba(0,0,0,0.8); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{s_name}</div>
+                                        <div style="font-size: 0.65rem; color: #ccc; margin-bottom: 6px; margin-top: 2px;">{dt.strftime('%b %d, %Y • %I:%M %p')}</div>
+                                        <div style="display: flex; gap: 5px; flex-wrap: wrap;">
+                                            <span style="background: rgba(255,193,7,0.2); color: #FFD54F; padding: 2px 6px; border-radius: 8px; font-size: 0.6rem; font-weight: 700; border: 1px solid rgba(255,193,7,0.3);">{ep_code}</span>
+                                            {f'<span style="background: rgba(255,255,255,0.1); color: #eee; padding: 2px 6px; border-radius: 8px; font-size: 0.6rem; font-weight: 600; border: 1px solid rgba(255,255,255,0.05);">{r_stars}</span>' if r_stars else ''}
+                                            {f'<span style="background: rgba(255,255,255,0.1); color: #eee; padding: 2px 6px; border-radius: 8px; font-size: 0.6rem; font-weight: 600; border: 1px solid rgba(255,255,255,0.05);">{f_moji}</span>' if f_moji and f_moji != "None" else ''}
+                                            {f'<span style="background: rgba(255,255,255,0.1); color: #eee; padding: 2px 6px; border-radius: 8px; font-size: 0.6rem; font-weight: 600; border: 1px solid rgba(255,255,255,0.05);">📡 {h.get("p")}</span>' if h.get("p") and h.get("p") != "None" else ''}
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
-                        </div>"""
-                        c_left, c_right = st.columns([5, 1])
-                        with c_left: st.markdown(html, unsafe_allow_html=True)
+                        </div>
+                        """
+                        c_left, c_right = st.columns([85, 15])
+                        with c_left: st.markdown(html_card, unsafe_allow_html=True)
                         with c_right:
-                            st.markdown("<div style='height: 18px;'></div>", unsafe_allow_html=True)
-                            if st.button("📝", key=f"h_r_tv_{h['i']}_{ep_code}_{h_idx}", help="Rate & Review"): 
+                            st.markdown("<div style='height: 35px;'></div>", unsafe_allow_html=True)
+                            if st.button("📝", key=f"h_r_tv_{h['i']}_{ep_code}_{h_idx}", help="Rate & Review", use_container_width=True): 
                                 st.session_state.active_actor = None
                                 show_episode_details(h['i'], s_name, ep_code, ep_data=None, is_watched=True)
                 if len(tv_hist) > st.session_state.hist_tv_limit:
@@ -1552,7 +1566,7 @@ with t_profile:
                         grouped_mov.setdefault(dt.strftime('%B %Y'), []).append((h, dt, h_idx))
                     except: pass
                 for month_str, items in grouped_mov.items():
-                    st.markdown(f"<h4 style='color: #FFC107; margin-top: 1rem; margin-bottom: 0.5rem;'>{month_str}</h4>", unsafe_allow_html=True)
+                    st.markdown(f"<h4 style='color: #FFC107; margin-top: 1.5rem; margin-bottom: 0.8rem; font-weight: 800;'>{month_str}</h4>", unsafe_allow_html=True)
                     for h, dt, h_idx in items:
                         mov = next((m for m in st.session_state.db["movies"] if str(m["id"]) == str(h.get("i"))), None)
                         if mov: m_name, poster = mov["name"], mov.get("poster_path", "")
@@ -1560,23 +1574,36 @@ with t_profile:
                             m_data = fetch_api(f"https://api.themoviedb.org/3/movie/{h.get('i')}?api_key={TMDB_KEY}")
                             m_name, poster = m_data.get("title", "Unknown Movie"), m_data.get("poster_path", "")
                             
-                        r_stars, f_moji = ("⭐" * h.get('r')) if h.get('r', 0) > 0 else "", h.get('f', '')
-                        poster_url = f"https://image.tmdb.org/t/p/w92{poster}" if poster else "https://via.placeholder.com/92x138/222222/555555?text=No+Img"
+                        r_stars = ("⭐" * h.get('r')) if h.get('r', 0) > 0 else ""
+                        f_moji = h.get('f', '')
+                        poster_url = f"https://image.tmdb.org/t/p/w185{poster}" if poster else "https://via.placeholder.com/185x278/222222/555555?text=No+Img"
                         
-                        html = f"""
-                        <div style="display: flex; align-items: center; margin-bottom: 6px; background-color: transparent; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 6px;">
-                            <img src="{poster_url}" style="width: 45px; height: 68px; border-radius: 4px; object-fit: cover; margin-right: 14px; box-shadow: 0 2px 4px rgba(0,0,0,0.5);">
-                            <div style="display: flex; flex-direction: column; justify-content: center;">
-                                <div style="font-size: 0.95rem; font-weight: 700; color: #FFFFFF; margin-bottom: 2px; line-height: 1.2;">{m_name}</div>
-                                <div style="font-size: 0.75rem; font-weight: 600; color: #FFC107; margin-bottom: 2px;">Movie <span style="color:#EDEDED; margin-left:4px;">{f"{r_stars} {f_moji}".strip()}</span></div>
-                                <div style="font-size: 0.7rem; color: #888888;">{dt.strftime('%b %d, %Y • %I:%M %p')}</div>
+                        html_card = f"""
+                        <div style="border-left: 2px solid rgba(255, 193, 7, 0.3); padding-left: 15px; margin-bottom: 5px; position: relative; padding-bottom: 5px;">
+                            <div style="position: absolute; left: -5px; top: 40px; width: 8px; height: 8px; border-radius: 50%; background: #FFC107; box-shadow: 0 0 8px #FFC107;"></div>
+                            <div style="position: relative; border-radius: 12px; overflow: hidden; padding: 12px; border: 1px solid rgba(255,255,255,0.05); background-color: rgba(15, 17, 22, 0.6);">
+                                <div style="position: absolute; top: -20px; left: -20px; right: -20px; bottom: -20px; background-image: url('{poster_url}'); background-size: cover; background-position: center; filter: blur(15px) brightness(0.3); z-index: 0;"></div>
+                                <div style="position: relative; z-index: 1; display: flex; align-items: center;">
+                                    <img src="{poster_url}" style="width: 55px; height: 82px; border-radius: 6px; box-shadow: 0 4px 10px rgba(0,0,0,0.6); margin-right: 15px; border: 1px solid rgba(255,255,255,0.1);">
+                                    <div style="flex: 1; min-width: 0;">
+                                        <div style="font-size: 1rem; font-weight: 800; color: #fff; line-height: 1.2; text-shadow: 0 2px 4px rgba(0,0,0,0.8); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{m_name}</div>
+                                        <div style="font-size: 0.65rem; color: #ccc; margin-bottom: 6px; margin-top: 2px;">{dt.strftime('%b %d, %Y • %I:%M %p')}</div>
+                                        <div style="display: flex; gap: 5px; flex-wrap: wrap;">
+                                            <span style="background: rgba(255,193,7,0.2); color: #FFD54F; padding: 2px 6px; border-radius: 8px; font-size: 0.6rem; font-weight: 700; border: 1px solid rgba(255,193,7,0.3);">🎬 Movie</span>
+                                            {f'<span style="background: rgba(255,255,255,0.1); color: #eee; padding: 2px 6px; border-radius: 8px; font-size: 0.6rem; font-weight: 600; border: 1px solid rgba(255,255,255,0.05);">{r_stars}</span>' if r_stars else ''}
+                                            {f'<span style="background: rgba(255,255,255,0.1); color: #eee; padding: 2px 6px; border-radius: 8px; font-size: 0.6rem; font-weight: 600; border: 1px solid rgba(255,255,255,0.05);">{f_moji}</span>' if f_moji and f_moji != "None" else ''}
+                                            {f'<span style="background: rgba(255,255,255,0.1); color: #eee; padding: 2px 6px; border-radius: 8px; font-size: 0.6rem; font-weight: 600; border: 1px solid rgba(255,255,255,0.05);">📡 {h.get("p")}</span>' if h.get("p") and h.get("p") != "None" else ''}
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
-                        </div>"""
-                        c_left, c_right = st.columns([5, 1])
-                        with c_left: st.markdown(html, unsafe_allow_html=True)
+                        </div>
+                        """
+                        c_left, c_right = st.columns([85, 15])
+                        with c_left: st.markdown(html_card, unsafe_allow_html=True)
                         with c_right:
-                            st.markdown("<div style='height: 18px;'></div>", unsafe_allow_html=True)
-                            if st.button("📝", key=f"h_r_mov_{h['i']}_{h_idx}", help="Rate & Review"): 
+                            st.markdown("<div style='height: 35px;'></div>", unsafe_allow_html=True)
+                            if st.button("📝", key=f"h_r_mov_{h['i']}_{h_idx}", help="Rate & Review", use_container_width=True): 
                                 st.session_state.active_actor = None
                                 show_movie_details(h['i'], m_name, details=None, is_watched=True)
                 if len(mov_hist) > st.session_state.hist_mov_limit:
