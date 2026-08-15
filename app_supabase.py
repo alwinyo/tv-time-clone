@@ -82,7 +82,14 @@ st.markdown("""
     div[data-testid="stHorizontalBlock"]:has(.carousel-marker)::-webkit-scrollbar, div[data-testid="stColumns"]:has(.carousel-marker)::-webkit-scrollbar { display: none; }
     div[data-testid="column"]:has(.carousel-marker), div[data-testid="stColumn"]:has(.carousel-marker) { flex: 0 0 115px !important; width: 115px !important; min-width: 115px !important; padding: 0 !important; display: block !important; }
 
-    /* --- NATIVE SEARCH CLEAR BUTTON --- */
+    /* --- INVISIBLE NATIVE BUTTON HACK FOR CAST --- */
+    div[data-testid="stHorizontalBlock"]:has(.carousel-marker-cast), div[data-testid="stColumns"]:has(.carousel-marker-cast) { display: flex !important; flex-direction: row !important; overflow-x: auto !important; flex-wrap: nowrap !important; scrollbar-width: none; padding-bottom: 10px !important; gap: 10px !important; }
+    div[data-testid="stHorizontalBlock"]:has(.carousel-marker-cast)::-webkit-scrollbar, div[data-testid="stColumns"]:has(.carousel-marker-cast)::-webkit-scrollbar { display: none; }
+    div[data-testid="column"]:has(.carousel-marker-cast), div[data-testid="stColumn"]:has(.carousel-marker-cast) { flex: 0 0 85px !important; width: 85px !important; min-width: 85px !important; padding: 0 !important; display: block !important; text-align: center !important; }
+    div[data-testid="column"]:has(.carousel-marker-cast) div[data-testid="stButton"] button { background: transparent !important; border: none !important; box-shadow: none !important; padding: 0 !important; margin: 0 !important; color: #E0E0E0 !important; font-size: 0.6rem !important; font-weight: 600 !important; line-height: 1.2 !important; white-space: nowrap !important; overflow: hidden !important; text-overflow: ellipsis !important; height: auto !important; min-height: 0 !important; width: 100% !important; display: block !important; }
+    div[data-testid="column"]:has(.carousel-marker-cast) div[data-testid="stButton"] button:hover { color: #FFC107 !important; transform: none !important; text-decoration: underline !important;}
+    
+    /* --- INLINE SEARCH CLEAR BUTTON OVERRIDE --- */
     div[data-testid="stVerticalBlock"]:has(> div > div > .search-container-hook) { position: relative !important; }
     div:has(> .clear-btn-hook) + div { position: absolute !important; right: 8px !important; top: 7px !important; width: 26px !important; z-index: 100 !important; }
     div:has(> .clear-btn-hook) + div button { background: rgba(255,255,255,0.08) !important; border: none !important; box-shadow: none !important; color: #aaa !important; padding: 0 !important; min-height: 26px !important; height: 26px !important; width: 26px !important; border-radius: 50% !important; font-size: 0.7rem !important; display: flex !important; align-items: center !important; justify-content: center !important; margin: 0 !important; line-height: 1 !important; }
@@ -1431,10 +1438,9 @@ with t_profile:
         
         with c_tab1:
             st.markdown("**🧬 Cinematic Taste Profile**")
-            # Fetch genres dynamically for top 10 most interacted items to save API calls
             top_interactions = {}
             for h in history_sorted: top_interactions[(h["t"], h["i"])] = top_interactions.get((h["t"], h["i"]), 0) + 1
-            top_10 = sorted(top_interactions.keys(), key=lambda k: top_interactions[k], reverse=True)[:10]
+            top_10 = sorted(top_interactions.keys(), key=lambda k: top_interactions[k], reverse=True)[:15]
             
             genre_counts = {}
             for t, i in top_10:
@@ -1463,7 +1469,7 @@ with t_profile:
                 except: pass
             if heatmap_data:
                 df_heat = pd.DataFrame(heatmap_data).groupby(["Day", "Hour"]).count().reset_index()
-                chart_heat = alt.Chart(df_heat).mark_rect(rx=4, ry=4).encode(
+                chart_heat = alt.Chart(df_heat).mark_rect(cornerRadius=4).encode(
                     x=alt.X('Hour:O', title='Hour of Day', axis=alt.Axis(labelAngle=0, labelColor="#aaa")),
                     y=alt.Y('Day:O', sort=days_order, title=None, axis=alt.Axis(labelColor="#aaa")),
                     color=alt.Color('Count:Q', scale=alt.Scale(scheme='yellowgreen'), legend=None),
