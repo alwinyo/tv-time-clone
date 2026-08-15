@@ -361,10 +361,89 @@ def cb_clear_lib_tv(): st.session_state.lib_tv_reset_ctr += 1
 def cb_clear_lib_mov(): st.session_state.lib_mov_reset_ctr += 1
 def cb_toggle_ep_info(sid, ecode): st.session_state[f"view_info_{sid}_{ecode}"] = not st.session_state.get(f"view_info_{sid}_{ecode}", False)
 
+# --- GLOBAL SAFE UNDO BANNER ---
+if st.session_state.last_action and not st.session_state.prompt_review:
+    la = st.session_state.last_action
+    with st.container(border=True):
+        c1, c2, c3 = st.columns([6, 2, 2])
+        with c1: st.success("✅ Logged successfully!")
+        with c2: st.button("↩️ Undo", key="undo_btn", on_click=cb_undo_action, args=(la["t"], la["i"], la["e"]), use_container_width=True)
+        with c3: st.button("✖", key="dismiss_undo", on_click=cb_clear_action, use_container_width=True)
+
 # --- VISUAL HELPERS ---
 def render_badges(items, is_gold=False):
     css_class = "badge badge-gold" if is_gold else "badge"
     st.markdown("".join([f'<span class="{css_class}">{item}</span>' for item in items]), unsafe_allow_html=True)
+
+def display_poster(path, width=185):
+    if path and str(path).lower() not in ["none", "null", ""]: st.image(f"https://image.tmdb.org/t/p/w{width}{path}", use_container_width=True)
+    else: st.markdown(f'<div style="background-color: rgba(255,255,255,0.05); border-radius:8px; width:100%; aspect-ratio: 2/3; display:flex; align-items:center; justify-content:center; color:#555; font-size:0.8rem; text-align:center; margin-bottom:5px;">No Image</div>', unsafe_allow_html=True)
+
+def show_cast_horizontal(cast_list, key_prefix, limit=15):
+    if not cast_list: return
+    cols = st.columns(len(cast_list[:limit]))
+    for idx, actor in enumerate(cast_list[:limit]):
+        with cols[idx]:
+            st.markdown('<span class="carousel-marker-cast"></span>', unsafe_allow_html=True)
+            img_url = f"https://image.tmdb.org/t/p/w185{actor['profile_path']}" if actor.get("profile_path") else "https://via.placeholder.com/185x278/222222/888888?text=No+Photo"
+            encoded_name = str(actor.get('name', '')).replace(" ", "+")
+            imdb_url = f"https://www.imdb.com/find/?q={encoded_name}"
+            st.markdown(f'<a href="{imdb_url}" target="_blank"><img src="{img_url}" style="width: 85px; height: 127px; border-radius: 8px; object-fit: cover; box-shadow: 0 4px 6px rgba(0,0,0,0.3); margin-bottom: 6px; transition: transform 0.2s;"></a>', unsafe_allow_html=True)
+            char_name = str(actor.get('character', '')).strip()
+            if char_name: st.markdown(f'<div style="font-size: 0.55rem; color: #FFC107; font-weight: 700; line-height: 1.1; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{char_name}</div>', unsafe_allow_html=True)
+            st.button(actor.get('name', 'Unknown'), key=f"cast_{key_prefix}_{actor['id']}_{idx}", on_click=cb_set_active_actor, args=(actor['id'],), use_container_width=True)
+
+def render_inline_actor_pokedex(actor_id):
+    details = fetch_api(f"https://api.themoviedb.org/3/person/{actor_id}?api_key={TMDB_KEY}")
+    credits = fetch_api(f"https://api.themoviedb.org/3/person/{actor_id}/combined_credits?api_key={TMDB_KEY}")
+    
+    db_shows = {str(s["id"]): s for s in st.session_state.db["shows"]}
+    db_movies = {str(m["id"]): m for m in st.session_state.db["movies"]}
+    
+    owned_items = []
+    seen_ids = set()
+    for c in credits.get("cast", []):
+        cid = str(c["id"])
+        if c["media_type"] == "tv" and cid in db_shows and cid not in seen_ids:
+            owned_items.append({"id": cid, "title": db_shows[cid]["name"], "type": "tv", "poster": db_shows[cid].get("poster_path")})
+            seen_ids.add(cid)
+        elif c["media_type"] == "movie" and cid in db_movies and cid not in seen_ids:
+            owned_items.append({"id": cid, "title": db_movies[cid]["name"], "type": "movie", "poster": db_movies[cid].get("poster_path")})
+            seen_ids.add(cid)
+            
+    st.markdown("<hr style='margin: 0.5rem 0; border-color: #FFC107;'>", unsafe_allow_html=True)
+    with st.container(border=True):
+        col_title, col_btn = st.columns([8, 2])
+        with col_title: st.markdown(f"<h4 style='color: #FFD54F;'>{details.get('name', 'Actor Profile')}</h4>", unsafe_allow_html=True)
+        with col_btn: st.button("✖ Close", key=f"close_act_{actor_id}", on_click=cb_close_active_actor, use_container_width=True)
+        
+        c1, c2 = st.columns([1, 2])
+        with c1: display_poster(details.get("profile_path"), width=185)
+        with c2:
+            st.caption(f"**Born:** {details.get('birthday', 'Unknown')}")
+            bio = details.get("biography", "")
+            if len(bio) > 150: bio = bio[:150] + "..."
+            st.write(bio if bio else "No biography available.")
+            
+        if owned_items:
+            st.markdown(f"**📚 In Your Library ({len(owned_items)})**")
+            cols = st.columns(len(owned_items))
+            for idx, item in enumerate(owned_items):
+                with cols[idx]:
+                    st.markdown('<span class="carousel-marker"></span>', unsafe_allow_html=True)
+                    display_poster(item.get("poster"), width=154)
+                    st.markdown(f'<div class="grid-title" title="{item["title"]}">{item["title"]}</div>', unsafe_allow_html=True)
+        
+        st.markdown("**🌟 Famous Roles**")
+        top_credits = sorted(credits.get("cast", []), key=lambda x: x.get("popularity", 0), reverse=True)[:10]
+        if top_credits:
+            cols = st.columns(len(top_credits))
+            for idx, item in enumerate(top_credits):
+                with cols[idx]:
+                    st.markdown('<span class="carousel-marker"></span>', unsafe_allow_html=True)
+                    display_poster(item.get("poster_path"), width=154)
+                    i_title = item.get("name") if item.get("media_type") == "tv" else item.get("title")
+                    st.markdown(f'<div class="grid-title" title="{i_title}">{i_title}</div>', unsafe_allow_html=True)
 
 def render_poster_card(title, poster_path, subtitle="", progress_pct=-1.0):
     img_url = f"https://image.tmdb.org/t/p/w342{poster_path}" if poster_path else "https://via.placeholder.com/342x513/222222/555555?text=No+Poster"
@@ -561,7 +640,9 @@ def show_episode_details(show_id, show_name, ep_code, ep_data=None, is_watched=F
                 
     st.divider()
     st.markdown("#### Cast & Guest Stars")
-    show_cast_horizontal(fetch_api(f"https://api.themoviedb.org/3/tv/{show_id}/credits?api_key={TMDB_KEY}").get("cast", []) + ep_data.get("guest_stars", []), key_prefix=f"ep_{show_id}_{ep_code}", limit=15)
+    cast_data = fetch_api(f"https://api.themoviedb.org/3/tv/{show_id}/credits?api_key={TMDB_KEY}").get("cast") or []
+    guest_data = ep_data.get("guest_stars") or []
+    show_cast_horizontal(cast_data + guest_data, key_prefix=f"ep_{show_id}_{ep_code}", limit=15)
     
     if st.session_state.get("active_actor"): render_inline_actor_pokedex(st.session_state["active_actor"])
         
@@ -619,7 +700,8 @@ def manage_show_dialog(show_id, show_name, details):
                     
     st.divider()
     st.markdown("#### Top Cast")
-    show_cast_horizontal(fetch_api(f"https://api.themoviedb.org/3/tv/{show_id}/credits?api_key={TMDB_KEY}").get("cast", []), key_prefix=f"show_{show_id}", limit=15)
+    cast_data = fetch_api(f"https://api.themoviedb.org/3/tv/{show_id}/credits?api_key={TMDB_KEY}").get("cast") or []
+    show_cast_horizontal(cast_data, key_prefix=f"show_{show_id}", limit=15)
     if st.session_state.get("active_actor"): render_inline_actor_pokedex(st.session_state["active_actor"])
 
 @st.dialog("Movie Details")
@@ -662,7 +744,8 @@ def show_movie_details(m_id, m_name, details=None, is_watched=False):
                 
     st.divider()
     st.markdown("#### Top Cast")
-    show_cast_horizontal(fetch_api(f"https://api.themoviedb.org/3/movie/{m_id}/credits?api_key={TMDB_KEY}").get("cast", []), key_prefix=f"mov_{m_id}", limit=15)
+    cast_data = fetch_api(f"https://api.themoviedb.org/3/movie/{m_id}/credits?api_key={TMDB_KEY}").get("cast") or []
+    show_cast_horizontal(cast_data, key_prefix=f"mov_{m_id}", limit=15)
     if st.session_state.get("active_actor"): render_inline_actor_pokedex(st.session_state["active_actor"])
         
     st.divider()
