@@ -163,6 +163,8 @@ HEADERS = {"apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}", "C
 TODAY = get_dubai_time().strftime('%Y-%m-%d')
 PREMIUM_EMOTIONS = ["None", "🤯 Mind Blown", "😂 Hilarious", "😭 Emotional", "😍 Loved it", "😡 Frustrated", "😴 Bored", "🍿 Pure Hype", "🧠 Genius Plot", "💔 Heartbroken", "🤬 Trash", "🫣 Edge of Seat", "📈 Peak Cinema"]
 
+GENRE_MAP = {28:"Action", 12:"Adventure", 16:"Animation", 35:"Comedy", 80:"Crime", 99:"Documentary", 18:"Drama", 10751:"Family", 14:"Fantasy", 36:"History", 27:"Horror", 10402:"Music", 9648:"Mystery", 10749:"Romance", 878:"Sci-Fi", 10770:"TV Movie", 53:"Thriller", 10752:"War", 37:"Western", 10759:"Action", 10762:"Kids", 10765:"Sci-Fi", 10766:"Soap", 10767:"Talk", 10768:"Politics"}
+
 @st.cache_data(ttl=43200)
 def fetch_api(url):
     try:
@@ -395,14 +397,10 @@ if st.session_state.last_action and not st.session_state.prompt_review:
         with c2: st.button("↩️ Undo", key="undo_btn", on_click=cb_undo_action, args=(la["t"], la["i"], la["e"]), use_container_width=True)
         with c3: st.button("✖", key="dismiss_undo", on_click=cb_clear_action, use_container_width=True)
 
-# --- VISUAL HELPERS ---
+# --- VISUAL HELPERS (FLATTENED TO PREVENT STREAMLIT MARKDOWN BUGS) ---
 def render_badges(items, is_gold=False):
     css_class = "badge badge-gold" if is_gold else "badge"
     st.markdown("".join([f'<span class="{css_class}">{item}</span>' for item in items]), unsafe_allow_html=True)
-
-def display_poster(path, width=185):
-    if path and str(path).lower() not in ["none", "null", ""]: st.image(f"https://image.tmdb.org/t/p/w{width}{path}", use_container_width=True)
-    else: st.markdown(f'<div style="background-color: rgba(255,255,255,0.05); border-radius:8px; width:100%; aspect-ratio: 2/3; display:flex; align-items:center; justify-content:center; color:#555; font-size:0.8rem; text-align:center; margin-bottom:5px;">No Image</div>', unsafe_allow_html=True)
 
 def show_cast_horizontal(cast_list, key_prefix, limit=15):
     if not cast_list: return
@@ -443,7 +441,9 @@ def render_inline_actor_pokedex(actor_id):
         with col_btn: st.button("✖ Close", key=f"close_act_{actor_id}", on_click=cb_close_active_actor, use_container_width=True)
         
         c1, c2 = st.columns([1, 2])
-        with c1: display_poster(details.get("profile_path"), width=185)
+        with c1:
+            img_url = f"https://image.tmdb.org/t/p/w185{details.get('profile_path')}" if details.get("profile_path") else "https://via.placeholder.com/185x278/222222/555555?text=No+Image"
+            st.markdown(f'<img src="{img_url}" style="width: 100%; border-radius: 8px;">', unsafe_allow_html=True)
         with c2:
             st.caption(f"**Born:** {details.get('birthday', 'Unknown')}")
             bio = details.get("biography", "")
@@ -456,8 +456,8 @@ def render_inline_actor_pokedex(actor_id):
             for idx, item in enumerate(owned_items):
                 with cols[idx]:
                     st.markdown('<span class="carousel-marker"></span>', unsafe_allow_html=True)
-                    display_poster(item.get("poster"), width=154)
-                    st.markdown(f'<div class="grid-title" title="{item["title"]}">{item["title"]}</div>', unsafe_allow_html=True)
+                    i_url = f"https://image.tmdb.org/t/p/w154{item.get('poster')}" if item.get('poster') else "https://via.placeholder.com/154x231/222222/555555?text=No+Image"
+                    st.markdown(f'<img src="{i_url}" style="width: 100%; border-radius: 8px; margin-bottom: 5px;"><div class="grid-title" title="{item["title"]}">{item["title"]}</div>', unsafe_allow_html=True)
         
         st.markdown("**🌟 Famous Roles**")
         top_credits = sorted(credits.get("cast", []), key=lambda x: x.get("popularity", 0), reverse=True)[:10]
@@ -466,45 +466,22 @@ def render_inline_actor_pokedex(actor_id):
             for idx, item in enumerate(top_credits):
                 with cols[idx]:
                     st.markdown('<span class="carousel-marker"></span>', unsafe_allow_html=True)
-                    display_poster(item.get("poster_path"), width=154)
+                    i_url = f"https://image.tmdb.org/t/p/w154{item.get('poster_path')}" if item.get('poster_path') else "https://via.placeholder.com/154x231/222222/555555?text=No+Image"
                     i_title = item.get("name") if item.get("media_type") == "tv" else item.get("title")
-                    st.markdown(f'<div class="grid-title" title="{i_title}">{i_title}</div>', unsafe_allow_html=True)
+                    st.markdown(f'<img src="{i_url}" style="width: 100%; border-radius: 8px; margin-bottom: 5px;"><div class="grid-title" title="{i_title}">{i_title}</div>', unsafe_allow_html=True)
 
 def render_poster_card(title, poster_path, subtitle="", progress_pct=-1.0):
     img_url = f"https://image.tmdb.org/t/p/w342{poster_path}" if poster_path else "https://via.placeholder.com/342x513/222222/555555?text=No+Poster"
     prog_html = f'<div style="position: absolute; bottom: 0; left: 0; height: 4px; width: {min(progress_pct, 1.0)*100}%; background: #FFC107; box-shadow: 0 0 8px #FFC107; z-index: 10;"></div>' if progress_pct >= 0 else ''
     sub_html = f'<div style="color: #FFC107; font-weight: 700; font-size: 0.6rem; margin-top: 2px;">{subtitle}</div>' if subtitle else ''
-    
-    st.markdown(f"""
-    <div style="position: relative; border-radius: 8px 8px 0 0; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.5); aspect-ratio: 2/3; background-color: #111;">
-        <img src="{img_url}" style="width: 100%; height: 100%; object-fit: cover; display: block;">
-        <div style="position: absolute; bottom: 0; left: 0; right: 0; height: 50%; background: linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0) 100%); z-index: 1;"></div>
-        <div style="position: absolute; bottom: 10px; left: 10px; right: 10px; z-index: 2;">
-            <div style="color: white; font-weight: 800; font-size: 0.75rem; line-height: 1.2; text-shadow: 0 2px 4px rgba(0,0,0,0.8); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">{title}</div>
-            {sub_html}
-        </div>
-        {prog_html}
-    </div>
-    """, unsafe_allow_html=True)
+    html = f'<div style="position: relative; border-radius: 8px 8px 0 0; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.5); aspect-ratio: 2/3; background-color: #111;"><img src="{img_url}" style="width: 100%; height: 100%; object-fit: cover; display: block;"><div style="position: absolute; bottom: 0; left: 0; right: 0; height: 50%; background: linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0) 100%); z-index: 1;"></div><div style="position: absolute; bottom: 10px; left: 10px; right: 10px; z-index: 2;"><div style="color: white; font-weight: 800; font-size: 0.75rem; line-height: 1.2; text-shadow: 0 2px 4px rgba(0,0,0,0.8); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">{title}</div>{sub_html}</div>{prog_html}</div>'
+    st.markdown(html, unsafe_allow_html=True)
 
 def render_apple_tv_header(backdrop_path, poster_path, title, badges_html):
     bg = f"https://image.tmdb.org/t/p/w780{backdrop_path}" if backdrop_path else f"https://image.tmdb.org/t/p/w342{poster_path}"
     post = f"https://image.tmdb.org/t/p/w185{poster_path}" if poster_path else "https://via.placeholder.com/185x278/222222/555555?text=No+Poster"
-    
-    st.markdown(f"""
-    <div style="margin: -24px -24px 0 -24px; position: relative; overflow: hidden;">
-        <div style="width: 100%; height: 220px; background-image: url('{bg}'); background-size: cover; background-position: center; filter: brightness(0.6) blur({0 if backdrop_path else 15}px);"></div>
-        <div style="position: absolute; bottom: 0; left: 0; right: 0; height: 120px; background: linear-gradient(to top, rgba(15,17,22,1) 0%, rgba(15,17,22,0) 100%);"></div>
-        <div style="position: absolute; bottom: -20px; left: 20px; right: 20px; display: flex; align-items: flex-end; gap: 15px; z-index: 10;">
-            <img src="{post}" style="width: 105px; height: 157px; border-radius: 8px; box-shadow: 0 8px 20px rgba(0,0,0,0.8); border: 1px solid rgba(255,255,255,0.1); object-fit: cover;">
-            <div style="padding-bottom: 25px; flex: 1; min-width: 0;">
-                <div style="margin: 0; padding: 0; font-size: 1.4rem; font-weight: 800; line-height: 1.1; text-shadow: 0 2px 4px rgba(0,0,0,0.8); color: white; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">{title}</div>
-                <div style="margin-top: 6px;">{badges_html}</div>
-            </div>
-        </div>
-    </div>
-    <div style="height: 35px;"></div>
-    """, unsafe_allow_html=True)
+    html = f'<div style="margin: -24px -24px 0 -24px; position: relative; overflow: hidden;"><div style="width: 100%; height: 220px; background-image: url(\'{bg}\'); background-size: cover; background-position: center; filter: brightness(0.6) blur({0 if backdrop_path else 15}px);"></div><div style="position: absolute; bottom: 0; left: 0; right: 0; height: 120px; background: linear-gradient(to top, rgba(15,17,22,1) 0%, rgba(15,17,22,0) 100%);"></div><div style="position: absolute; bottom: -20px; left: 20px; right: 20px; display: flex; align-items: flex-end; gap: 15px; z-index: 10;"><img src="{post}" style="width: 105px; height: 157px; border-radius: 8px; box-shadow: 0 8px 20px rgba(0,0,0,0.8); border: 1px solid rgba(255,255,255,0.1); object-fit: cover;"><div style="padding-bottom: 25px; flex: 1; min-width: 0;"><div style="margin: 0; padding: 0; font-size: 1.4rem; font-weight: 800; line-height: 1.1; text-shadow: 0 2px 4px rgba(0,0,0,0.8); color: white; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">{title}</div><div style="margin-top: 6px;">{badges_html}</div></div></div></div><div style="height: 35px;"></div>'
+    st.markdown(html, unsafe_allow_html=True)
 
 # --- RECAP ENGINE ---
 @st.dialog("🌙 Monthly Wrap-Up")
@@ -548,10 +525,16 @@ def show_yearly_recap_dialog(year, y_tv, y_mov, recap_id):
     total_time = (y_tv * 45) + (y_mov * 120)
     days = total_time // 1440
     
-    st.markdown(f"""<div style="background: linear-gradient(135deg, #FFD54F 0%, #FFC107 100%); border-radius: 14px; padding: 22px; color: black; text-align: center; margin-bottom: 15px; box-shadow: 0 4px 15px rgba(255,193,7,0.3);"><div style="font-size: 2.6rem; font-weight: 900; line-height:1;">{y_tv + y_mov:,}</div><div style="font-size: 0.75rem; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; margin-top:4px;">Total Titles Inventoried</div></div>""", unsafe_allow_html=True)
+    html = f'<div style="background: linear-gradient(135deg, #FFD54F 0%, #FFC107 100%); border-radius: 14px; padding: 22px; color: black; text-align: center; margin-bottom: 15px; box-shadow: 0 4px 15px rgba(255,193,7,0.3);"><div style="font-size: 2.6rem; font-weight: 900; line-height:1;">{y_tv + y_mov:,}</div><div style="font-size: 0.75rem; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; margin-top:4px;">Total Titles Inventoried</div></div>'
+    st.markdown(html, unsafe_allow_html=True)
+    
     c1, c2 = st.columns(2)
-    with c1: st.markdown(f"""<div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 15px; text-align: center;"><div style="font-size: 1.4rem; font-weight: 800; color: #FFC107;">{y_tv}</div><div style="font-size: 0.65rem; color: #aaa; text-transform: uppercase; font-weight:700;">Episodes Logged</div></div>""", unsafe_allow_html=True)
-    with c2: st.markdown(f"""<div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 15px; text-align: center;"><div style="font-size: 1.4rem; font-weight: 800; color: #FFC107;">{y_mov}</div><div style="font-size: 0.65rem; color: #aaa; text-transform: uppercase; font-weight:700;">Movies Checked</div></div>""", unsafe_allow_html=True)
+    with c1: 
+        html_tv = f'<div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 15px; text-align: center;"><div style="font-size: 1.4rem; font-weight: 800; color: #FFC107;">{y_tv}</div><div style="font-size: 0.65rem; color: #aaa; text-transform: uppercase; font-weight:700;">Episodes Logged</div></div>'
+        st.markdown(html_tv, unsafe_allow_html=True)
+    with c2: 
+        html_mov = f'<div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 15px; text-align: center;"><div style="font-size: 1.4rem; font-weight: 800; color: #FFC107;">{y_mov}</div><div style="font-size: 0.65rem; color: #aaa; text-transform: uppercase; font-weight:700;">Movies Checked</div></div>'
+        st.markdown(html_mov, unsafe_allow_html=True)
         
     st.markdown(f"⏳ **Time Commitment:** You dedicated total of **{days} days** and **{(total_time % 1440) // 60} hours** to premium story arcs.")
     
@@ -586,7 +569,8 @@ def show_yearly_recap_dialog(year, y_tv, y_mov, recap_id):
     elif days > 5: tier_title, tier_desc = "🍿 Marathon Veteran", "You know exactly how to lock down a weekend block and demolish complex plotlines."
     else: tier_title, tier_desc = "🎬 Curation Connoisseur", "High-taste selection habits. You filter for absolute choice cinema narrative styles."
         
-    st.markdown(f"""<div style="background: rgba(255, 193, 7, 0.08); border: 1px dashed #FFC107; border-radius: 12px; padding: 15px; margin-top: 15px; text-align: center;"><div style="font-size: 1.15rem; font-weight: 800; color: #FFD54F;">{tier_title}</div><div style="font-size: 0.75rem; color: #eee; margin-top: 5px; line-height:1.3;">{tier_desc}</div></div>""", unsafe_allow_html=True)
+    html_tier = f'<div style="background: rgba(255, 193, 7, 0.08); border: 1px dashed #FFC107; border-radius: 12px; padding: 15px; margin-top: 15px; text-align: center;"><div style="font-size: 1.15rem; font-weight: 800; color: #FFD54F;">{tier_title}</div><div style="font-size: 0.75rem; color: #eee; margin-top: 5px; line-height:1.3;">{tier_desc}</div></div>'
+    st.markdown(html_tier, unsafe_allow_html=True)
     st.divider()
     is_seen = recap_id in st.session_state.db.get("seen_recaps", [])
     if st.button("✖ Close Recap" if is_seen else "Claim Achievement Status", use_container_width=True, key=f"close_year_recap_{recap_id}"):
@@ -879,17 +863,8 @@ with t_next:
             h_show, h_details, h_ep, h_code = hero["item"], hero["details"], hero["ep"], hero["code"]
             h_bg = f"https://image.tmdb.org/t/p/w780{h_details.get('backdrop_path')}" if h_details.get('backdrop_path') else f"https://image.tmdb.org/t/p/w342{h_show.get('poster_path')}"
             
-            st.markdown(f"""
-            <div style="position: relative; border-radius: 12px; overflow: hidden; margin-bottom: 5px; box-shadow: 0 8px 24px rgba(0,0,0,0.6); height: 220px;">
-                <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background-image: url('{h_bg}'); background-size: cover; background-position: center; filter: brightness(0.6);"></div>
-                <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: linear-gradient(to top, rgba(15,17,22,1) 0%, rgba(15,17,22,0.2) 60%, rgba(15,17,22,0) 100%);"></div>
-                <div style="position: absolute; bottom: 20px; left: 20px; right: 20px;">
-                    <div style="color: #FFC107; font-weight: 800; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px;">Up Next</div>
-                    <div style="color: white; font-weight: 900; font-size: 1.8rem; line-height: 1.1; text-shadow: 0 2px 8px rgba(0,0,0,0.8); margin-bottom: 5px;">{h_show['name']}</div>
-                    <div style="color: #ccc; font-weight: 600; font-size: 0.85rem;">{h_code} • {h_ep.get('name', 'Episode')}</div>
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
+            html_hero = f'<div style="position: relative; border-radius: 12px; overflow: hidden; margin-bottom: 5px; box-shadow: 0 8px 24px rgba(0,0,0,0.6); height: 220px;"><div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background-image: url(\'{h_bg}\'); background-size: cover; background-position: center; filter: brightness(0.6);"></div><div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: linear-gradient(to top, rgba(15,17,22,1) 0%, rgba(15,17,22,0.2) 60%, rgba(15,17,22,0) 100%);"></div><div style="position: absolute; bottom: 20px; left: 20px; right: 20px;"><div style="color: #FFC107; font-weight: 800; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px;">Up Next</div><div style="color: white; font-weight: 900; font-size: 1.8rem; line-height: 1.1; text-shadow: 0 2px 8px rgba(0,0,0,0.8); margin-bottom: 5px;">{h_show["name"]}</div><div style="color: #ccc; font-weight: 600; font-size: 0.85rem;">{h_code} • {h_ep.get("name", "Episode")}</div></div></div>'
+            st.markdown(html_hero, unsafe_allow_html=True)
             
             c_h1, c_h2 = st.columns([7, 3])
             with c_h1: st.button("▶ Resume Watching", key=f"hero_w_tv_{h_show['id']}", on_click=cb_watch_tv_feed, args=(h_show['id'], h_show['name'], h_code), use_container_width=True, type="primary")
@@ -1413,52 +1388,17 @@ with t_profile:
         st.markdown("".join([f'<span style="background: rgba(255,255,255,0.1); color: #fff; padding: 4px 12px; border-radius: 16px; font-size: 0.75rem; font-weight: 700; margin-right: 8px; border: 1px solid rgba(255,255,255,0.1);">{f}</span>' for f in flairs]), unsafe_allow_html=True)
         st.markdown("<div style='height: 15px;'></div>", unsafe_allow_html=True)
         
-        st.markdown(f"""
-        <div style="display: flex; gap: 10px; margin-bottom: 10px;">
-            <div style="flex: 1; background-color: rgba(255,255,255,0.05); border-radius: 12px; padding: 15px; text-align: center; border: 1px solid rgba(255,255,255,0.1);">
-                <div style="font-size: 1.8rem; font-weight: 800; color: #FFC107; line-height: 1;">{months}</div>
-                <div style="font-size: 0.65rem; color: #aaa; text-transform: uppercase; font-weight: 600; margin-top: 4px;">Months</div>
-            </div>
-            <div style="flex: 1; background-color: rgba(255,255,255,0.05); border-radius: 12px; padding: 15px; text-align: center; border: 1px solid rgba(255,255,255,0.1);">
-                <div style="font-size: 1.8rem; font-weight: 800; color: #FFC107; line-height: 1;">{days}</div>
-                <div style="font-size: 0.65rem; color: #aaa; text-transform: uppercase; font-weight: 600; margin-top: 4px;">Days</div>
-            </div>
-            <div style="flex: 1; background-color: rgba(255,255,255,0.05); border-radius: 12px; padding: 15px; text-align: center; border: 1px solid rgba(255,255,255,0.1);">
-                <div style="font-size: 1.8rem; font-weight: 800; color: #FFC107; line-height: 1;">{hours}</div>
-                <div style="font-size: 0.65rem; color: #aaa; text-transform: uppercase; font-weight: 600; margin-top: 4px;">Hours</div>
-            </div>
-        </div>
-        <div style="display: flex; gap: 10px; margin-bottom: 10px;">
-            <div style="flex: 1; background-color: rgba(255,255,255,0.05); border-radius: 12px; padding: 15px; text-align: center; border: 1px solid rgba(255,255,255,0.1);">
-                <div style="font-size: 2.2rem; font-weight: 800; color: #fff; line-height: 1;">{total_episodes_watched:,}</div>
-                <div style="font-size: 0.75rem; color: #aaa; text-transform: uppercase; font-weight: 600; margin-top: 4px;">Episodes</div>
-            </div>
-            <div style="flex: 1; background-color: rgba(255,255,255,0.05); border-radius: 12px; padding: 15px; text-align: center; border: 1px solid rgba(255,255,255,0.1);">
-                <div style="font-size: 2.2rem; font-weight: 800; color: #fff; line-height: 1;">{total_movies_watched:,}</div>
-                <div style="font-size: 0.75rem; color: #aaa; text-transform: uppercase; font-weight: 600; margin-top: 4px;">Movies</div>
-            </div>
-        </div>
-        <div style="display: flex; gap: 10px; margin-bottom: 10px;">
-            <div style="flex: 1; background-color: rgba(255,255,255,0.05); border-radius: 12px; padding: 15px; text-align: center; border: 1px solid rgba(255,255,255,0.1);">
-                <div style="font-size: 1.4rem; font-weight: 800; color: #FFC107; line-height: 1;">{commit_ratio}%</div>
-                <div style="font-size: 0.65rem; color: #aaa; text-transform: uppercase; font-weight: 600; margin-top: 4px;">Commitment Ratio</div>
-            </div>
-            <div style="flex: 1; background-color: rgba(255,255,255,0.05); border-radius: 12px; padding: 15px; text-align: center; border: 1px solid rgba(255,255,255,0.1);">
-                <div style="font-size: 1.4rem; font-weight: 800; color: #FFC107; line-height: 1;">{avg_tv_r} <span style="font-size:0.8rem; color:#aaa;">/ {avg_mov_r}</span></div>
-                <div style="font-size: 0.65rem; color: #aaa; text-transform: uppercase; font-weight: 600; margin-top: 4px;">Avg TV / Movie ⭐</div>
-            </div>
-        </div>
-        <div style="display: flex; gap: 10px; margin-bottom: 10px;">
-            <div style="flex: 1; background-color: rgba(255,255,255,0.05); border-radius: 12px; padding: 15px; text-align: center; border: 1px solid rgba(255,255,255,0.1);">
-                <div style="font-size: 1.1rem; font-weight: 800; color: #FFC107; line-height: 1.2;">{top_plat_global}</div>
-                <div style="font-size: 0.65rem; color: #aaa; text-transform: uppercase; font-weight: 600; margin-top: 4px;">Top Platform</div>
-            </div>
-            <div style="flex: 1; background-color: rgba(255,255,255,0.05); border-radius: 12px; padding: 15px; text-align: center; border: 1px solid rgba(255,255,255,0.1);">
-                <div style="font-size: 1.1rem; font-weight: 800; color: #FFC107; line-height: 1.2;">{top_feel_global}</div>
-                <div style="font-size: 0.65rem; color: #aaa; text-transform: uppercase; font-weight: 600; margin-top: 4px;">Signature Vibe</div>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
+        html_stats1 = f'<div style="display: flex; gap: 10px; margin-bottom: 10px; margin-top: 10px;"><div style="flex: 1; background-color: rgba(255,255,255,0.05); border-radius: 12px; padding: 15px; text-align: center; border: 1px solid rgba(255,255,255,0.1);"><div style="font-size: 1.8rem; font-weight: 800; color: #FFC107; line-height: 1;">{months}</div><div style="font-size: 0.65rem; color: #aaa; text-transform: uppercase; font-weight: 600; margin-top: 4px;">Months</div></div><div style="flex: 1; background-color: rgba(255,255,255,0.05); border-radius: 12px; padding: 15px; text-align: center; border: 1px solid rgba(255,255,255,0.1);"><div style="font-size: 1.8rem; font-weight: 800; color: #FFC107; line-height: 1;">{days}</div><div style="font-size: 0.65rem; color: #aaa; text-transform: uppercase; font-weight: 600; margin-top: 4px;">Days</div></div><div style="flex: 1; background-color: rgba(255,255,255,0.05); border-radius: 12px; padding: 15px; text-align: center; border: 1px solid rgba(255,255,255,0.1);"><div style="font-size: 1.8rem; font-weight: 800; color: #FFC107; line-height: 1;">{hours}</div><div style="font-size: 0.65rem; color: #aaa; text-transform: uppercase; font-weight: 600; margin-top: 4px;">Hours</div></div></div>'
+        st.markdown(html_stats1, unsafe_allow_html=True)
+        
+        html_stats2 = f'<div style="display: flex; gap: 10px; margin-bottom: 10px;"><div style="flex: 1; background-color: rgba(255,255,255,0.05); border-radius: 12px; padding: 15px; text-align: center; border: 1px solid rgba(255,255,255,0.1);"><div style="font-size: 2.2rem; font-weight: 800; color: #fff; line-height: 1;">{total_episodes_watched:,}</div><div style="font-size: 0.75rem; color: #aaa; text-transform: uppercase; font-weight: 600; margin-top: 4px;">Episodes</div></div><div style="flex: 1; background-color: rgba(255,255,255,0.05); border-radius: 12px; padding: 15px; text-align: center; border: 1px solid rgba(255,255,255,0.1);"><div style="font-size: 2.2rem; font-weight: 800; color: #fff; line-height: 1;">{total_movies_watched:,}</div><div style="font-size: 0.75rem; color: #aaa; text-transform: uppercase; font-weight: 600; margin-top: 4px;">Movies</div></div></div>'
+        st.markdown(html_stats2, unsafe_allow_html=True)
+        
+        html_stats3 = f'<div style="display: flex; gap: 10px; margin-bottom: 10px;"><div style="flex: 1; background-color: rgba(255,255,255,0.05); border-radius: 12px; padding: 15px; text-align: center; border: 1px solid rgba(255,255,255,0.1);"><div style="font-size: 1.4rem; font-weight: 800; color: #FFC107; line-height: 1;">{completed_shows} <span style="font-size:0.8rem; color:#aaa;">/ {started_shows}</span></div><div style="font-size: 0.65rem; color: #aaa; text-transform: uppercase; font-weight: 600; margin-top: 4px;">Shows Finished / Active</div></div><div style="flex: 1; background-color: rgba(255,255,255,0.05); border-radius: 12px; padding: 15px; text-align: center; border: 1px solid rgba(255,255,255,0.1);"><div style="font-size: 1.4rem; font-weight: 800; color: #FFC107; line-height: 1;">{avg_tv_r} <span style="font-size:0.8rem; color:#aaa;">/ {avg_mov_r}</span></div><div style="font-size: 0.65rem; color: #aaa; text-transform: uppercase; font-weight: 600; margin-top: 4px;">Avg TV / Movie ⭐</div></div></div>'
+        st.markdown(html_stats3, unsafe_allow_html=True)
+        
+        html_stats4 = f'<div style="display: flex; gap: 10px; margin-bottom: 10px;"><div style="flex: 1; background-color: rgba(255,255,255,0.05); border-radius: 12px; padding: 15px; text-align: center; border: 1px solid rgba(255,255,255,0.1);"><div style="font-size: 1.1rem; font-weight: 800; color: #FFC107; line-height: 1.2;">{top_plat_global}</div><div style="font-size: 0.65rem; color: #aaa; text-transform: uppercase; font-weight: 600; margin-top: 4px;">Top Platform</div></div><div style="flex: 1; background-color: rgba(255,255,255,0.05); border-radius: 12px; padding: 15px; text-align: center; border: 1px solid rgba(255,255,255,0.1);"><div style="font-size: 1.1rem; font-weight: 800; color: #FFC107; line-height: 1.2;">{top_feel_global}</div><div style="font-size: 0.65rem; color: #aaa; text-transform: uppercase; font-weight: 600; margin-top: 4px;">Signature Vibe</div></div></div>'
+        st.markdown(html_stats4, unsafe_allow_html=True)
 
     with t_prof_health:
         total_ep_db = 0; watched_ep_db = 0
@@ -1516,11 +1456,14 @@ with t_profile:
         
         c1, c2, c3 = st.columns(3)
         with c1:
-            st.markdown(f"""<div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 15px 5px; text-align: center; margin-top: 15px;"><div style="font-size: 1.5rem; font-weight: 800; color: #FFC107;">{days_to_clear} <span style="font-size:0.7rem; color:#aaa;">Days</span></div><div style="font-size: 0.60rem; color: #aaa; text-transform: uppercase; font-weight:700;">To Clear Backlog</div></div>""", unsafe_allow_html=True)
+            h_h1 = f'<div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 15px 5px; text-align: center; margin-top: 15px;"><div style="font-size: 1.5rem; font-weight: 800; color: #FFC107;">{days_to_clear} <span style="font-size:0.7rem; color:#aaa;">Days</span></div><div style="font-size: 0.60rem; color: #aaa; text-transform: uppercase; font-weight:700;">To Clear Backlog</div></div>'
+            st.markdown(h_h1, unsafe_allow_html=True)
         with c2:
-            st.markdown(f"""<div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 15px 5px; text-align: center; margin-top: 15px;"><div style="font-size: 1.5rem; font-weight: 800; color: #FFC107;">{eps_last_7} <span style="font-size:0.7rem; color:#aaa;">Eps</span></div><div style="font-size: 0.60rem; color: #aaa; text-transform: uppercase; font-weight:700;">Binge Velocity</div></div>""", unsafe_allow_html=True)
+            h_h2 = f'<div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 15px 5px; text-align: center; margin-top: 15px;"><div style="font-size: 1.5rem; font-weight: 800; color: #FFC107;">{eps_last_7} <span style="font-size:0.7rem; color:#aaa;">Eps</span></div><div style="font-size: 0.60rem; color: #aaa; text-transform: uppercase; font-weight:700;">Binge Velocity</div></div>'
+            st.markdown(h_h2, unsafe_allow_html=True)
         with c3:
-            st.markdown(f"""<div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 15px 5px; text-align: center; margin-top: 15px;"><div style="font-size: 1.5rem; font-weight: 800; color: #FFC107;">{streak} <span style="font-size:0.7rem; color:#aaa;">Days</span></div><div style="font-size: 0.60rem; color: #aaa; text-transform: uppercase; font-weight:700;">Current Streak</div></div>""", unsafe_allow_html=True)
+            h_h3 = f'<div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 15px 5px; text-align: center; margin-top: 15px;"><div style="font-size: 1.5rem; font-weight: 800; color: #FFC107;">{streak} <span style="font-size:0.7rem; color:#aaa;">Days</span></div><div style="font-size: 0.60rem; color: #aaa; text-transform: uppercase; font-weight:700;">Current Streak</div></div>'
+            st.markdown(h_h3, unsafe_allow_html=True)
 
         if almost_finished:
             st.markdown("#### 🏁 Almost Finished")
@@ -1630,27 +1573,7 @@ with t_profile:
                         f_moji = h.get('f', '')
                         poster_url = f"https://image.tmdb.org/t/p/w185{poster}" if poster else "https://via.placeholder.com/185x278/222222/555555?text=No+Img"
                         
-                        html_card = f"""
-                        <div style="border-left: 2px solid rgba(255, 193, 7, 0.3); padding-left: 15px; margin-bottom: 5px; position: relative; padding-bottom: 5px;">
-                            <div style="position: absolute; left: -5px; top: 40px; width: 8px; height: 8px; border-radius: 50%; background: #FFC107; box-shadow: 0 0 8px #FFC107;"></div>
-                            <div style="position: relative; border-radius: 12px; overflow: hidden; padding: 12px; border: 1px solid rgba(255,255,255,0.05); background-color: rgba(15, 17, 22, 0.6);">
-                                <div style="position: absolute; top: -20px; left: -20px; right: -20px; bottom: -20px; background-image: url('{poster_url}'); background-size: cover; background-position: center; filter: blur(15px) brightness(0.3); z-index: 0;"></div>
-                                <div style="position: relative; z-index: 1; display: flex; align-items: center;">
-                                    <img src="{poster_url}" style="width: 55px; height: 82px; border-radius: 6px; box-shadow: 0 4px 10px rgba(0,0,0,0.6); margin-right: 15px; border: 1px solid rgba(255,255,255,0.1);">
-                                    <div style="flex: 1; min-width: 0;">
-                                        <div style="font-size: 1rem; font-weight: 800; color: #fff; line-height: 1.2; text-shadow: 0 2px 4px rgba(0,0,0,0.8); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{s_name}</div>
-                                        <div style="font-size: 0.65rem; color: #ccc; margin-bottom: 6px; margin-top: 2px;">{dt.strftime('%b %d, %Y • %I:%M %p')}</div>
-                                        <div style="display: flex; gap: 5px; flex-wrap: wrap;">
-                                            <span style="background: rgba(255,193,7,0.2); color: #FFD54F; padding: 2px 6px; border-radius: 8px; font-size: 0.6rem; font-weight: 700; border: 1px solid rgba(255,193,7,0.3);">{ep_code}</span>
-                                            {f'<span style="background: rgba(255,255,255,0.1); color: #eee; padding: 2px 6px; border-radius: 8px; font-size: 0.6rem; font-weight: 600; border: 1px solid rgba(255,255,255,0.05);">{r_stars}</span>' if r_stars else ''}
-                                            {f'<span style="background: rgba(255,255,255,0.1); color: #eee; padding: 2px 6px; border-radius: 8px; font-size: 0.6rem; font-weight: 600; border: 1px solid rgba(255,255,255,0.05);">{f_moji}</span>' if f_moji and f_moji != "None" else ''}
-                                            {f'<span style="background: rgba(255,255,255,0.1); color: #eee; padding: 2px 6px; border-radius: 8px; font-size: 0.6rem; font-weight: 600; border: 1px solid rgba(255,255,255,0.05);">📡 {h.get("p")}</span>' if h.get("p") and h.get("p") != "None" else ''}
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        """
+                        html_card = f'<div style="border-left: 2px solid rgba(255, 193, 7, 0.3); padding-left: 15px; margin-bottom: 5px; position: relative; padding-bottom: 5px;"><div style="position: absolute; left: -5px; top: 40px; width: 8px; height: 8px; border-radius: 50%; background: #FFC107; box-shadow: 0 0 8px #FFC107;"></div><div style="position: relative; border-radius: 12px; overflow: hidden; padding: 12px; border: 1px solid rgba(255,255,255,0.05); background-color: rgba(15, 17, 22, 0.6);"><div style="position: absolute; top: -20px; left: -20px; right: -20px; bottom: -20px; background-image: url(\'{poster_url}\'); background-size: cover; background-position: center; filter: blur(15px) brightness(0.3); z-index: 0;"></div><div style="position: relative; z-index: 1; display: flex; align-items: center;"><img src="{poster_url}" style="width: 55px; height: 82px; border-radius: 6px; box-shadow: 0 4px 10px rgba(0,0,0,0.6); margin-right: 15px; border: 1px solid rgba(255,255,255,0.1);"><div style="flex: 1; min-width: 0;"><div style="font-size: 1rem; font-weight: 800; color: #fff; line-height: 1.2; text-shadow: 0 2px 4px rgba(0,0,0,0.8); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{s_name}</div><div style="font-size: 0.65rem; color: #ccc; margin-bottom: 6px; margin-top: 2px;">{dt.strftime("%b %d, %Y • %I:%M %p")}</div><div style="display: flex; gap: 5px; flex-wrap: wrap;"><span style="background: rgba(255,193,7,0.2); color: #FFD54F; padding: 2px 6px; border-radius: 8px; font-size: 0.6rem; font-weight: 700; border: 1px solid rgba(255,193,7,0.3);">{ep_code}</span>{"<span style=\\"background: rgba(255,255,255,0.1); color: #eee; padding: 2px 6px; border-radius: 8px; font-size: 0.6rem; font-weight: 600; border: 1px solid rgba(255,255,255,0.05);\\">" + r_stars + "</span>" if r_stars else ""}{"<span style=\\"background: rgba(255,255,255,0.1); color: #eee; padding: 2px 6px; border-radius: 8px; font-size: 0.6rem; font-weight: 600; border: 1px solid rgba(255,255,255,0.05);\\">" + f_moji + "</span>" if f_moji and f_moji != "None" else ""}{"<span style=\\"background: rgba(255,255,255,0.1); color: #eee; padding: 2px 6px; border-radius: 8px; font-size: 0.6rem; font-weight: 600; border: 1px solid rgba(255,255,255,0.05);\\">📡 " + h.get("p") + "</span>" if h.get("p") and h.get("p") != "None" else ""}</div></div></div></div></div>'
                         c_left, c_right = st.columns([85, 15])
                         with c_left: st.markdown(html_card, unsafe_allow_html=True)
                         with c_right:
@@ -1685,27 +1608,7 @@ with t_profile:
                         f_moji = h.get('f', '')
                         poster_url = f"https://image.tmdb.org/t/p/w185{poster}" if poster else "https://via.placeholder.com/185x278/222222/555555?text=No+Img"
                         
-                        html_card = f"""
-                        <div style="border-left: 2px solid rgba(255, 193, 7, 0.3); padding-left: 15px; margin-bottom: 5px; position: relative; padding-bottom: 5px;">
-                            <div style="position: absolute; left: -5px; top: 40px; width: 8px; height: 8px; border-radius: 50%; background: #FFC107; box-shadow: 0 0 8px #FFC107;"></div>
-                            <div style="position: relative; border-radius: 12px; overflow: hidden; padding: 12px; border: 1px solid rgba(255,255,255,0.05); background-color: rgba(15, 17, 22, 0.6);">
-                                <div style="position: absolute; top: -20px; left: -20px; right: -20px; bottom: -20px; background-image: url('{poster_url}'); background-size: cover; background-position: center; filter: blur(15px) brightness(0.3); z-index: 0;"></div>
-                                <div style="position: relative; z-index: 1; display: flex; align-items: center;">
-                                    <img src="{poster_url}" style="width: 55px; height: 82px; border-radius: 6px; box-shadow: 0 4px 10px rgba(0,0,0,0.6); margin-right: 15px; border: 1px solid rgba(255,255,255,0.1);">
-                                    <div style="flex: 1; min-width: 0;">
-                                        <div style="font-size: 1rem; font-weight: 800; color: #fff; line-height: 1.2; text-shadow: 0 2px 4px rgba(0,0,0,0.8); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{m_name}</div>
-                                        <div style="font-size: 0.65rem; color: #ccc; margin-bottom: 6px; margin-top: 2px;">{dt.strftime('%b %d, %Y • %I:%M %p')}</div>
-                                        <div style="display: flex; gap: 5px; flex-wrap: wrap;">
-                                            <span style="background: rgba(255,193,7,0.2); color: #FFD54F; padding: 2px 6px; border-radius: 8px; font-size: 0.6rem; font-weight: 700; border: 1px solid rgba(255,193,7,0.3);">🎬 Movie</span>
-                                            {f'<span style="background: rgba(255,255,255,0.1); color: #eee; padding: 2px 6px; border-radius: 8px; font-size: 0.6rem; font-weight: 600; border: 1px solid rgba(255,255,255,0.05);">{r_stars}</span>' if r_stars else ''}
-                                            {f'<span style="background: rgba(255,255,255,0.1); color: #eee; padding: 2px 6px; border-radius: 8px; font-size: 0.6rem; font-weight: 600; border: 1px solid rgba(255,255,255,0.05);">{f_moji}</span>' if f_moji and f_moji != "None" else ''}
-                                            {f'<span style="background: rgba(255,255,255,0.1); color: #eee; padding: 2px 6px; border-radius: 8px; font-size: 0.6rem; font-weight: 600; border: 1px solid rgba(255,255,255,0.05);">📡 {h.get("p")}</span>' if h.get("p") and h.get("p") != "None" else ''}
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        """
+                        html_card = f'<div style="border-left: 2px solid rgba(255, 193, 7, 0.3); padding-left: 15px; margin-bottom: 5px; position: relative; padding-bottom: 5px;"><div style="position: absolute; left: -5px; top: 40px; width: 8px; height: 8px; border-radius: 50%; background: #FFC107; box-shadow: 0 0 8px #FFC107;"></div><div style="position: relative; border-radius: 12px; overflow: hidden; padding: 12px; border: 1px solid rgba(255,255,255,0.05); background-color: rgba(15, 17, 22, 0.6);"><div style="position: absolute; top: -20px; left: -20px; right: -20px; bottom: -20px; background-image: url(\'{poster_url}\'); background-size: cover; background-position: center; filter: blur(15px) brightness(0.3); z-index: 0;"></div><div style="position: relative; z-index: 1; display: flex; align-items: center;"><img src="{poster_url}" style="width: 55px; height: 82px; border-radius: 6px; box-shadow: 0 4px 10px rgba(0,0,0,0.6); margin-right: 15px; border: 1px solid rgba(255,255,255,0.1);"><div style="flex: 1; min-width: 0;"><div style="font-size: 1rem; font-weight: 800; color: #fff; line-height: 1.2; text-shadow: 0 2px 4px rgba(0,0,0,0.8); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{m_name}</div><div style="font-size: 0.65rem; color: #ccc; margin-bottom: 6px; margin-top: 2px;">{dt.strftime("%b %d, %Y • %I:%M %p")}</div><div style="display: flex; gap: 5px; flex-wrap: wrap;"><span style="background: rgba(255,193,7,0.2); color: #FFD54F; padding: 2px 6px; border-radius: 8px; font-size: 0.6rem; font-weight: 700; border: 1px solid rgba(255,193,7,0.3);">🎬 Movie</span>{"<span style=\\"background: rgba(255,255,255,0.1); color: #eee; padding: 2px 6px; border-radius: 8px; font-size: 0.6rem; font-weight: 600; border: 1px solid rgba(255,255,255,0.05);\\">" + r_stars + "</span>" if r_stars else ""}{"<span style=\\"background: rgba(255,255,255,0.1); color: #eee; padding: 2px 6px; border-radius: 8px; font-size: 0.6rem; font-weight: 600; border: 1px solid rgba(255,255,255,0.05);\\">" + f_moji + "</span>" if f_moji and f_moji != "None" else ""}{"<span style=\\"background: rgba(255,255,255,0.1); color: #eee; padding: 2px 6px; border-radius: 8px; font-size: 0.6rem; font-weight: 600; border: 1px solid rgba(255,255,255,0.05);\\">📡 " + h.get("p") + "</span>" if h.get("p") and h.get("p") != "None" else ""}</div></div></div></div></div>'
                         c_left, c_right = st.columns([85, 15])
                         with c_left: st.markdown(html_card, unsafe_allow_html=True)
                         with c_right:
