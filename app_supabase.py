@@ -41,7 +41,7 @@ st.markdown("""
     h3 { color: #FFD54F !important; font-weight: 800 !important; letter-spacing: -0.5px !important; }
     h3.tab-title { margin-top: -0.8rem !important; padding-top: 0 !important; }
     
-    /* --- THE POSTER CLICK WRAPPER --- */
+    /* --- THE POSTER CLICK WRAPPER (INVISIBLE INFO BUTTON) --- */
     div[data-testid="column"]:has(.info-overlay-hook) {
         position: relative !important;
         overflow: hidden !important;
@@ -63,8 +63,8 @@ st.markdown("""
         transform: scale(1.05) !important;
     }
 
-    /* --- INVISIBLE POSTER CLICK (INFO) --- */
-    div:has(> .info-overlay-hook) + div {
+    /* Target the precise Streamlit container holding the INFO button */
+    div[data-testid="element-container"]:has(.info-overlay-hook) + div[data-testid="element-container"] {
         position: absolute !important;
         top: 0 !important;
         left: 0 !important;
@@ -73,13 +73,19 @@ st.markdown("""
         z-index: 5 !important;
         opacity: 0 !important;
     }
-    div:has(> .info-overlay-hook) + div button {
+    
+    div[data-testid="element-container"]:has(.info-overlay-hook) + div[data-testid="element-container"] button {
         width: 100% !important;
         height: 100% !important;
         cursor: pointer !important;
+        background: transparent !important;
+        color: transparent !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        border: none !important;
     }
 
-    /* --- SEAMLESS ACTION BUTTONS (BULLETPROOF OVERLAY) --- */
+    /* --- SEAMLESS ACTION BUTTONS (SLIDE-UP OVERLAY) --- */
     div[data-testid="column"]:has(.action-bar-hook) > div[data-testid="stVerticalBlock"] > div:last-child {
         position: absolute !important;
         bottom: 0 !important;
@@ -97,12 +103,13 @@ st.markdown("""
         transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1) !important;
     }
 
+    /* Reveal Action Bar on Hover */
     div[data-testid="column"]:has(.action-bar-hook):hover > div[data-testid="stVerticalBlock"] > div:last-child {
         opacity: 1 !important;
         transform: translateY(0) !important;
     }
 
-    /* Dynamically shift poster text out of the way ONLY when action bar exists */
+    /* Dynamically shift poster text out of the way */
     div[data-testid="column"]:has(.action-bar-hook) .poster-text {
         transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1) !important;
     }
@@ -160,7 +167,7 @@ st.markdown("""
         }
     }
     
-    /* --- PILL NAVIGATION (DISCOVER) --- */
+    /* --- PILL NAVIGATION (DISCOVER & LIBRARIES) --- */
     div[role="radiogroup"] {
         display: flex !important; flex-direction: row !important; background-color: transparent !important; 
         border: none !important; box-shadow: none !important; padding: 0 !important; 
@@ -232,6 +239,8 @@ if "prompt_review" not in st.session_state: st.session_state.prompt_review = Non
 if "search_reset_ctr" not in st.session_state: st.session_state.search_reset_ctr = 0
 if "lib_tv_reset_ctr" not in st.session_state: st.session_state.lib_tv_reset_ctr = 0
 if "lib_mov_reset_ctr" not in st.session_state: st.session_state.lib_mov_reset_ctr = 0
+if "tv_tab" not in st.session_state: st.session_state.tv_tab = "WATCHLIST"
+if "mov_tab" not in st.session_state: st.session_state.mov_tab = "WATCHLIST"
 
 # --- DB PIPELINE ---
 TMDB_KEY = st.secrets["TMDB_KEY"]
@@ -241,6 +250,8 @@ DB_ENDPOINT = f"{SUPABASE_URL}/rest/v1/tv_time_data?id=eq.1"
 HEADERS = {"apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}", "Content-Type": "application/json", "Prefer": "return=representation"}
 TODAY = get_dubai_time().strftime('%Y-%m-%d')
 PREMIUM_EMOTIONS = ["None", "🤯 Mind Blown", "😂 Hilarious", "😭 Emotional", "😍 Loved it", "😡 Frustrated", "😴 Bored", "🍿 Pure Hype", "🧠 Genius Plot", "💔 Heartbroken", "🤬 Trash", "🫣 Edge of Seat", "📈 Peak Cinema"]
+
+GENRE_MAP = {28:"Action", 12:"Adventure", 16:"Animation", 35:"Comedy", 80:"Crime", 99:"Documentary", 18:"Drama", 10751:"Family", 14:"Fantasy", 36:"History", 27:"Horror", 10402:"Music", 9648:"Mystery", 10749:"Romance", 878:"Sci-Fi", 10770:"TV Movie", 53:"Thriller", 10752:"War", 37:"Western", 10759:"Action", 10762:"Kids", 10765:"Sci-Fi", 10766:"Soap", 10767:"Talk", 10768:"Politics"}
 
 @st.cache_data(ttl=43200)
 def fetch_api(url):
@@ -1339,13 +1350,9 @@ with t_search:
 # ==========================================
 with t_tv:
     st.markdown("<h3 class='tab-title'>My TV Collection</h3>", unsafe_allow_html=True)
-    if "tv_tab" not in st.session_state: st.session_state.tv_tab = "WATCHLIST"
-        
-    c1, c2, c3, c4 = st.columns(4)
-    if c1.button("Watchlist", type="primary" if st.session_state.tv_tab == "WATCHLIST" else "secondary", use_container_width=True, key="tv_wl"): st.session_state.tv_tab = "WATCHLIST"; st.rerun()
-    if c2.button("Upcoming", type="primary" if st.session_state.tv_tab == "UPCOMING" else "secondary", use_container_width=True, key="tv_up"): st.session_state.tv_tab = "UPCOMING"; st.rerun()
-    if c3.button("Watched", type="primary" if st.session_state.tv_tab == "WATCHED" else "secondary", use_container_width=True, key="tv_wd"): st.session_state.tv_tab = "WATCHED"; st.rerun()
-    if c4.button("Dropped", type="primary" if st.session_state.tv_tab == "DROPPED" else "secondary", use_container_width=True, key="tv_dr"): st.session_state.tv_tab = "DROPPED"; st.rerun()
+    
+    tv_tab_sel = st.radio("TV Section", ["WATCHLIST", "UPCOMING", "WATCHED", "DROPPED"], index=["WATCHLIST", "UPCOMING", "WATCHED", "DROPPED"].index(st.session_state.tv_tab), horizontal=True, label_visibility="collapsed")
+    st.session_state.tv_tab = tv_tab_sel
         
     st.markdown("<div style='height: 5px;'></div>", unsafe_allow_html=True)
     
@@ -1405,17 +1412,16 @@ with t_tv:
                             render_poster_card(show["name"], show.get("poster_path"), progress_pct=prog_val)
                             
                             st.markdown('<span class="info-overlay-hook"></span>', unsafe_allow_html=True)
-                            if st.button("INFO", key=f"s_mgr_{show['id']}", use_container_width=True):
+                            if st.button("INFO", key=f"s_mgr_info_{show['id']}", use_container_width=True):
                                 st.session_state.active_actor = None
                                 manage_show_dialog(show['id'], show['name'], fetch_api(f"https://api.themoviedb.org/3/tv/{show['id']}?api_key={TMDB_KEY}"))
                             
+                            st.markdown('<span class="action-bar-hook"></span>', unsafe_allow_html=True)
                             if st.session_state.tv_tab == "DROPPED":
-                                st.markdown('<span class="action-bar-hook"></span>', unsafe_allow_html=True)
                                 bc1, bc2 = st.columns(2)
                                 with bc1: st.button("↺ RESTORE", key=f"s_res_{show['id']}", on_click=cb_restore_tv, args=(show['id'],), use_container_width=True)
                                 with bc2: st.button("✕ DEL", key=f"s_pdel_{show['id']}", on_click=cb_perm_delete_tv, args=(show['id'],), use_container_width=True)
                             elif st.session_state.tv_tab == "WATCHLIST":
-                                st.markdown('<span class="action-bar-hook"></span>', unsafe_allow_html=True)
                                 st.button("✕ DROP", key=f"s_drp_{show['id']}", on_click=cb_drop_tv, args=(show['id'],), use_container_width=True)
 
             if total_tv_display > st.session_state.tv_lib_limit:
@@ -1427,13 +1433,9 @@ with t_tv:
 # ==========================================
 with t_movies:
     st.markdown("<h3 class='tab-title'>My Movies</h3>", unsafe_allow_html=True)
-    if "mov_tab" not in st.session_state: st.session_state.mov_tab = "WATCHLIST"
-        
-    c1, c2, c3, c4 = st.columns(4)
-    if c1.button("Watchlist", type="primary" if st.session_state.mov_tab == "WATCHLIST" else "secondary", use_container_width=True, key="m_wl"): st.session_state.mov_tab = "WATCHLIST"; st.rerun()
-    if c2.button("Upcoming", type="primary" if st.session_state.mov_tab == "UPCOMING" else "secondary", use_container_width=True, key="m_up"): st.session_state.mov_tab = "UPCOMING"; st.rerun()
-    if c3.button("Watched", type="primary" if st.session_state.mov_tab == "WATCHED" else "secondary", use_container_width=True, key="m_wd"): st.session_state.mov_tab = "WATCHED"; st.rerun()
-    if c4.button("Dropped", type="primary" if st.session_state.mov_tab == "DROPPED" else "secondary", use_container_width=True, key="m_dr"): st.session_state.mov_tab = "DROPPED"; st.rerun()
+    
+    mov_tab_sel = st.radio("Movie Section", ["WATCHLIST", "UPCOMING", "WATCHED", "DROPPED"], index=["WATCHLIST", "UPCOMING", "WATCHED", "DROPPED"].index(st.session_state.mov_tab), horizontal=True, label_visibility="collapsed")
+    st.session_state.mov_tab = mov_tab_sel
         
     st.markdown("<div style='height: 5px;'></div>", unsafe_allow_html=True)
     with st.container():
@@ -1488,17 +1490,16 @@ with t_movies:
                             render_poster_card(m["name"], m.get("poster_path"))
                             
                             st.markdown('<span class="info-overlay-hook"></span>', unsafe_allow_html=True)
-                            if st.button("INFO", key=f"m_mgr_{m['id']}", use_container_width=True):
+                            if st.button("INFO", key=f"m_mgr_info_{m['id']}", use_container_width=True):
                                 st.session_state.active_actor = None
                                 show_movie_details(m['id'], m['name'], details=None, is_watched=is_watched)
                             
+                            st.markdown('<span class="action-bar-hook"></span>', unsafe_allow_html=True)
                             if st.session_state.mov_tab == "DROPPED":
-                                st.markdown('<span class="action-bar-hook"></span>', unsafe_allow_html=True)
                                 bc1, bc2 = st.columns(2)
                                 with bc1: st.button("↺ RESTORE", key=f"m_res_{m['id']}", on_click=cb_restore_mov, args=(m['id'],), use_container_width=True)
                                 with bc2: st.button("✕ DEL", key=f"m_pdel_{m['id']}", on_click=cb_perm_delete_mov, args=(m['id'],), use_container_width=True)
                             elif st.session_state.mov_tab == "WATCHLIST":
-                                st.markdown('<span class="action-bar-hook"></span>', unsafe_allow_html=True)
                                 st.button("✕ DROP", key=f"m_drp_{m['id']}", on_click=cb_drop_mov, args=(m['id'],), use_container_width=True)
                                 
             if total_mov_display > st.session_state.mov_lib_limit:
