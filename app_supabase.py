@@ -41,123 +41,75 @@ st.markdown("""
     h3 { color: #FFD54F !important; font-weight: 800 !important; letter-spacing: -0.5px !important; }
     h3.tab-title { margin-top: -0.8rem !important; padding-top: 0 !important; }
     
-    /* --- THE POSTER CLICK WRAPPER --- */
-    div[data-testid="column"]:has(.info-overlay-hook) {
+    /* --- INVISIBLE POSTER CLICK SYSTEM --- */
+    div[data-testid="column"]:has(.poster-wrapper) {
         position: relative !important;
         overflow: hidden !important;
         border-radius: 8px !important;
         box-shadow: 0 4px 10px rgba(0,0,0,0.5) !important;
         background: #111 !important;
+        transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1), box-shadow 0.3s ease !important;
+        cursor: pointer !important;
     }
-    
-    div[data-testid="column"]:has(.info-overlay-hook) > div {
+    div[data-testid="column"]:has(.poster-wrapper):hover {
+        transform: scale(1.03) !important;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.8) !important;
+    }
+    div[data-testid="column"]:has(.poster-wrapper) > div {
         gap: 0 !important;
         padding: 0 !important;
     }
     
-    /* Cinematic Poster Zoom on Hover */
-    div[data-testid="column"]:has(.info-overlay-hook) img {
+    /* Cinematic Image Zoom */
+    div[data-testid="column"]:has(.poster-wrapper) img {
         transition: transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1) !important;
     }
-    div[data-testid="column"]:has(.info-overlay-hook):hover img {
-        transform: scale(1.05) !important;
+    div[data-testid="column"]:has(.poster-wrapper):hover img {
+        transform: scale(1.06) !important;
     }
 
-    /* --- INVISIBLE POSTER CLICK (INFO) --- */
-    div:has(> .info-overlay-hook) + div {
+    /* The Invisible Overlay Button */
+    div[data-testid="column"]:has(.poster-wrapper) div.stButton {
         position: absolute !important;
         top: 0 !important;
         left: 0 !important;
-        width: 100% !important;
-        height: 100% !important;
-        z-index: 5 !important;
+        right: 0 !important;
+        bottom: 0 !important;
+        z-index: 20 !important;
         opacity: 0 !important;
     }
-    div:has(> .info-overlay-hook) + div button {
+    div[data-testid="column"]:has(.poster-wrapper) div.stButton > button {
         width: 100% !important;
         height: 100% !important;
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+    
+    /* --- INVISIBLE HISTORY CLICK SYSTEM --- */
+    div[data-testid="column"]:has(.history-wrapper) {
+        position: relative !important;
+        transition: transform 0.2s cubic-bezier(0.25, 0.8, 0.25, 1) !important;
         cursor: pointer !important;
     }
-
-    /* --- SEAMLESS ACTION BUTTONS (BULLETPROOF OVERLAY) --- */
-    div[data-testid="column"]:has(.action-bar-hook) > div[data-testid="stVerticalBlock"] > div:last-child {
+    div[data-testid="column"]:has(.history-wrapper):hover {
+        transform: translateX(5px) !important;
+    }
+    div[data-testid="column"]:has(.history-wrapper) > div {
+        gap: 0 !important;
+        padding: 0 !important;
+    }
+    div[data-testid="column"]:has(.history-wrapper) div.stButton {
         position: absolute !important;
-        bottom: 0 !important;
+        top: 0 !important;
         left: 0 !important;
         right: 0 !important;
-        width: 100% !important;
-        margin: 0 !important;
-        padding: 0 !important;
-        background: rgba(15, 17, 22, 0.85) !important;
-        backdrop-filter: blur(12px) !important;
-        -webkit-backdrop-filter: blur(12px) !important;
+        bottom: 0 !important;
         z-index: 20 !important;
-        opacity: 0;
-        transform: translateY(100%);
-        transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1) !important;
+        opacity: 0 !important;
     }
-
-    div[data-testid="column"]:has(.action-bar-hook):hover > div[data-testid="stVerticalBlock"] > div:last-child {
-        opacity: 1 !important;
-        transform: translateY(0) !important;
-    }
-
-    /* Dynamically shift poster text out of the way ONLY when action bar exists */
-    div[data-testid="column"]:has(.action-bar-hook) .poster-text {
-        transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1) !important;
-    }
-    div[data-testid="column"]:has(.action-bar-hook):hover .poster-text {
-        transform: translateY(-40px) !important;
-    }
-
-    /* Action Buttons UI */
-    div[data-testid="column"]:has(.action-bar-hook) > div[data-testid="stVerticalBlock"] > div:last-child div.stButton > button {
-        background: transparent !important;
-        border: none !important;
-        border-top: 1px solid rgba(255,255,255,0.15) !important;
-        color: #EDEDED !important;
-        font-size: 0.65rem !important;
-        font-weight: 800 !important;
-        text-transform: uppercase !important;
-        letter-spacing: 0.5px !important;
-        min-height: 40px !important;
-        margin: 0 !important;
-        border-radius: 0 0 8px 8px !important;
-        box-shadow: none !important;
-        padding: 0 !important;
-        line-height: 1 !important;
-    }
-
-    /* Vertical divider between two buttons */
-    div[data-testid="column"]:has(.action-bar-hook) div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:first-child div.stButton > button {
-        border-bottom-right-radius: 0 !important;
-        border-right: 1px solid rgba(255,255,255,0.15) !important;
-    }
-    div[data-testid="column"]:has(.action-bar-hook) div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:last-child div.stButton > button {
-        border-bottom-left-radius: 0 !important;
-    }
-
-    /* Hover State */
-    div[data-testid="column"]:has(.action-bar-hook) > div[data-testid="stVerticalBlock"] > div:last-child div.stButton > button:hover {
-        background: rgba(255, 193, 7, 0.95) !important;
-        color: #000 !important;
-        border-top-color: #FFC107 !important;
-    }
-
-    /* Tactile Squish Physics */
-    div[data-testid="column"]:has(.action-bar-hook) > div[data-testid="stVerticalBlock"] > div:last-child div.stButton > button:active {
-        transform: scale(0.9) !important;
-    }
-
-    /* Mobile Permanent Visibility */
-    @media (max-width: 992px) {
-        div[data-testid="column"]:has(.action-bar-hook) > div[data-testid="stVerticalBlock"] > div:last-child {
-            opacity: 1 !important;
-            transform: translateY(0) !important;
-        }
-        div[data-testid="column"]:has(.action-bar-hook) .poster-text {
-            transform: translateY(-40px) !important;
-        }
+    div[data-testid="column"]:has(.history-wrapper) div.stButton > button {
+        width: 100% !important;
+        height: 100% !important;
     }
     
     /* --- PILL NAVIGATION (DISCOVER) --- */
@@ -474,7 +426,7 @@ if st.session_state.last_action and not st.session_state.prompt_review:
         with c2: st.button("↩️ Undo", key="undo_btn", on_click=cb_undo_action, args=(la["t"], la["i"], la["e"]), use_container_width=True)
         with c3: st.button("✖", key="dismiss_undo", on_click=cb_clear_action, use_container_width=True)
 
-# --- VISUAL HELPERS (IMPLICIT CONCATENATION FOR SAFETY) ---
+# --- VISUAL HELPERS ---
 def render_badges(items, is_gold=False):
     css_class = "badge badge-gold" if is_gold else "badge"
     html = "".join([f'<span class="{css_class}">{item}</span>' for item in items])
@@ -581,7 +533,7 @@ def render_poster_card(title, poster_path, subtitle="", progress_pct=-1.0):
     sub_html = f'<div style="color: #FFC107; font-weight: 700; font-size: 0.6rem; margin-top: 2px;">{subtitle}</div>' if subtitle else ''
     
     html = (
-        f'<div style="position: relative; aspect-ratio: 2/3; background-color: #111;">'
+        f'<div style="position: relative; aspect-ratio: 2/3; background-color: #111; border-radius: 8px; overflow: hidden;">'
         f'<img src="{img_url}" style="width: 100%; height: 100%; object-fit: cover; display: block;">'
         f'<div style="position: absolute; bottom: 0; left: 0; right: 0; height: 60%; background: linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0) 100%); z-index: 1;"></div>'
         f'<div class="poster-text" style="position: absolute; bottom: 10px; left: 10px; right: 10px; z-index: 2;">'
@@ -807,20 +759,61 @@ def show_episode_details(show_id, show_name, ep_code, ep_data=None, is_watched=F
     if st.session_state.get("active_actor"): render_inline_actor_pokedex(st.session_state["active_actor"])
         
     st.divider()
-    if btn_disabled: st.warning("➕ Add this show to your library to track episodes!")
-    if st.button("❌ Unmark as Watched" if is_watched else "✅ Mark as Watched", use_container_width=True, disabled=btn_disabled):
-        for s in st.session_state.db["shows"]:
-            if str(s["id"]) == str(show_id):
-                if is_watched and ep_code in s["watched_episodes"]: s["watched_episodes"].remove(ep_code); remove_watch("tv", show_id, ep_code)
-                elif not is_watched and ep_code not in s["watched_episodes"]: s["watched_episodes"].append(ep_code); log_watch("tv", show_id, ep_code)
-                break
-        st.rerun()
+    if not current_show:
+        st.warning("➕ Add this show to your library to track episodes!")
+        if st.button("➕ Add to Library", use_container_width=True, type="primary"):
+            st.session_state.db["shows"].append({"id": show_id, "name": show_name, "watched_episodes": [], "poster_path": s_details.get("poster_path", ""), "first_air_date": s_details.get("first_air_date", ""), "total_episodes": s_details.get("number_of_episodes", 1), "dropped": False})
+            save_db()
+            st.rerun()
+    else:
+        col_a, col_b = st.columns(2)
+        with col_a:
+            if st.button("❌ Unmark as Watched" if is_watched else "▶ Mark as Watched", use_container_width=True, type="secondary" if is_watched else "primary"):
+                for s in st.session_state.db["shows"]:
+                    if str(s["id"]) == str(show_id):
+                        if is_watched and ep_code in s["watched_episodes"]: 
+                            s["watched_episodes"].remove(ep_code)
+                            remove_watch("tv", show_id, ep_code)
+                        elif not is_watched and ep_code not in s["watched_episodes"]: 
+                            s["watched_episodes"].append(ep_code)
+                            log_watch("tv", show_id, ep_code)
+                        break
+                st.rerun()
+        with col_b:
+            if st.button("⚰️ Drop Series", use_container_width=True):
+                cb_drop_tv(show_id)
+                st.rerun()
 
 @st.dialog("Manage Show")
 def manage_show_dialog(show_id, show_name, details):
     badges = f'<span class="badge badge-gold">{details.get("status")}</span>' + "".join([f'<span class="badge">{g["name"]}</span>' for g in details.get("genres", [])])
     render_apple_tv_header(details.get("backdrop_path"), details.get("poster_path"), show_name, badges)
     
+    current_show = next((s for s in st.session_state.db["shows"] if str(s["id"]) == str(show_id)), None)
+    
+    if not current_show:
+        if st.button("➕ Add to Library", use_container_width=True, type="primary"):
+            st.session_state.db["shows"].append({"id": show_id, "name": show_name, "watched_episodes": [], "poster_path": details.get("poster_path", ""), "first_air_date": details.get("first_air_date", ""), "total_episodes": details.get("number_of_episodes", 1), "dropped": False})
+            save_db()
+            st.rerun()
+    else:
+        is_dropped = current_show.get("dropped", False)
+        c1, c2 = st.columns(2)
+        with c1:
+            if is_dropped:
+                if st.button("↺ Restore Show", use_container_width=True, type="primary"):
+                    cb_restore_tv(show_id)
+                    st.rerun()
+            else:
+                if st.button("⚰️ Drop Show", use_container_width=True):
+                    cb_drop_tv(show_id)
+                    st.rerun()
+        with c2:
+            if is_dropped:
+                if st.button("🗑️ Delete Permanently", use_container_width=True):
+                    cb_perm_delete_tv(show_id)
+                    st.rerun()
+
     st.write(details.get("overview", "No overview available."))
     
     providers = fetch_api(f"https://api.themoviedb.org/3/tv/{show_id}/watch/providers?api_key={TMDB_KEY}")
@@ -831,7 +824,6 @@ def manage_show_dialog(show_id, show_name, details):
     st.divider()
     st.markdown("#### Episodes")
     
-    current_show = next((s for s in st.session_state.db["shows"] if str(s["id"]) == str(show_id)), None)
     if not current_show: st.warning("➕ Add this show to your library to track episodes!")
         
     s_nums = [s["season_number"] for s in details.get("seasons", []) if s["season_number"] > 0]
@@ -873,10 +865,32 @@ def show_movie_details(m_id, m_name, details=None, is_watched=False):
     badges = f'<span class="badge badge-gold">{details.get("runtime", 0)} mins</span>' + "".join([f'<span class="badge">{g["name"]}</span>' for g in details.get("genres", [])])
     render_apple_tv_header(details.get("backdrop_path"), details.get("poster_path"), m_name, badges)
     
-    st.write(details.get("overview", "No synopsis available."))
-    
     current_movie = next((m for m in st.session_state.db["movies"] if str(m["id"]) == str(m_id)), None)
-    btn_disabled = (current_movie is None)
+    
+    if not current_movie:
+        if st.button("➕ Add to Library", use_container_width=True, type="primary"):
+            st.session_state.db["movies"].append({"id": m_id, "name": m_name, "watched": False, "poster_path": details.get("poster_path", ""), "release_date": details.get("release_date", ""), "runtime": details.get("runtime", 0), "dropped": False})
+            save_db()
+            st.rerun()
+    else:
+        is_dropped = current_movie.get("dropped", False)
+        c1, c2 = st.columns(2)
+        with c1:
+            if is_dropped:
+                if st.button("↺ Restore Movie", use_container_width=True, type="primary"):
+                    cb_restore_mov(m_id)
+                    st.rerun()
+            else:
+                if st.button("⚰️ Drop Movie", use_container_width=True):
+                    cb_drop_mov(m_id)
+                    st.rerun()
+        with c2:
+            if is_dropped:
+                if st.button("🗑️ Delete Permanently", use_container_width=True):
+                    cb_perm_delete_mov(m_id)
+                    st.rerun()
+                    
+    st.write(details.get("overview", "No synopsis available."))
     
     if is_watched:
         h_log = next((h for h in st.session_state.db.get("history", []) if h.get("t")=="m" and str(h.get("i"))==str(m_id)), None)
@@ -911,15 +925,13 @@ def show_movie_details(m_id, m_name, details=None, is_watched=False):
     if st.session_state.get("active_actor"): render_inline_actor_pokedex(st.session_state["active_actor"])
         
     st.divider()
-    if btn_disabled: st.warning("➕ Add this movie to your library to mark it as watched!")
-    if st.button("❌ Unmark as Watched" if is_watched else "✅ Mark as Watched", use_container_width=True, disabled=btn_disabled):
-        for m in st.session_state.db["movies"]:
-            if str(m["id"]) == str(m_id):
-                m["watched"] = not is_watched
-                if m["watched"]: log_watch("movie", m_id)
-                else: remove_watch("movie", m_id)
-                break
-        st.rerun()
+    if current_movie and not is_dropped:
+        if st.button("❌ Unmark as Watched" if is_watched else "▶ Mark as Watched", use_container_width=True, type="secondary" if is_watched else "primary"):
+            current_movie["watched"] = not is_watched
+            if current_movie["watched"]: log_watch("movie", m_id)
+            else: remove_watch("movie", m_id)
+            save_db()
+            st.rerun()
 
 # --- IMMEDIATE REVIEW EVALUATOR ---
 if st.session_state.get("prompt_review"):
@@ -1049,15 +1061,10 @@ with t_next:
                             
                             render_poster_card(show["name"], show.get("poster_path") or details.get('poster_path'), subtitle=ep_code)
                             
-                            # Invisible Info Overlay
-                            st.markdown('<span class="info-overlay-hook"></span>', unsafe_allow_html=True)
-                            if st.button("INFO", key=f"n_i_tv_{show['id']}_{ep_code}_{idx}", use_container_width=True):
+                            st.markdown('<span class="poster-wrapper"></span>', unsafe_allow_html=True)
+                            if st.button("OPEN", key=f"n_i_tv_{show['id']}_{ep_code}_{idx}", use_container_width=True):
                                 st.session_state.active_actor = None
                                 show_episode_details(show['id'], show['name'], ep_code, ep, is_watched=False)
-                            
-                            # Slide-up Action Bar
-                            st.markdown('<span class="action-bar-hook"></span>', unsafe_allow_html=True)
-                            st.button("▶ WATCH", key=f"n_w_tv_{show['id']}_{ep_code}_{idx}", on_click=cb_watch_tv_feed, args=(show['id'], show['name'], ep_code), use_container_width=True)
                                 
             if len(up_next_tv) > st.session_state.next_tv_limit:
                 if st.button("Load More Series", use_container_width=True, key="load_more_next_tv"):
@@ -1089,13 +1096,10 @@ with t_next:
                             m = up_next_mov[idx]["item"]
                             render_poster_card(m["name"], m.get('poster_path'))
                             
-                            st.markdown('<span class="info-overlay-hook"></span>', unsafe_allow_html=True)
-                            if st.button("INFO", key=f"n_i_mov_{m['id']}_{idx}", use_container_width=True):
+                            st.markdown('<span class="poster-wrapper"></span>', unsafe_allow_html=True)
+                            if st.button("OPEN", key=f"n_i_mov_{m['id']}_{idx}", use_container_width=True):
                                 st.session_state.active_actor = None
                                 show_movie_details(m['id'], m['name'], details=None, is_watched=False)
-                            
-                            st.markdown('<span class="action-bar-hook"></span>', unsafe_allow_html=True)
-                            st.button("▶ WATCH", key=f"n_w_mov_{m['id']}_{idx}", on_click=cb_watch_mov_feed, args=(m['id'], m['name']), use_container_width=True)
                         
             if len(up_next_mov) > st.session_state.next_mov_limit:
                 if st.button("Load More Movies", use_container_width=True, key="load_more_next_mov"):
@@ -1159,13 +1163,10 @@ with t_soon:
                             
                             render_poster_card(show["name"], show.get("poster_path") or details.get('poster_path'), subtitle=f"{ep_code} • {calc_time_remaining(item['date'])}")
                             
-                            st.markdown('<span class="info-overlay-hook"></span>', unsafe_allow_html=True)
-                            if st.button("INFO", key=f"s_i_tv_{show['id']}_{ep_code}_{idx}", use_container_width=True):
+                            st.markdown('<span class="poster-wrapper"></span>', unsafe_allow_html=True)
+                            if st.button("OPEN", key=f"s_i_tv_{show['id']}_{ep_code}_{idx}", use_container_width=True):
                                 st.session_state.active_actor = None
                                 show_episode_details(show['id'], show['name'], ep_code, ep, is_watched=False)
-                            
-                            st.markdown('<span class="action-bar-hook"></span>', unsafe_allow_html=True)
-                            st.button("▶ WATCH", key=f"s_w_tv_{show['id']}_{ep_code}_{idx}", on_click=cb_watch_tv_feed, args=(show['id'], show['name'], ep_code), use_container_width=True)
 
             if len(soon_tv) > st.session_state.soon_tv_limit:
                 if st.button("Load More Upcoming Series", use_container_width=True, key="load_more_soon_tv"):
@@ -1196,13 +1197,10 @@ with t_soon:
                             
                             render_poster_card(m["name"], m.get('poster_path'), subtitle=calc_time_remaining(item["date"]))
                             
-                            st.markdown('<span class="info-overlay-hook"></span>', unsafe_allow_html=True)
-                            if st.button("INFO", key=f"s_i_mov_{m['id']}_{idx}", use_container_width=True):
+                            st.markdown('<span class="poster-wrapper"></span>', unsafe_allow_html=True)
+                            if st.button("OPEN", key=f"s_i_mov_{m['id']}_{idx}", use_container_width=True):
                                 st.session_state.active_actor = None
                                 show_movie_details(m['id'], m['name'], details=None, is_watched=False)
-                            
-                            st.markdown('<span class="action-bar-hook"></span>', unsafe_allow_html=True)
-                            st.button("▶ WATCH", key=f"s_w_mov_{m['id']}_{idx}", on_click=cb_watch_mov_feed, args=(m['id'], m['name']), use_container_width=True)
 
             if len(soon_mov) > st.session_state.soon_mov_limit:
                 if st.button("Load More Upcoming Movies", use_container_width=True, key="load_more_soon_mov"):
@@ -1238,26 +1236,14 @@ with t_search:
                             
                             render_poster_card(title, item.get("poster_path"))
                             
-                            st.markdown('<span class="info-overlay-hook"></span>', unsafe_allow_html=True)
-                            if st.button("INFO", key=f"inf_{item_id}_{i+j}", use_container_width=True):
+                            st.markdown('<span class="poster-wrapper"></span>', unsafe_allow_html=True)
+                            if st.button("OPEN", key=f"inf_{item_id}_{i+j}", use_container_width=True):
                                 st.session_state.active_actor = None
-                                details = fetch_api(f"https://api.themoviedb.org/3/{'tv' if is_tv else 'movie'}/{item_id}?api_key={TMDB_KEY}")
-                                if is_tv: manage_show_dialog(item_id, title, details)
+                                details = fetch_api(f"https://api.themoviedb.org/3/{'tv' if search_type == 'TV Shows' else 'movie'}/{item_id}?api_key={TMDB_KEY}")
+                                if search_type == "TV Shows": manage_show_dialog(item_id, title, details)
                                 else: show_movie_details(item_id, title, details, is_watched=False)
-                            
-                            st.markdown('<span class="action-bar-hook"></span>', unsafe_allow_html=True)
-                            is_tv = (search_type == "TV Shows")
-                            added = any(str(x["id"]) == str(item_id) for x in st.session_state.db["shows" if is_tv else "movies"])
-                            
-                            if not added:
-                                if st.button("＋ ADD", key=f"add_{item_id}_{i+j}", use_container_width=True):
-                                    details = fetch_api(f"https://api.themoviedb.org/3/{'tv' if is_tv else 'movie'}/{item_id}?api_key={TMDB_KEY}")
-                                    if is_tv: st.session_state.db["shows"].append({"id": item_id, "name": title, "watched_episodes": get_watched_from_history("tv", item_id), "poster_path": details.get("poster_path", ""), "first_air_date": details.get("first_air_date", ""), "total_episodes": details.get("number_of_episodes", 1), "dropped": False})
-                                    else: st.session_state.db["movies"].append({"id": item_id, "name": title, "watched": get_watched_from_history("movie", item_id), "poster_path": details.get("poster_path", ""), "release_date": details.get("release_date", ""), "runtime": details.get("runtime", 0), "dropped": False})
-                                    if save_db(): st.rerun()
-                            else:
-                                st.button("✓ ADDED", key=f"dsb_{item_id}_{i+j}", disabled=True, use_container_width=True)
     else:
+        # THE PILL FILTER NAVIGATION
         genre_options = ["🔥 Trending", "🤣 Comedy", "💥 Action", "🐉 Sci-Fi", "🔪 Thriller", "👻 Horror"]
         selected_genre = st.radio("Filters", genre_options, label_visibility="collapsed", horizontal=True)
         st.divider()
@@ -1280,24 +1266,12 @@ with t_search:
                     
                     render_poster_card(i_title, item.get("poster_path"))
                     
-                    st.markdown('<span class="info-overlay-hook"></span>', unsafe_allow_html=True)
-                    if st.button("INFO", key=f"c_inf_{safe_title}_{item_id}_{idx}", use_container_width=True):
+                    st.markdown('<span class="poster-wrapper"></span>', unsafe_allow_html=True)
+                    if st.button("OPEN", key=f"c_inf_{safe_title}_{item_id}_{idx}", use_container_width=True):
                         st.session_state.active_actor = None
                         details = fetch_api(f"https://api.themoviedb.org/3/{c_type}/{item_id}?api_key={TMDB_KEY}")
                         if c_type == "tv": manage_show_dialog(item_id, i_title, details)
                         else: show_movie_details(item_id, i_title, details, is_watched=False)
-                    
-                    st.markdown('<span class="action-bar-hook"></span>', unsafe_allow_html=True)
-                    added = any(str(x["id"]) == str(item_id) for x in st.session_state.db["shows" if c_type == "tv" else "movies"])
-                    
-                    if not added:
-                        if st.button("＋ ADD", key=f"c_add_{safe_title}_{item_id}_{idx}", use_container_width=True):
-                            details = fetch_api(f"https://api.themoviedb.org/3/{c_type}/{item_id}?api_key={TMDB_KEY}")
-                            if c_type == "tv": st.session_state.db["shows"].append({"id": item_id, "name": i_title, "watched_episodes": get_watched_from_history("tv", item_id), "poster_path": details.get("poster_path", ""), "first_air_date": details.get("first_air_date", ""), "total_episodes": details.get("number_of_episodes", 1), "dropped": False})
-                            else: st.session_state.db["movies"].append({"id": item_id, "name": i_title, "watched": get_watched_from_history("movie", item_id), "poster_path": details.get("poster_path", ""), "release_date": details.get("release_date", ""), "runtime": details.get("runtime", 0), "dropped": False})
-                            if save_db(): st.rerun()
-                    else:
-                        st.button("✓ ADDED", key=f"c_dsb_{safe_title}_{item_id}_{idx}", disabled=True, use_container_width=True)
             
             if show_load_more:
                 with cols[-1]:
@@ -1404,19 +1378,10 @@ with t_tv:
                             
                             render_poster_card(show["name"], show.get("poster_path"), progress_pct=prog_val)
                             
-                            st.markdown('<span class="info-overlay-hook"></span>', unsafe_allow_html=True)
-                            if st.button("INFO", key=f"s_mgr_{show['id']}", use_container_width=True):
+                            st.markdown('<span class="poster-wrapper"></span>', unsafe_allow_html=True)
+                            if st.button("OPEN", key=f"s_mgr_{show['id']}_{i+j}", use_container_width=True):
                                 st.session_state.active_actor = None
                                 manage_show_dialog(show['id'], show['name'], fetch_api(f"https://api.themoviedb.org/3/tv/{show['id']}?api_key={TMDB_KEY}"))
-                            
-                            if st.session_state.tv_tab == "DROPPED":
-                                st.markdown('<span class="action-bar-hook"></span>', unsafe_allow_html=True)
-                                bc1, bc2 = st.columns(2)
-                                with bc1: st.button("↺ RESTORE", key=f"s_res_{show['id']}", on_click=cb_restore_tv, args=(show['id'],), use_container_width=True)
-                                with bc2: st.button("✕ DEL", key=f"s_pdel_{show['id']}", on_click=cb_perm_delete_tv, args=(show['id'],), use_container_width=True)
-                            elif st.session_state.tv_tab == "WATCHLIST":
-                                st.markdown('<span class="action-bar-hook"></span>', unsafe_allow_html=True)
-                                st.button("✕ DROP", key=f"s_drp_{show['id']}", on_click=cb_drop_tv, args=(show['id'],), use_container_width=True)
 
             if total_tv_display > st.session_state.tv_lib_limit:
                 if st.button("Load 50 More", use_container_width=True, key="load_more_tv_lib"):
@@ -1485,21 +1450,13 @@ with t_movies:
                         st.markdown('<span class="grid-3-col"></span>', unsafe_allow_html=True)
                         if i + j < len(paginated_movies):
                             m, is_watched = paginated_movies[i + j]
+                            
                             render_poster_card(m["name"], m.get("poster_path"))
                             
-                            st.markdown('<span class="info-overlay-hook"></span>', unsafe_allow_html=True)
-                            if st.button("INFO", key=f"m_mgr_{m['id']}", use_container_width=True):
+                            st.markdown('<span class="poster-wrapper"></span>', unsafe_allow_html=True)
+                            if st.button("OPEN", key=f"m_mgr_{m['id']}_{i+j}", use_container_width=True):
                                 st.session_state.active_actor = None
                                 show_movie_details(m['id'], m['name'], details=None, is_watched=is_watched)
-                            
-                            if st.session_state.mov_tab == "DROPPED":
-                                st.markdown('<span class="action-bar-hook"></span>', unsafe_allow_html=True)
-                                bc1, bc2 = st.columns(2)
-                                with bc1: st.button("↺ RESTORE", key=f"m_res_{m['id']}", on_click=cb_restore_mov, args=(m['id'],), use_container_width=True)
-                                with bc2: st.button("✕ DEL", key=f"m_pdel_{m['id']}", on_click=cb_perm_delete_mov, args=(m['id'],), use_container_width=True)
-                            elif st.session_state.mov_tab == "WATCHLIST":
-                                st.markdown('<span class="action-bar-hook"></span>', unsafe_allow_html=True)
-                                st.button("✕ DROP", key=f"m_drp_{m['id']}", on_click=cb_drop_mov, args=(m['id'],), use_container_width=True)
                                 
             if total_mov_display > st.session_state.mov_lib_limit:
                 if st.button("Load 50 More", use_container_width=True, key="load_more_mov_lib"):
@@ -1883,11 +1840,11 @@ with t_profile:
                             f'</div>'
                             f'</div>'
                         )
-                        c_left, c_right = st.columns([85, 15])
-                        with c_left: st.markdown(html_card, unsafe_allow_html=True)
-                        with c_right:
-                            st.markdown("<div style='height: 35px;'></div>", unsafe_allow_html=True)
-                            if st.button("📝", key=f"h_r_tv_{h['i']}_{ep_code}_{h_idx}", help="Rate & Review", use_container_width=True): 
+                        c_col, = st.columns(1)
+                        with c_col:
+                            st.markdown(html_card, unsafe_allow_html=True)
+                            st.markdown('<span class="history-wrapper"></span>', unsafe_allow_html=True)
+                            if st.button("OPEN", key=f"h_r_tv_{h['i']}_{ep_code}_{h_idx}", use_container_width=True): 
                                 st.session_state.active_actor = None
                                 show_episode_details(h['i'], s_name, ep_code, ep_data=None, is_watched=True)
                 if len(tv_hist) > st.session_state.hist_tv_limit:
@@ -1940,11 +1897,11 @@ with t_profile:
                             f'</div>'
                             f'</div>'
                         )
-                        c_left, c_right = st.columns([85, 15])
-                        with c_left: st.markdown(html_card, unsafe_allow_html=True)
-                        with c_right:
-                            st.markdown("<div style='height: 35px;'></div>", unsafe_allow_html=True)
-                            if st.button("📝", key=f"h_r_mov_{h['i']}_{h_idx}", help="Rate & Review", use_container_width=True): 
+                        c_col, = st.columns(1)
+                        with c_col:
+                            st.markdown(html_card, unsafe_allow_html=True)
+                            st.markdown('<span class="history-wrapper"></span>', unsafe_allow_html=True)
+                            if st.button("OPEN", key=f"h_r_mov_{h['i']}_{h_idx}", use_container_width=True): 
                                 st.session_state.active_actor = None
                                 show_movie_details(h['i'], m_name, details=None, is_watched=True)
                 if len(mov_hist) > st.session_state.hist_mov_limit:
