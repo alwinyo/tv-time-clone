@@ -419,7 +419,7 @@ if st.session_state.last_action and not st.session_state.prompt_review:
         with c2: st.button("↩️ Undo", key="undo_btn", on_click=cb_undo_action, args=(la["t"], la["i"], la["e"]), use_container_width=True)
         with c3: st.button("✖", key="dismiss_undo", on_click=cb_clear_action, use_container_width=True)
 
-# --- VISUAL HELPERS ---
+# --- VISUAL HELPERS (IMPLICIT CONCATENATION FOR SAFETY) ---
 def render_badges(items, is_gold=False):
     css_class = "badge badge-gold" if is_gold else "badge"
     html = "".join([f'<span class="{css_class}">{item}</span>' for item in items])
@@ -489,7 +489,8 @@ def render_inline_actor_pokedex(actor_id):
         
         c1, c2 = st.columns([1, 2])
         with c1:
-            display_poster(details.get("profile_path"), width=185)
+            img_url = f"https://image.tmdb.org/t/p/w185{details.get('profile_path')}" if details.get("profile_path") else "https://via.placeholder.com/185x278/222222/555555?text=No+Image"
+            st.markdown(f'<img src="{img_url}" style="width: 100%; border-radius: 8px;">', unsafe_allow_html=True)
         with c2:
             st.caption(f"**Born:** {details.get('birthday', 'Unknown')}")
             bio = details.get("biography", "")
@@ -966,9 +967,10 @@ t_next, t_soon, t_search, t_tv, t_movies, t_profile = st.tabs(["🔥 Next", "�
 # ==========================================
 with t_next:
     st.markdown("<h3 class='tab-title'>Up Next</h3>", unsafe_allow_html=True)
-    next_filter = st.selectbox("Category:", ["📺 Series", "🎬 Movies"], label_visibility="collapsed", key="next_filter_box")
-    st.markdown("<div style='height: 5px;'></div>", unsafe_allow_html=True)
-    next_sort = st.selectbox("Sort by:", ["Smart Priority", "Release Date", "Alphabetical"], label_visibility="collapsed", key="next_sort_box")
+    
+    c_filter, c_sort = st.columns(2)
+    with c_filter: next_filter = st.selectbox("Category:", ["📺 Series", "🎬 Movies"], label_visibility="collapsed", key="next_filter_box")
+    with c_sort: next_sort = st.selectbox("Sort by:", ["Smart Priority", "Release Date", "Alphabetical"], label_visibility="collapsed", key="next_sort_box")
     st.divider()
     
     try: fifteen_days_ago = get_dubai_time() - pd.DateOffset(days=15)
@@ -1064,8 +1066,6 @@ with t_next:
             with c_h2: 
                 if st.button("ℹ INFO", key=f"hero_i_tv_{h_show['id']}", use_container_width=True): st.session_state.active_actor = None; show_episode_details(h_show['id'], h_show['name'], h_code, h_ep, is_watched=False)
             
-            st.markdown("<div style='height: 15px;'></div>", unsafe_allow_html=True)
-            
             rest_next = up_next_tv[1:st.session_state.next_tv_limit]
             if rest_next:
                 clicked_next = render_clickable_grid(rest_next, "next_tv_grid", is_nested=True)
@@ -1107,9 +1107,10 @@ with t_next:
 # ==========================================
 with t_soon:
     st.markdown("<h3 class='tab-title'>Upcoming Releases</h3>", unsafe_allow_html=True)
-    soon_filter = st.selectbox("Category:", ["📺 Series", "🎬 Movies"], label_visibility="collapsed", key="soon_filter_box")
-    st.markdown("<div style='height: 5px;'></div>", unsafe_allow_html=True)
-    soon_sort = st.selectbox("Sort by:", ["Release Date", "Alphabetical"], label_visibility="collapsed", key="soon_sort_box")
+    
+    c_filter, c_sort = st.columns(2)
+    with c_filter: soon_filter = st.selectbox("Category:", ["📺 Series", "🎬 Movies"], label_visibility="collapsed", key="soon_filter_box")
+    with c_sort: soon_sort = st.selectbox("Sort by:", ["Release Date", "Alphabetical"], label_visibility="collapsed", key="soon_sort_box")
     st.divider()
     
     if soon_filter == "📺 Series":
@@ -1193,14 +1194,16 @@ with t_search:
 
     if search_query:
         search_type = st.selectbox("Search in:", ["TV Shows", "Movies"], label_visibility="collapsed", key="search_filter_box")
+        st.divider()
         endpoint = "tv" if search_type == "TV Shows" else "movie"
         results = fetch_api(f"https://api.themoviedb.org/3/search/{endpoint}?api_key={TMDB_KEY}&query={search_query}").get("results", [])
         if results:
-            clicked_search = render_clickable_grid(results[:30], f"search_grid_{st.session_state.search_reset_ctr}")
+            clean_search = [{"id": r["id"], "name": r.get("name") if search_type == "TV Shows" else r.get("title"), "poster_path": r.get("poster_path")} for r in results[:30]]
+            clicked_search = render_clickable_grid(clean_search, f"search_grid_{st.session_state.search_reset_ctr}")
             if clicked_search:
                 st.session_state.active_actor = None
                 item_id = clicked_search["id"]
-                title = clicked_search.get("name") if search_type == "TV Shows" else clicked_search.get("title")
+                title = clicked_search["name"]
                 details = fetch_api(f"https://api.themoviedb.org/3/{'tv' if search_type == 'TV Shows' else 'movie'}/{item_id}?api_key={TMDB_KEY}")
                 if search_type == "TV Shows": manage_show_dialog(item_id, title, details)
                 else: show_movie_details(item_id, title, details, is_watched=False)
@@ -1282,17 +1285,15 @@ with t_tv:
     if c3.button("Watched", type="primary" if st.session_state.tv_tab == "WATCHED" else "secondary", use_container_width=True, key="tv_wd"): st.session_state.tv_tab = "WATCHED"; st.rerun()
     if c4.button("Dropped", type="primary" if st.session_state.tv_tab == "DROPPED" else "secondary", use_container_width=True, key="tv_dr"): st.session_state.tv_tab = "DROPPED"; st.rerun()
         
-    st.markdown("<div style='height: 5px;'></div>", unsafe_allow_html=True)
-    
-    with st.container():
+    c_search, c_sort = st.columns([6, 4])
+    with c_search:
         st.markdown('<span class="search-container-hook"></span>', unsafe_allow_html=True)
         lib_search_tv = st_keyup("Search Library", debounce=500, key=f"lib_sq_tv_{st.session_state.lib_tv_reset_ctr}", placeholder="Filter shows...", label_visibility="collapsed")
         if lib_search_tv:
             st.markdown('<span class="clear-btn-hook"></span>', unsafe_allow_html=True)
             st.button("✖", key=f"clr_lib_tv_{st.session_state.lib_tv_reset_ctr}", on_click=cb_clear_lib_tv)
-            
-    st.markdown("<div style='height: 5px;'></div>", unsafe_allow_html=True)
-    tv_sort = st.selectbox("Sort Library by:", ["Release Date", "Alphabetical", "Recently Added"], label_visibility="collapsed", key="sort_tv_lib")
+    with c_sort:
+        tv_sort = st.selectbox("Sort Library by:", ["Release Date", "Alphabetical", "Recently Added"], label_visibility="collapsed", key="sort_tv_lib")
     st.divider()
     
     shows = st.session_state.db.get("shows", [])
@@ -1349,16 +1350,15 @@ with t_movies:
     if c3.button("Watched", type="primary" if st.session_state.mov_tab == "WATCHED" else "secondary", use_container_width=True, key="m_wd"): st.session_state.mov_tab = "WATCHED"; st.rerun()
     if c4.button("Dropped", type="primary" if st.session_state.mov_tab == "DROPPED" else "secondary", use_container_width=True, key="m_dr"): st.session_state.mov_tab = "DROPPED"; st.rerun()
         
-    st.markdown("<div style='height: 5px;'></div>", unsafe_allow_html=True)
-    with st.container():
+    c_search, c_sort = st.columns([6, 4])
+    with c_search:
         st.markdown('<span class="search-container-hook"></span>', unsafe_allow_html=True)
         lib_search_mov = st_keyup("Search Library", debounce=500, key=f"lib_sq_mov_{st.session_state.lib_mov_reset_ctr}", placeholder="Filter movies...", label_visibility="collapsed")
         if lib_search_mov:
             st.markdown('<span class="clear-btn-hook"></span>', unsafe_allow_html=True)
             st.button("✖", key=f"clr_lib_mov_{st.session_state.lib_mov_reset_ctr}", on_click=cb_clear_lib_mov)
-            
-    st.markdown("<div style='height: 5px;'></div>", unsafe_allow_html=True)
-    mov_sort = st.selectbox("Sort Library by:", ["Release Date", "Alphabetical", "Recently Added"], label_visibility="collapsed", key="sort_mov_lib")
+    with c_sort:
+        mov_sort = st.selectbox("Sort Library by:", ["Release Date", "Alphabetical", "Recently Added"], label_visibility="collapsed", key="sort_mov_lib")
     st.divider()
     
     movies = st.session_state.db.get("movies", [])
