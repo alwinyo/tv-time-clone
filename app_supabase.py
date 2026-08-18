@@ -33,39 +33,11 @@ st.markdown("""
     }
     
     .block-container { padding: 1rem 0.5rem 5rem 0.5rem !important; max-width: 100vw !important; overflow-x: hidden !important; }
-    hr { margin: 0.8rem 0 !important; border-color: rgba(255, 255, 255, 0.1) !important; }
     h1, h2, h3 { padding-top: 0.6rem !important; padding-bottom: 0.3rem !important; margin-bottom: 0 !important; }
     .stMarkdown p { margin-bottom: 0.5rem !important; }
     
     h3 { color: #FFD54F !important; font-weight: 800 !important; letter-spacing: -0.5px !important; }
     h3.tab-title { margin-top: -0.8rem !important; padding-top: 0 !important; }
-    
-    /* --- UNIVERSAL PILL BUTTONS (2x2 / 50-50 GRIDS) --- */
-    div[data-testid="stButton"] button {
-        border-radius: 12px !important;
-        font-weight: 800 !important;
-        text-transform: uppercase !important;
-        letter-spacing: 0.5px !important;
-        transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1) !important;
-        min-height: 40px !important;
-    }
-    div[data-testid="stButton"] button[kind="primary"] {
-        background: linear-gradient(135deg, #FFD54F 0%, #FFC107 100%) !important;
-        color: #000 !important;
-        border: none !important;
-        box-shadow: 0 4px 10px rgba(255, 193, 7, 0.3) !important;
-        transform: scale(1.02);
-    }
-    div[data-testid="stButton"] button[kind="secondary"] {
-        background: rgba(255,255,255,0.05) !important;
-        border: 1px solid rgba(255,255,255,0.1) !important;
-        color: #EDEDED !important;
-    }
-    div[data-testid="stButton"] button[kind="secondary"]:hover {
-        background: rgba(255,255,255,0.1) !important;
-        color: #FFF !important;
-        border-color: #FFC107 !important;
-    }
     
     /* --- INVISIBLE POSTER CLICK SYSTEM (FOR NATIVE CAROUSELS) --- */
     div[data-testid="column"]:has(.poster-wrapper) {
@@ -124,6 +96,40 @@ st.markdown("""
         transform: none !important;
     }
     
+    /* --- SLEEK PILL NAVIGATION (FOR TABS & FILTERS) - STRICT 50/50 GRID --- */
+    div[role="radiogroup"] {
+        display: flex !important; 
+        flex-direction: row !important; 
+        flex-wrap: wrap !important; 
+        background-color: transparent !important; 
+        border: none !important; 
+        box-shadow: none !important; 
+        padding: 0 !important; 
+        width: 100% !important; 
+        gap: 8px !important;
+        margin-bottom: 5px !important;
+    }
+    div[role="radiogroup"]::-webkit-scrollbar { display: none; }
+    div[role="radiogroup"] > label {
+        flex: 1 1 calc(50% - 8px) !important; /* STRICT 50% SIZING */
+        background: rgba(255,255,255,0.05) !important; 
+        border: 1px solid rgba(255,255,255,0.1) !important;
+        border-radius: 12px !important; 
+        padding: 10px !important; 
+        margin: 0 !important; 
+        justify-content: center !important; /* CENTER TEXT */
+        transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1) !important;
+    }
+    div[role="radiogroup"] > label > div:first-child { display: none !important; }
+    div[role="radiogroup"] > label:has(input:checked) { 
+        background: linear-gradient(135deg, #FFD54F 0%, #FFC107 100%) !important; 
+        border-color: #FFC107 !important; 
+        box-shadow: 0 4px 10px rgba(255, 193, 7, 0.3) !important; 
+        transform: scale(1.02); 
+    }
+    div[role="radiogroup"] > label:has(input:checked) p { color: #000 !important; font-weight: 800 !important; }
+    div[role="radiogroup"] > label p { font-size: 0.75rem !important; font-weight: 700 !important; margin: 0 !important; color: #EDEDED !important; white-space: nowrap !important; }
+    
     /* --- TABS OVERHAUL --- */
     div[data-testid="stTabs"] > div[data-baseweb="tab-list"], div[data-testid="stTabs"] > div[role="tablist"] { display: flex !important; width: 100vw !important; max-width: 100% !important; margin-left: -0.5rem !important; padding: 0 0 5px 0 !important; gap: 0 !important; overflow-x: hidden !important; background-color: rgba(8, 9, 12, 0.85) !important; backdrop-filter: blur(12px) !important; -webkit-backdrop-filter: blur(12px) !important; border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important; }
     div[data-testid="stTabs"] button[role="tab"] { flex: 1 1 0px !important; min-width: 0 !important; padding: 10px 0px !important; margin: 0 !important; border-radius: 0 !important; transition: all 0.3s ease !important; }
@@ -152,10 +158,6 @@ st.markdown("""
     .grid-title { font-size: 0.65rem; color: #ccc; text-align: center; margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 600; }
 
     @media (max-width: 992px) {
-        div[data-testid="stHorizontalBlock"]:has(.grid-3-col), div[data-testid="stColumns"]:has(.grid-3-col) { display: flex !important; flex-direction: row !important; flex-wrap: nowrap !important; gap: 3% !important; }
-        div[data-testid="column"]:has(.grid-3-col), div[data-testid="stColumn"]:has(.grid-3-col) { width: 31% !important; flex: 1 1 31% !important; min-width: 0 !important; padding: 0 !important; display: block !important; }
-        div[data-testid="stHorizontalBlock"]:has(.grid-2-col), div[data-testid="stColumns"]:has(.grid-2-col) { display: flex !important; flex-direction: row !important; flex-wrap: nowrap !important; gap: 4% !important; }
-        div[data-testid="column"]:has(.grid-2-col), div[data-testid="stColumn"]:has(.grid-2-col) { width: 48% !important; flex: 1 1 48% !important; min-width: 0 !important; padding: 0 !important; display: block !important; }
         div[role="dialog"] { width: 95vw !important; max-width: 95vw !important; margin: 0 auto !important; padding: 0 !important; background: rgba(15, 17, 22, 0.95) !important; backdrop-filter: blur(20px) !important; -webkit-backdrop-filter: blur(20px) !important; border: 1px solid rgba(255, 255, 255, 0.1) !important; overflow: hidden !important;}
         div[role="dialog"] > div:first-child { padding: 0 15px 20px 15px !important; }
     }
@@ -415,6 +417,234 @@ def cb_clear_search(): st.session_state.search_reset_ctr += 1
 def cb_clear_lib_tv(): st.session_state.lib_tv_reset_ctr += 1
 def cb_clear_lib_mov(): st.session_state.lib_mov_reset_ctr += 1
 def cb_toggle_ep_info(sid, ecode): st.session_state[f"view_info_{sid}_{ecode}"] = not st.session_state.get(f"view_info_{sid}_{ecode}", False)
+
+# --- CENTRALIZED MANAGEMENT DIALOGS ---
+@st.dialog("Episode Details")
+def show_episode_details(show_id, show_name, ep_code, ep_data=None, is_watched=False):
+    if not ep_data:
+        try:
+            s_num, e_num = ep_code.split('E')[0].replace('S', ''), ep_code.split('E')[1]
+            ep_data = fetch_api(f"https://api.themoviedb.org/3/tv/{show_id}/season/{s_num}/episode/{e_num}?api_key={TMDB_KEY}")
+        except: ep_data = {}
+        
+    s_details = fetch_api(f"https://api.themoviedb.org/3/tv/{show_id}?api_key={TMDB_KEY}")
+    badges = f'<span class="badge badge-gold">{ep_code}</span><span class="badge">⭐ {ep_data.get("vote_average", 0.0)}</span>'
+    render_apple_tv_header(ep_data.get("still_path") or s_details.get("backdrop_path"), s_details.get("poster_path"), ep_data.get('name', 'Untitled Episode'), badges)
+    
+    st.caption(f"**Aired:** {ep_data.get('air_date', 'N/A')}")
+    st.write(ep_data.get("overview", "No synopsis available for this episode yet."))
+    
+    current_show = next((s for s in st.session_state.db["shows"] if str(s["id"]) == str(show_id)), None)
+    btn_disabled = (current_show is None)
+    
+    if is_watched:
+        h_log = next((h for h in st.session_state.db.get("history", []) if h.get("t")=="s" and str(h.get("i"))==str(show_id) and h.get("e")==ep_code), None)
+        if h_log:
+            try: st.success(f"✅ **Watched on:** {datetime.strptime(h_log['d'], '%Y-%m-%d %H:%M:%S').strftime('%B %d, %Y at %I:%M %p')}")
+            except: pass
+            
+            st.markdown("#### Journal & Review")
+            platforms = ["None", "Stremio", "Netflix", "OSN+", "Amazon Prime", "Apple TV+", "Disney+", "Starzplay", "Cinema", "Downloaded", "Other"]
+            curr_p = h_log.get("p", "")
+            new_p = st.selectbox("Watched On:", platforms, index=platforms.index(curr_p) if curr_p in platforms else 0, key=f"p_s_{show_id}_{ep_code}")
+            
+            c1, c2 = st.columns(2)
+            with c1:
+                ratings = [0, 1, 2, 3, 4, 5]
+                curr_r = h_log.get("r", 0)
+                new_r = st.selectbox("Rating (1-5):", ratings, index=curr_r if curr_r in ratings else 0, format_func=lambda x: f"{x} ⭐" if x>0 else "Unrated", key=f"r_s_{show_id}_{ep_code}")
+            with c2:
+                curr_f = h_log.get("f", "")
+                new_f = st.selectbox("Feeling:", PREMIUM_EMOTIONS, index=PREMIUM_EMOTIONS.index(curr_f) if curr_f in PREMIUM_EMOTIONS else 0, key=f"f_s_{show_id}_{ep_code}")
+                
+            if new_p != curr_p or new_r != curr_r or new_f != curr_f:
+                h_log["p"] = new_p if new_p != "None" else ""
+                h_log["r"] = new_r
+                h_log["f"] = new_f if new_f != "None" else ""
+                save_db()
+                
+    st.divider()
+    st.markdown("#### Cast & Guest Stars")
+    cast_data = fetch_api(f"https://api.themoviedb.org/3/tv/{show_id}/credits?api_key={TMDB_KEY}").get("cast") or []
+    guest_data = ep_data.get("guest_stars") or []
+    show_cast_horizontal(cast_data + guest_data, key_prefix=f"ep_{show_id}_{ep_code}", limit=15)
+    
+    if st.session_state.get("active_actor"): render_inline_actor_pokedex(st.session_state["active_actor"])
+        
+    st.divider()
+    if not current_show:
+        st.warning("➕ Add this show to your library to track episodes!")
+        if st.button("➕ Add to Library", use_container_width=True, type="primary"):
+            st.session_state.db["shows"].append({"id": show_id, "name": show_name, "watched_episodes": [], "poster_path": s_details.get("poster_path", ""), "first_air_date": s_details.get("first_air_date", ""), "total_episodes": s_details.get("number_of_episodes", 1), "dropped": False})
+            save_db()
+            st.rerun()
+    else:
+        col_a, col_b = st.columns(2)
+        with col_a:
+            if st.button("❌ Unmark as Watched" if is_watched else "▶ Mark as Watched", use_container_width=True, type="secondary" if is_watched else "primary"):
+                for s in st.session_state.db["shows"]:
+                    if str(s["id"]) == str(show_id):
+                        if is_watched and ep_code in s["watched_episodes"]: 
+                            s["watched_episodes"].remove(ep_code)
+                            remove_watch("tv", show_id, ep_code)
+                        elif not is_watched and ep_code not in s["watched_episodes"]: 
+                            s["watched_episodes"].append(ep_code)
+                            log_watch("tv", show_id, ep_code)
+                        break
+                st.rerun()
+        with col_b:
+            if st.button("⚰️ Drop Series", use_container_width=True):
+                cb_drop_tv(show_id)
+                st.rerun()
+
+@st.dialog("Manage Show")
+def manage_show_dialog(show_id, show_name, details):
+    badges = f'<span class="badge badge-gold">{details.get("status")}</span>' + "".join([f'<span class="badge">{g["name"]}</span>' for g in details.get("genres", [])])
+    render_apple_tv_header(details.get("backdrop_path"), details.get("poster_path"), show_name, badges)
+    
+    current_show = next((s for s in st.session_state.db["shows"] if str(s["id"]) == str(show_id)), None)
+    
+    if not current_show:
+        if st.button("➕ Add to Library", use_container_width=True, type="primary"):
+            st.session_state.db["shows"].append({"id": show_id, "name": show_name, "watched_episodes": [], "poster_path": details.get("poster_path", ""), "first_air_date": details.get("first_air_date", ""), "total_episodes": details.get("number_of_episodes", 1), "dropped": False})
+            save_db()
+            st.rerun()
+    else:
+        is_dropped = current_show.get("dropped", False)
+        c1, c2 = st.columns(2)
+        with c1:
+            if is_dropped:
+                if st.button("↺ Restore Show", use_container_width=True, type="primary"):
+                    cb_restore_tv(show_id)
+                    st.rerun()
+            else:
+                if st.button("⚰️ Drop Show", use_container_width=True):
+                    cb_drop_tv(show_id)
+                    st.rerun()
+        with c2:
+            if is_dropped:
+                if st.button("🗑️ Delete Permanently", use_container_width=True):
+                    cb_perm_delete_tv(show_id)
+                    st.rerun()
+
+    st.write(details.get("overview", "No overview available."))
+    
+    providers = fetch_api(f"https://api.themoviedb.org/3/tv/{show_id}/watch/providers?api_key={TMDB_KEY}")
+    if "AE" in providers.get("results", {}):
+        streams = providers["results"]["AE"].get("flatrate", [])
+        if streams: st.info(f"📱 **Streaming locally:** {', '.join([p['provider_name'] for p in streams])}")
+            
+    st.divider()
+    st.markdown("#### Episodes")
+    
+    if not current_show: st.warning("➕ Add this show to your library to track episodes!")
+        
+    s_nums = [s["season_number"] for s in details.get("seasons", []) if s["season_number"] > 0]
+    if s_nums:
+        sel_s = st.selectbox("Select Season", s_nums, key=f"dlg_s_{show_id}")
+        watched_list = current_show.get("watched_episodes", []) if current_show else []
+        for ep in fetch_api(f"https://api.themoviedb.org/3/tv/{show_id}/season/{sel_s}?api_key={TMDB_KEY}").get("episodes", []):
+            e_code = f"S{sel_s}E{ep['episode_number']}"
+            is_watched = (e_code in watched_list)
+            ep_col1, ep_col2 = st.columns([6, 1])
+            with ep_col1: 
+                st.checkbox(f"**E{ep['episode_number']}.** {ep.get('name', 'Episode')}", value=is_watched, key=f"chk_dlg_{show_id}_{e_code}", on_change=cb_toggle_episode, args=(show_id, e_code), disabled=(current_show is None))
+                if is_watched:
+                    h_log = next((h for h in st.session_state.db.get("history", []) if h.get("t")=="s" and str(h.get("i"))==str(show_id) and h.get("e")==e_code), None)
+                    if h_log:
+                        try: 
+                            html_watched = f"<div style='font-size: 0.65rem; color: #FFC107; margin-top:-10px; margin-left: 28px; margin-bottom: 8px;'>✅ Watched on {datetime.strptime(h_log['d'], '%Y-%m-%d %H:%M:%S').strftime('%b %d, %Y')}</div>"
+                            st.markdown(html_watched, unsafe_allow_html=True)
+                        except: pass
+            with ep_col2:
+                if st.button("ℹ INFO", key=f"inf_btn_ep_{show_id}_{e_code}"): cb_toggle_ep_info(show_id, e_code)
+                    
+            if st.session_state.get(f"view_info_{show_id}_{e_code}", False):
+                with st.container(border=True):
+                    display_poster(ep.get("still_path"), width=500)
+                    st.caption(f"⭐ {ep.get('vote_average', 0.0)} | **Aired:** {ep.get('air_date', 'N/A')}")
+                    st.write(ep.get("overview", "No synopsis available."))
+                    
+    st.divider()
+    st.markdown("#### Top Cast")
+    cast_data = fetch_api(f"https://api.themoviedb.org/3/tv/{show_id}/credits?api_key={TMDB_KEY}").get("cast") or []
+    show_cast_horizontal(cast_data, key_prefix=f"show_{show_id}", limit=15)
+    if st.session_state.get("active_actor"): render_inline_actor_pokedex(st.session_state["active_actor"])
+
+@st.dialog("Movie Details")
+def show_movie_details(m_id, m_name, details=None, is_watched=False):
+    if not details: details = fetch_api(f"https://api.themoviedb.org/3/movie/{m_id}?api_key={TMDB_KEY}")
+    
+    badges = f'<span class="badge badge-gold">{details.get("runtime", 0)} mins</span>' + "".join([f'<span class="badge">{g["name"]}</span>' for g in details.get("genres", [])])
+    render_apple_tv_header(details.get("backdrop_path"), details.get("poster_path"), m_name, badges)
+    
+    current_movie = next((m for m in st.session_state.db["movies"] if str(m["id"]) == str(m_id)), None)
+    
+    if not current_movie:
+        if st.button("➕ Add to Library", use_container_width=True, type="primary"):
+            st.session_state.db["movies"].append({"id": m_id, "name": m_name, "watched": False, "poster_path": details.get("poster_path", ""), "release_date": details.get("release_date", ""), "runtime": details.get("runtime", 0), "dropped": False})
+            save_db()
+            st.rerun()
+    else:
+        is_dropped = current_movie.get("dropped", False)
+        c1, c2 = st.columns(2)
+        with c1:
+            if is_dropped:
+                if st.button("↺ Restore Movie", use_container_width=True, type="primary"):
+                    cb_restore_mov(m_id)
+                    st.rerun()
+            else:
+                if st.button("⚰️ Drop Movie", use_container_width=True):
+                    cb_drop_mov(m_id)
+                    st.rerun()
+        with c2:
+            if is_dropped:
+                if st.button("🗑️ Delete Permanently", use_container_width=True):
+                    cb_perm_delete_mov(m_id)
+                    st.rerun()
+                    
+    st.write(details.get("overview", "No synopsis available."))
+    
+    if is_watched:
+        h_log = next((h for h in st.session_state.db.get("history", []) if h.get("t")=="m" and str(h.get("i"))==str(m_id)), None)
+        if h_log:
+            try: st.success(f"✅ **Watched on:** {datetime.strptime(h_log['d'], '%Y-%m-%d %H:%M:%S').strftime('%B %d, %Y at %I:%M %p')}")
+            except: pass
+            
+            st.markdown("#### Journal & Review")
+            platforms = ["None", "Stremio", "Netflix", "OSN+", "Amazon Prime", "Apple TV+", "Disney+", "Starzplay", "Cinema", "Downloaded", "Other"]
+            curr_p = h_log.get("p", "")
+            new_p = st.selectbox("Watched On:", platforms, index=platforms.index(curr_p) if curr_p in platforms else 0, key=f"p_m_{m_id}")
+            
+            c1, c2 = st.columns(2)
+            with c1:
+                ratings = [0, 1, 2, 3, 4, 5]
+                curr_r = h_log.get("r", 0)
+                new_r = st.selectbox("Rating (1-5):", ratings, index=curr_r if curr_r in ratings else 0, format_func=lambda x: f"{x} ⭐" if x>0 else "Unrated", key=f"r_m_{m_id}")
+            with c2:
+                curr_f = h_log.get("f", "")
+                new_f = st.selectbox("Feeling:", PREMIUM_EMOTIONS, index=PREMIUM_EMOTIONS.index(curr_f) if curr_f in PREMIUM_EMOTIONS else 0, key=f"f_m_{m_id}")
+                
+            if new_p != curr_p or new_r != curr_r or new_f != curr_f:
+                h_log["p"] = new_p if new_p != "None" else ""
+                h_log["r"] = new_r
+                h_log["f"] = new_f if new_f != "None" else ""
+                save_db()
+                
+    st.divider()
+    st.markdown("#### Top Cast")
+    cast_data = fetch_api(f"https://api.themoviedb.org/3/movie/{m_id}/credits?api_key={TMDB_KEY}").get("cast") or []
+    show_cast_horizontal(cast_data, key_prefix=f"mov_{m_id}", limit=15)
+    if st.session_state.get("active_actor"): render_inline_actor_pokedex(st.session_state["active_actor"])
+        
+    st.divider()
+    if current_movie and not is_dropped:
+        if st.button("❌ Unmark as Watched" if is_watched else "▶ Mark as Watched", use_container_width=True, type="secondary" if is_watched else "primary"):
+            current_movie["watched"] = not is_watched
+            if current_movie["watched"]: log_watch("movie", m_id)
+            else: remove_watch("movie", m_id)
+            save_db()
+            st.rerun()
 
 # --- GLOBAL DIALOG ROUTER (Fixes Nested Dialog Bug) ---
 if st.session_state.get("open_dialog_trigger"):
@@ -992,20 +1222,12 @@ with t_search:
         if "discover_genre" not in st.session_state: st.session_state.discover_genre = "🔥 Trending"
         genres = ["🔥 Trending", "🤣 Comedy", "💥 Action", "🐉 Sci-Fi", "🔪 Thriller", "👻 Horror"]
         
-        # 2x2x2 Equal Box Pills
-        for i in range(0, 6, 2):
-            c1, c2 = st.columns(2, gap="small")
-            with c1:
-                if st.button(genres[i], use_container_width=True, type="primary" if st.session_state.discover_genre == genres[i] else "secondary"): 
-                    st.session_state.discover_genre = genres[i]
-                    st.rerun()
-            with c2:
-                if st.button(genres[i+1], use_container_width=True, type="primary" if st.session_state.discover_genre == genres[i+1] else "secondary"): 
-                    st.session_state.discover_genre = genres[i+1]
-                    st.rerun()
+        selected_genre = st.radio("Filters", genres, index=genres.index(st.session_state.discover_genre), horizontal=True, label_visibility="collapsed", key="discover_radio")
+        if selected_genre != st.session_state.discover_genre:
+            st.session_state.discover_genre = selected_genre
+            st.rerun()
 
         st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
-        selected_genre = st.session_state.discover_genre
 
         def render_carousel(title, items, c_type):
             if not items: return
@@ -1061,18 +1283,14 @@ with t_search:
 # ==========================================
 with t_tv:
     st.markdown("<h3 class='tab-title'>My TV Collection</h3>", unsafe_allow_html=True)
+    
     if "tv_tab" not in st.session_state: st.session_state.tv_tab = "WATCHLIST"
-        
-    c1, c2 = st.columns(2, gap="small")
-    with c1:
-        if st.button("Watchlist", use_container_width=True, type="primary" if st.session_state.tv_tab == "WATCHLIST" else "secondary"): st.session_state.tv_tab = "WATCHLIST"; st.rerun()
-    with c2:
-        if st.button("Upcoming", use_container_width=True, type="primary" if st.session_state.tv_tab == "UPCOMING" else "secondary"): st.session_state.tv_tab = "UPCOMING"; st.rerun()
-    c3, c4 = st.columns(2, gap="small")
-    with c3:
-        if st.button("Watched", use_container_width=True, type="primary" if st.session_state.tv_tab == "WATCHED" else "secondary"): st.session_state.tv_tab = "WATCHED"; st.rerun()
-    with c4:
-        if st.button("Dropped", use_container_width=True, type="primary" if st.session_state.tv_tab == "DROPPED" else "secondary"): st.session_state.tv_tab = "DROPPED"; st.rerun()
+    tv_options = ["WATCHLIST", "UPCOMING", "WATCHED", "DROPPED"]
+    selected_tv_tab = st.radio("TV Collection Filter", tv_options, index=tv_options.index(st.session_state.tv_tab), horizontal=True, label_visibility="collapsed", key="tv_tab_radio")
+    
+    if selected_tv_tab != st.session_state.tv_tab:
+        st.session_state.tv_tab = selected_tv_tab
+        st.rerun()
         
     c_search, c_sort = st.columns([6, 4], gap="small")
     with c_search:
@@ -1132,18 +1350,14 @@ with t_tv:
 # ==========================================
 with t_movies:
     st.markdown("<h3 class='tab-title'>My Movies</h3>", unsafe_allow_html=True)
+    
     if "mov_tab" not in st.session_state: st.session_state.mov_tab = "WATCHLIST"
-        
-    c1, c2 = st.columns(2, gap="small")
-    with c1:
-        if st.button("Watchlist", use_container_width=True, type="primary" if st.session_state.mov_tab == "WATCHLIST" else "secondary", key="m_wl"): st.session_state.mov_tab = "WATCHLIST"; st.rerun()
-    with c2:
-        if st.button("Upcoming", use_container_width=True, type="primary" if st.session_state.mov_tab == "UPCOMING" else "secondary", key="m_up"): st.session_state.mov_tab = "UPCOMING"; st.rerun()
-    c3, c4 = st.columns(2, gap="small")
-    with c3:
-        if st.button("Watched", use_container_width=True, type="primary" if st.session_state.mov_tab == "WATCHED" else "secondary", key="m_wd"): st.session_state.mov_tab = "WATCHED"; st.rerun()
-    with c4:
-        if st.button("Dropped", use_container_width=True, type="primary" if st.session_state.mov_tab == "DROPPED" else "secondary", key="m_dr"): st.session_state.mov_tab = "DROPPED"; st.rerun()
+    mov_options = ["WATCHLIST", "UPCOMING", "WATCHED", "DROPPED"]
+    selected_mov_tab = st.radio("Movie Collection Filter", mov_options, index=mov_options.index(st.session_state.mov_tab), horizontal=True, label_visibility="collapsed", key="mov_tab_radio")
+    
+    if selected_mov_tab != st.session_state.mov_tab:
+        st.session_state.mov_tab = selected_mov_tab
+        st.rerun()
         
     c_search, c_sort = st.columns([6, 4], gap="small")
     with c_search:
