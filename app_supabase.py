@@ -77,6 +77,50 @@ st.markdown("""
     }
     div[data-testid="column"]:has(.poster-wrapper) div[data-testid="stButton"] > button p { display: none !important; }
     
+    /* --- INVISIBLE HISTORY CLICK SYSTEM --- */
+    div[data-testid="column"]:has(.history-wrapper) {
+        position: relative !important;
+        transition: transform 0.2s cubic-bezier(0.25, 0.8, 0.25, 1) !important;
+    }
+    div[data-testid="column"]:has(.history-wrapper):hover {
+        transform: translateX(5px) !important;
+    }
+    div[data-testid="column"]:has(.history-wrapper) > div {
+        gap: 0 !important;
+        padding: 0 !important;
+    }
+    div[data-testid="column"]:has(.history-wrapper) div[data-testid="stButton"] {
+        position: absolute !important;
+        top: 14px !important; 
+        left: 29px !important; 
+        width: 55px !important; 
+        height: 82px !important; 
+        z-index: 100 !important;
+        display: block !important;
+    }
+    div[data-testid="column"]:has(.history-wrapper) div[data-testid="stButton"] > button,
+    div[data-testid="column"]:has(.history-wrapper) div[data-testid="stButton"] > button:hover,
+    div[data-testid="column"]:has(.history-wrapper) div[data-testid="stButton"] > button:active,
+    div[data-testid="column"]:has(.history-wrapper) div[data-testid="stButton"] > button:focus {
+        background: transparent !important;
+        background-color: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+        color: transparent !important;
+        width: 100% !important; 
+        height: 100% !important;
+        border-radius: 6px !important;
+        transform: none !important;
+        cursor: pointer !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        display: block !important;
+    }
+    div[data-testid="column"]:has(.history-wrapper) div[data-testid="stButton"] > button * {
+        display: none !important;
+        color: transparent !important;
+    }
+    
     /* --- SLEEK PILL NAVIGATION (FOR TABS & FILTERS) - PERFECT 50/50 GRID --- */
     div[role="radiogroup"] {
         display: flex !important; 
@@ -88,7 +132,7 @@ st.markdown("""
         padding: 0 !important; 
         width: 100% !important; 
         gap: 8px !important;
-        margin-bottom: 8px !important;
+        margin-bottom: 2px !important;
     }
     div[role="radiogroup"]::-webkit-scrollbar { display: none; }
     div[role="radiogroup"] > label {
@@ -147,18 +191,19 @@ st.markdown("""
         height: auto !important; min-height: 0 !important; width: 100% !important; display: block !important; transform: none !important; 
         text-transform: none !important;
     }
-    div[data-testid="column"]:has(.carousel-marker-cast) div[data-testid="stButton"] button p {
-        font-size: 0.6rem !important;
+    div[data-testid="column"]:has(.carousel-marker-cast) div[data-testid="stButton"] button * {
+        font-size: 0.55rem !important;
         font-weight: 500 !important;
         text-transform: none !important;
-        letter-spacing: 0px !important;
+        letter-spacing: normal !important;
         white-space: nowrap !important;
         overflow: hidden !important; 
         text-overflow: ellipsis !important;
-        line-height: 1.2 !important;
-        color: #bbb !important;
+        line-height: 1.1 !important;
+        color: #aaa !important;
+        margin: 0 !important;
     }
-    div[data-testid="column"]:has(.carousel-marker-cast) div[data-testid="stButton"] button:hover p { color: #FFC107 !important; text-decoration: underline !important;}
+    div[data-testid="column"]:has(.carousel-marker-cast) div[data-testid="stButton"] button:hover * { color: #FFC107 !important; text-decoration: underline !important;}
     
     /* --- TABS OVERHAUL --- */
     div[data-testid="stTabs"] > div[data-baseweb="tab-list"], div[data-testid="stTabs"] > div[role="tablist"] { display: flex !important; width: 100vw !important; max-width: 100% !important; margin-left: -0.5rem !important; padding: 0 0 5px 0 !important; gap: 0 !important; overflow-x: hidden !important; background-color: rgba(8, 9, 12, 0.85) !important; backdrop-filter: blur(12px) !important; -webkit-backdrop-filter: blur(12px) !important; border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important; }
@@ -186,6 +231,8 @@ st.markdown("""
     .grid-title { font-size: 0.65rem; color: #ccc; text-align: center; margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 600; }
 
     @media (max-width: 992px) {
+        div[data-testid="stHorizontalBlock"]:has(.grid-2-col), div[data-testid="stColumns"]:has(.grid-2-col) { display: flex !important; flex-direction: row !important; flex-wrap: nowrap !important; gap: 4% !important; }
+        div[data-testid="column"]:has(.grid-2-col), div[data-testid="stColumn"]:has(.grid-2-col) { width: 48% !important; flex: 1 1 48% !important; min-width: 0 !important; padding: 0 !important; display: block !important; }
         div[role="dialog"] { width: 95vw !important; max-width: 95vw !important; margin: 0 auto !important; padding: 0 !important; background: rgba(15, 17, 22, 0.95) !important; backdrop-filter: blur(20px) !important; -webkit-backdrop-filter: blur(20px) !important; border: 1px solid rgba(255, 255, 255, 0.1) !important; overflow: hidden !important;}
         div[role="dialog"] > div:first-child { padding: 0 15px 20px 15px !important; }
     }
@@ -486,7 +533,7 @@ def show_cast_horizontal(cast_list, key_prefix, limit=15):
             
             st.button(actor.get('name', 'Unknown'), key=f"cast_{key_prefix}_{actor['id']}_{idx}", on_click=cb_set_active_actor, args=(actor['id'],), use_container_width=True)
 
-def render_clickable_grid(data_list, key_prefix, layout="grid", is_nested=False, img_width="110px"):
+def render_clickable_grid(data_list, key_prefix, layout="grid", is_nested=False):
     if not data_list: return None
     paths, titles = [], []
     for d in data_list:
@@ -501,7 +548,7 @@ def render_clickable_grid(data_list, key_prefix, layout="grid", is_nested=False,
         titles.append(name)
 
     div_style = {"display": "flex", "flex-wrap": "wrap", "gap": "10px", "justify-content": "center"} if layout == "grid" else {"display": "flex", "overflow-x": "auto", "gap": "10px", "padding-bottom": "15px", "scrollbar-width": "none"}
-    img_style = {"width": img_width, "border-radius": "8px", "box-shadow": "0 6px 15px rgba(0,0,0,0.5)", "cursor": "pointer", "transition": "transform 0.2s cubic-bezier(0.25, 0.8, 0.25, 1)", "object-fit": "cover", "aspect-ratio": "2/3"}
+    img_style = {"width": "110px", "border-radius": "8px", "box-shadow": "0 6px 15px rgba(0,0,0,0.5)", "cursor": "pointer", "transition": "transform 0.2s cubic-bezier(0.25, 0.8, 0.25, 1)", "object-fit": "cover", "aspect-ratio": "2/3"}
     
     clicked = clickable_images(paths, titles=titles, div_style=div_style, img_style=img_style, key=key_prefix)
     
@@ -998,7 +1045,7 @@ t_next, t_soon, t_search, t_tv, t_movies, t_profile = st.tabs(["🔥 Next", "�
 with t_next:
     st.markdown("<h3 class='tab-title'>Up Next</h3>", unsafe_allow_html=True)
     
-    c_filter, c_sort = st.columns(2)
+    c_filter, c_sort = st.columns(2, gap="small")
     with c_filter: next_filter = st.selectbox("Category:", ["📺 Series", "🎬 Movies"], label_visibility="collapsed", key="next_filter_box")
     with c_sort: next_sort = st.selectbox("Sort by:", ["Smart Priority", "Release Date", "Alphabetical"], label_visibility="collapsed", key="next_sort_box")
     
@@ -1139,7 +1186,7 @@ with t_next:
 with t_soon:
     st.markdown("<h3 class='tab-title'>Upcoming Releases</h3>", unsafe_allow_html=True)
     
-    c_filter, c_sort = st.columns(2)
+    c_filter, c_sort = st.columns(2, gap="small")
     with c_filter: soon_filter = st.selectbox("Category:", ["📺 Series", "🎬 Movies"], label_visibility="collapsed", key="soon_filter_box")
     with c_sort: soon_sort = st.selectbox("Sort by:", ["Release Date", "Alphabetical"], label_visibility="collapsed", key="soon_sort_box")
     
@@ -1218,7 +1265,7 @@ with t_soon:
 with t_search:
     st.markdown("<h3 class='tab-title'>Discover</h3>", unsafe_allow_html=True)
     
-    c_search, c_filter = st.columns([6, 4])
+    c_search, c_filter = st.columns([6, 4], gap="small")
     with c_search:
         st.markdown('<span class="search-container-hook"></span>', unsafe_allow_html=True)
         search_query = st_keyup("Search", debounce=1500, key=f"sq_{st.session_state.search_reset_ctr}", placeholder="Search titles...", label_visibility="collapsed")
@@ -1316,7 +1363,7 @@ with t_tv:
         st.session_state.tv_tab = selected_tv_tab
         st.rerun()
         
-    c_search, c_sort = st.columns([6, 4])
+    c_search, c_sort = st.columns([6, 4], gap="small")
     with c_search:
         st.markdown('<span class="search-container-hook"></span>', unsafe_allow_html=True)
         lib_search_tv = st_keyup("Search", debounce=500, key=f"lib_sq_tv_{st.session_state.lib_tv_reset_ctr}", placeholder="Filter shows...", label_visibility="collapsed")
@@ -1381,7 +1428,7 @@ with t_movies:
         st.session_state.mov_tab = selected_mov_tab
         st.rerun()
         
-    c_search, c_sort = st.columns([6, 4])
+    c_search, c_sort = st.columns([6, 4], gap="small")
     with c_search:
         st.markdown('<span class="search-container-hook"></span>', unsafe_allow_html=True)
         lib_search_mov = st_keyup("Search", debounce=500, key=f"lib_sq_mov_{st.session_state.lib_mov_reset_ctr}", placeholder="Filter movies...", label_visibility="collapsed")
@@ -1783,32 +1830,38 @@ with t_profile:
                         ep_code = h.get('e', '')
                         r_stars = ("⭐" * h.get('r')) if h.get('r', 0) > 0 else ""
                         f_moji = h.get('f', '')
+                        poster_url = f"https://image.tmdb.org/t/p/w185{poster}" if poster else "https://via.placeholder.com/185x278/222222/555555?text=No+Img"
                         
                         badge_eps = f'<span style="background: rgba(255,193,7,0.2); color: #FFD54F; padding: 2px 6px; border-radius: 8px; font-size: 0.6rem; font-weight: 700; border: 1px solid rgba(255,193,7,0.3);">{ep_code}</span>' if ep_code else ''
                         badge_r = f'<span style="background: rgba(255,255,255,0.1); color: #eee; padding: 2px 6px; border-radius: 8px; font-size: 0.6rem; font-weight: 600; border: 1px solid rgba(255,255,255,0.05);">{r_stars}</span>' if r_stars else ''
                         badge_f = f'<span style="background: rgba(255,255,255,0.1); color: #eee; padding: 2px 6px; border-radius: 8px; font-size: 0.6rem; font-weight: 600; border: 1px solid rgba(255,255,255,0.05);">{f_moji}</span>' if f_moji and f_moji != "None" else ''
                         badge_p = f'<span style="background: rgba(255,255,255,0.1); color: #eee; padding: 2px 6px; border-radius: 8px; font-size: 0.6rem; font-weight: 600; border: 1px solid rgba(255,255,255,0.05);">📡 {h.get("p")}</span>' if h.get("p") and h.get("p") != "None" else ''
 
-                        c_left, c_right = st.columns([25, 75])
-                        with c_left:
-                            clk_tv = render_clickable_grid([{"poster_path": poster, "name": s_name, "id": h['i']}], f"hist_tv_{h_idx}", img_width="65px")
-                            if clk_tv:
-                                st.session_state.active_actor = None
-                                st.session_state.open_dialog_trigger = {"t": "tv", "id": clk_tv['id'], "title": clk_tv['name']}
-                                st.rerun()
-                        with c_right:
-                            html_card = f'''
-                            <div style="border-left: 2px solid rgba(255, 193, 7, 0.3); padding-left: 15px; position: relative; height: 100%; display: flex; flex-direction: column; justify-content: center; min-height: 97px; margin-bottom: 10px;">
-                                <div style="position: absolute; left: -5px; top: 50%; transform: translateY(-50%); width: 8px; height: 8px; border-radius: 50%; background: #FFC107; box-shadow: 0 0 8px #FFC107;"></div>
-                                <div style="font-size: 1rem; font-weight: 800; color: #fff; line-height: 1.2; text-shadow: 0 2px 4px rgba(0,0,0,0.8); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{s_name}</div>
-                                <div style="font-size: 0.65rem; color: #ccc; margin-bottom: 6px; margin-top: 2px;">{dt.strftime("%b %d, %Y • %I:%M %p")}</div>
-                                <div style="display: flex; gap: 5px; flex-wrap: wrap;">
-                                    {badge_eps}{badge_r}{badge_f}{badge_p}
-                                </div>
-                            </div>
-                            '''
+                        html_card = (
+                            f'<div style="border-left: 2px solid rgba(255, 193, 7, 0.3); padding-left: 15px; margin-bottom: 5px; position: relative; padding-bottom: 5px;">'
+                            f'<div style="position: absolute; left: -5px; top: 40px; width: 8px; height: 8px; border-radius: 50%; background: #FFC107; box-shadow: 0 0 8px #FFC107;"></div>'
+                            f'<div style="position: relative; border-radius: 12px; overflow: hidden; padding: 12px; border: 1px solid rgba(255,255,255,0.05); background-color: rgba(15, 17, 22, 0.6);">'
+                            f'<div style="position: absolute; top: -20px; left: -20px; right: -20px; bottom: -20px; background-image: url(\'{poster_url}\'); background-size: cover; background-position: center; filter: blur(12px) brightness(0.5); z-index: 0;"></div>'
+                            f'<div style="position: relative; z-index: 1; display: flex; align-items: center;">'
+                            f'<img src="{poster_url}" style="width: 55px; height: 82px; border-radius: 6px; box-shadow: 0 4px 10px rgba(0,0,0,0.6); margin-right: 15px; border: 1px solid rgba(255,255,255,0.1);">'
+                            f'<div style="flex: 1; min-width: 0;">'
+                            f'<div style="font-size: 1rem; font-weight: 800; color: #fff; line-height: 1.2; text-shadow: 0 2px 4px rgba(0,0,0,0.8); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{s_name}</div>'
+                            f'<div style="font-size: 0.65rem; color: #ccc; margin-bottom: 6px; margin-top: 2px;">{dt.strftime("%b %d, %Y • %I:%M %p")}</div>'
+                            f'<div style="display: flex; gap: 5px; flex-wrap: wrap;">'
+                            f'{badge_eps}{badge_r}{badge_f}{badge_p}'
+                            f'</div>'
+                            f'</div>'
+                            f'</div>'
+                            f'</div>'
+                            f'</div>'
+                        )
+                        c_col, = st.columns(1)
+                        with c_col:
                             st.markdown(html_card, unsafe_allow_html=True)
-                            
+                            st.markdown('<span class="history-wrapper"></span>', unsafe_allow_html=True)
+                            if st.button(" ", key=f"h_r_tv_{h['i']}_{ep_code}_{h_idx}", use_container_width=True): 
+                                st.session_state.active_actor = None
+                                show_episode_details(h['i'], s_name, ep_code, ep_data=None, is_watched=True)
                 if len(tv_hist) > st.session_state.hist_tv_limit:
                     if st.button("Load More Series", use_container_width=True, key="load_more_tv_hist"):
                         st.session_state.hist_tv_limit += 20; st.rerun()
@@ -1834,32 +1887,38 @@ with t_profile:
                             
                         r_stars = ("⭐" * h.get('r')) if h.get('r', 0) > 0 else ""
                         f_moji = h.get('f', '')
+                        poster_url = f"https://image.tmdb.org/t/p/w185{poster}" if poster else "https://via.placeholder.com/185x278/222222/555555?text=No+Img"
                         
                         badge_type = f'<span style="background: rgba(255,193,7,0.2); color: #FFD54F; padding: 2px 6px; border-radius: 8px; font-size: 0.6rem; font-weight: 700; border: 1px solid rgba(255,193,7,0.3);">🎬 Movie</span>'
                         badge_r = f'<span style="background: rgba(255,255,255,0.1); color: #eee; padding: 2px 6px; border-radius: 8px; font-size: 0.6rem; font-weight: 600; border: 1px solid rgba(255,255,255,0.05);">{r_stars}</span>' if r_stars else ''
                         badge_f = f'<span style="background: rgba(255,255,255,0.1); color: #eee; padding: 2px 6px; border-radius: 8px; font-size: 0.6rem; font-weight: 600; border: 1px solid rgba(255,255,255,0.05);">{f_moji}</span>' if f_moji and f_moji != "None" else ''
                         badge_p = f'<span style="background: rgba(255,255,255,0.1); color: #eee; padding: 2px 6px; border-radius: 8px; font-size: 0.6rem; font-weight: 600; border: 1px solid rgba(255,255,255,0.05);">📡 {h.get("p")}</span>' if h.get("p") and h.get("p") != "None" else ''
 
-                        c_left, c_right = st.columns([25, 75])
-                        with c_left:
-                            clk_mov = render_clickable_grid([{"poster_path": poster, "name": m_name, "id": h['i']}], f"hist_mov_{h_idx}", img_width="65px")
-                            if clk_mov:
-                                st.session_state.active_actor = None
-                                st.session_state.open_dialog_trigger = {"t": "movie", "id": clk_mov['id'], "title": clk_mov['name']}
-                                st.rerun()
-                        with c_right:
-                            html_card = f'''
-                            <div style="border-left: 2px solid rgba(255, 193, 7, 0.3); padding-left: 15px; position: relative; height: 100%; display: flex; flex-direction: column; justify-content: center; min-height: 97px; margin-bottom: 10px;">
-                                <div style="position: absolute; left: -5px; top: 50%; transform: translateY(-50%); width: 8px; height: 8px; border-radius: 50%; background: #FFC107; box-shadow: 0 0 8px #FFC107;"></div>
-                                <div style="font-size: 1rem; font-weight: 800; color: #fff; line-height: 1.2; text-shadow: 0 2px 4px rgba(0,0,0,0.8); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{m_name}</div>
-                                <div style="font-size: 0.65rem; color: #ccc; margin-bottom: 6px; margin-top: 2px;">{dt.strftime("%b %d, %Y • %I:%M %p")}</div>
-                                <div style="display: flex; gap: 5px; flex-wrap: wrap;">
-                                    {badge_type}{badge_r}{badge_f}{badge_p}
-                                </div>
-                            </div>
-                            '''
+                        html_card = (
+                            f'<div style="border-left: 2px solid rgba(255, 193, 7, 0.3); padding-left: 15px; margin-bottom: 5px; position: relative; padding-bottom: 5px;">'
+                            f'<div style="position: absolute; left: -5px; top: 40px; width: 8px; height: 8px; border-radius: 50%; background: #FFC107; box-shadow: 0 0 8px #FFC107;"></div>'
+                            f'<div style="position: relative; border-radius: 12px; overflow: hidden; padding: 12px; border: 1px solid rgba(255,255,255,0.05); background-color: rgba(15, 17, 22, 0.6);">'
+                            f'<div style="position: absolute; top: -20px; left: -20px; right: -20px; bottom: -20px; background-image: url(\'{poster_url}\'); background-size: cover; background-position: center; filter: blur(12px) brightness(0.5); z-index: 0;"></div>'
+                            f'<div style="position: relative; z-index: 1; display: flex; align-items: center;">'
+                            f'<img src="{poster_url}" style="width: 55px; height: 82px; border-radius: 6px; box-shadow: 0 4px 10px rgba(0,0,0,0.6); margin-right: 15px; border: 1px solid rgba(255,255,255,0.1);">'
+                            f'<div style="flex: 1; min-width: 0;">'
+                            f'<div style="font-size: 1rem; font-weight: 800; color: #fff; line-height: 1.2; text-shadow: 0 2px 4px rgba(0,0,0,0.8); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{m_name}</div>'
+                            f'<div style="font-size: 0.65rem; color: #ccc; margin-bottom: 6px; margin-top: 2px;">{dt.strftime("%b %d, %Y • %I:%M %p")}</div>'
+                            f'<div style="display: flex; gap: 5px; flex-wrap: wrap;">'
+                            f'{badge_type}{badge_r}{badge_f}{badge_p}'
+                            f'</div>'
+                            f'</div>'
+                            f'</div>'
+                            f'</div>'
+                            f'</div>'
+                        )
+                        c_col, = st.columns(1)
+                        with c_col:
                             st.markdown(html_card, unsafe_allow_html=True)
-                            
+                            st.markdown('<span class="history-wrapper"></span>', unsafe_allow_html=True)
+                            if st.button(" ", key=f"h_r_mov_{h['i']}_{h_idx}", use_container_width=True): 
+                                st.session_state.active_actor = None
+                                show_movie_details(h['i'], m_name, details=None, is_watched=True)
                 if len(mov_hist) > st.session_state.hist_mov_limit:
                     if st.button("Load More Movies", use_container_width=True, key="load_more_mov_hist"):
                         st.session_state.hist_mov_limit += 20; st.rerun()
