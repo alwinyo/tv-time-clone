@@ -70,7 +70,7 @@ st.markdown("""
     }
 
     /* The Invisible Overlay Button */
-    div[data-testid="column"]:has(.poster-wrapper) div.stButton {
+    div[data-testid="column"]:has(.poster-wrapper) div[data-testid="stButton"] {
         position: absolute !important;
         top: 0 !important;
         left: 0 !important;
@@ -79,7 +79,7 @@ st.markdown("""
         z-index: 20 !important;
         opacity: 0 !important;
     }
-    div[data-testid="column"]:has(.poster-wrapper) div.stButton > button {
+    div[data-testid="column"]:has(.poster-wrapper) div[data-testid="stButton"] > button {
         width: 100% !important;
         height: 100% !important;
         padding: 0 !important;
@@ -99,7 +99,7 @@ st.markdown("""
         gap: 0 !important;
         padding: 0 !important;
     }
-    div[data-testid="column"]:has(.history-wrapper) div.stButton {
+    div[data-testid="column"]:has(.history-wrapper) div[data-testid="stButton"] {
         position: absolute !important;
         top: 0 !important;
         left: 0 !important;
@@ -108,7 +108,7 @@ st.markdown("""
         z-index: 20 !important;
         opacity: 0 !important;
     }
-    div[data-testid="column"]:has(.history-wrapper) div.stButton > button {
+    div[data-testid="column"]:has(.history-wrapper) div[data-testid="stButton"] > button {
         width: 100% !important;
         height: 100% !important;
     }
@@ -141,7 +141,7 @@ st.markdown("""
     div[data-testid="stHorizontalBlock"]:has(.carousel-marker)::-webkit-scrollbar, div[data-testid="stColumns"]:has(.carousel-marker)::-webkit-scrollbar { display: none; }
     div[data-testid="column"]:has(.carousel-marker), div[data-testid="stColumn"]:has(.carousel-marker) { flex: 0 0 115px !important; width: 115px !important; min-width: 115px !important; padding: 0 !important; display: block !important; }
 
-    /* --- INVISIBLE NATIVE BUTTON HACK FOR CAST --- */
+    /* --- HORIZONTAL CAST HACKS --- */
     div[data-testid="stHorizontalBlock"]:has(.carousel-marker-cast), div[data-testid="stColumns"]:has(.carousel-marker-cast) { display: flex !important; flex-direction: row !important; overflow-x: auto !important; flex-wrap: nowrap !important; scrollbar-width: none; padding-bottom: 10px !important; gap: 10px !important; }
     div[data-testid="stHorizontalBlock"]:has(.carousel-marker-cast)::-webkit-scrollbar, div[data-testid="stColumns"]:has(.carousel-marker-cast)::-webkit-scrollbar { display: none; }
     div[data-testid="column"]:has(.carousel-marker-cast), div[data-testid="stColumn"]:has(.carousel-marker-cast) { flex: 0 0 85px !important; width: 85px !important; min-width: 85px !important; padding: 0 !important; display: block !important; text-align: center !important; }
@@ -495,32 +495,7 @@ def show_cast_horizontal(cast_list, key_prefix, limit=15):
                 html_char = f'<div style="font-size: 0.55rem; color: #FFC107; font-weight: 700; line-height: 1.1; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{char_name}</div>'
                 st.markdown(html_char, unsafe_allow_html=True)
             
-            st.button(actor.get('name', 'Unknown').title(), key=f"cast_{key_prefix}_{actor['id']}_{idx}", on_click=cb_set_active_actor, args=(actor['id'],), use_container_width=True, type="tertiary")
-
-def render_clickable_grid(data_list, key_prefix, layout="grid", is_nested=False):
-    if not data_list: return None
-    paths, titles = [], []
-    for d in data_list:
-        if is_nested:
-            poster = d["item"].get("poster_path") or d.get("details", {}).get("poster_path")
-            name = d["item"].get("name", "Unknown")
-        else:
-            poster = d.get("poster_path") or d.get("poster")
-            name = d.get("name") or d.get("title") or "Unknown"
-        
-        paths.append(f"https://image.tmdb.org/t/p/w342{poster}" if poster else "https://via.placeholder.com/342x513/222222/555555?text=No+Poster")
-        titles.append(name)
-
-    div_style = {"display": "flex", "flex-wrap": "wrap", "gap": "10px", "justify-content": "center"} if layout == "grid" else {"display": "flex", "overflow-x": "auto", "gap": "10px", "padding-bottom": "15px", "scrollbar-width": "none"}
-    img_style = {"width": "110px", "border-radius": "8px", "box-shadow": "0 6px 15px rgba(0,0,0,0.5)", "cursor": "pointer", "transition": "transform 0.2s cubic-bezier(0.25, 0.8, 0.25, 1)", "object-fit": "cover", "aspect-ratio": "2/3"}
-    
-    clicked = clickable_images(paths, titles=titles, div_style=div_style, img_style=img_style, key=key_prefix)
-    
-    session_key = f"clk_{key_prefix}"
-    if clicked > -1 and st.session_state.get(session_key) != clicked:
-        st.session_state[session_key] = clicked
-        return data_list[clicked]
-    return None
+            st.button(actor.get('name', 'Unknown'), key=f"cast_{key_prefix}_{actor['id']}_{idx}", on_click=cb_set_active_actor, args=(actor['id'],), use_container_width=True, type="tertiary")
 
 def render_inline_actor_pokedex(actor_id):
     details = fetch_api(f"https://api.themoviedb.org/3/person/{actor_id}?api_key={TMDB_KEY}")
@@ -568,6 +543,12 @@ def render_inline_actor_pokedex(actor_id):
                     display_poster(item.get("poster"), width=154)
                     html_grid = f'<div class="grid-title" title="{item["title"]}">{item["title"]}</div>'
                     st.markdown(html_grid, unsafe_allow_html=True)
+                    
+                    st.markdown('<span class="poster-wrapper"></span>', unsafe_allow_html=True)
+                    if st.button("OPEN", key=f"act_own_{actor_id}_{idx}", use_container_width=True):
+                        st.session_state.active_actor = None
+                        st.session_state.open_dialog_trigger = {"t": item["type"], "id": item['id'], "title": item['title']}
+                        st.rerun()
         
         st.markdown("**🌟 Famous Roles**")
         top_credits = sorted(credits.get("cast", []), key=lambda x: x.get("popularity", 0), reverse=True)[:10]
@@ -580,6 +561,13 @@ def render_inline_actor_pokedex(actor_id):
                     i_title = item.get("name") if item.get("media_type") == "tv" else item.get("title")
                     html_grid = f'<div class="grid-title" title="{i_title}">{i_title}</div>'
                     st.markdown(html_grid, unsafe_allow_html=True)
+                    
+                    st.markdown('<span class="poster-wrapper"></span>', unsafe_allow_html=True)
+                    if st.button("OPEN", key=f"act_role_{actor_id}_{idx}", use_container_width=True):
+                        st.session_state.active_actor = None
+                        c_type = item.get("media_type")
+                        st.session_state.open_dialog_trigger = {"t": c_type, "id": item['id'], "title": i_title}
+                        st.rerun()
 
 def render_poster_card(title, poster_path, subtitle="", progress_pct=-1.0):
     img_url = f"https://image.tmdb.org/t/p/w342{poster_path}" if poster_path else "https://via.placeholder.com/342x513/222222/555555?text=No+Poster"
@@ -759,6 +747,14 @@ def evaluate_and_trigger_recaps():
         if y_tv > 0 or y_mov > 0: show_yearly_recap_dialog(now.year - 1, y_tv, y_mov, f"yearly-{now.year - 1}")
 
 evaluate_and_trigger_recaps()
+
+# --- GLOBAL DIALOG ROUTER ---
+if st.session_state.get("open_dialog_trigger"):
+    trig = st.session_state.open_dialog_trigger
+    st.session_state.open_dialog_trigger = None
+    details = fetch_api(f"https://api.themoviedb.org/3/{trig['t']}/{trig['id']}?api_key={TMDB_KEY}")
+    if trig['t'] == "tv": manage_show_dialog(trig['id'], trig['title'], details)
+    else: show_movie_details(trig['id'], trig['title'], details, is_watched=False)
 
 # --- CENTRALIZED MANAGEMENT DIALOGS ---
 @st.dialog("Episode Details")
@@ -1177,8 +1173,9 @@ with t_soon:
         for show in st.session_state.db["shows"]:
             if show.get("dropped", False): continue
             
-            air_date = show.get("first_air_date", "")
+            air_date = show.get("first_air_date") or ""
             
+            # Simple local check to avoid API rate limit. TBA/Unreleased shows have empty air_date.
             if not air_date or air_date > TODAY:
                 soon_tv.append({"item": show, "date": air_date})
                         
@@ -1216,7 +1213,7 @@ with t_soon:
         for m in st.session_state.db["movies"]:
             if m.get("dropped", False) or m.get("watched", False): continue
             
-            r_date = m.get("release_date", "")
+            r_date = m.get("release_date") or ""
             
             # If r_date is empty (TBA) or in the future, it is Upcoming
             if not r_date or r_date > TODAY: 
@@ -1399,7 +1396,7 @@ with t_tv:
         for show in shows:
             if lib_search_tv and lib_search_tv.lower() not in show["name"].lower(): continue
             
-            air_date = show.get("first_air_date", "")
+            air_date = show.get("first_air_date") or ""
             t_eps = show.get("total_episodes", 1) 
             w_eps = len(show.get("watched_episodes", []))
             
@@ -1487,7 +1484,7 @@ with t_movies:
         for m in movies:
             if lib_search_mov and lib_search_mov.lower() not in m["name"].lower(): continue
             
-            r_date = m.get("release_date", "")
+            r_date = m.get("release_date") or ""
             is_watched = m.get("watched", False)
             
             # Watchlist: Has release date, and date is in past
