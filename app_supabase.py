@@ -469,66 +469,7 @@ def show_cast_horizontal(cast_list, key_prefix, limit=15):
                 html_char = f'<div style="font-size: 0.55rem; color: #FFC107; font-weight: 700; line-height: 1.1; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{char_name}</div>'
                 st.markdown(html_char, unsafe_allow_html=True)
             
-            st.button(actor.get('name', 'Unknown').title(), key=f"cast_{key_prefix}_{actor['id']}_{idx}", on_click=cb_set_active_actor, args=(actor['id'],), use_container_width=True, type="tertiary")
-
-def render_inline_actor_pokedex(actor_id):
-    details = fetch_api(f"https://api.themoviedb.org/3/person/{actor_id}?api_key={TMDB_KEY}")
-    credits = fetch_api(f"https://api.themoviedb.org/3/person/{actor_id}/combined_credits?api_key={TMDB_KEY}")
-    
-    db_shows = {str(s["id"]): s for s in st.session_state.db["shows"]}
-    db_movies = {str(m["id"]): m for m in st.session_state.db["movies"]}
-    
-    owned_items = []
-    seen_ids = set()
-    for c in credits.get("cast", []):
-        cid = str(c["id"])
-        if c["media_type"] == "tv" and cid in db_shows and cid not in seen_ids:
-            owned_items.append({"id": cid, "title": db_shows[cid]["name"], "type": "tv", "poster": db_shows[cid].get("poster_path")})
-            seen_ids.add(cid)
-        elif c["media_type"] == "movie" and cid in db_movies and cid not in seen_ids:
-            owned_items.append({"id": cid, "title": db_movies[cid]["name"], "type": "movie", "poster": db_movies[cid].get("poster_path")})
-            seen_ids.add(cid)
-            
-    st.markdown("<hr style='margin: 0.5rem 0; border-color: #FFC107;'>", unsafe_allow_html=True)
-    with st.container(border=True):
-        col_title, col_btn = st.columns([8, 2])
-        with col_title: 
-            html_title = f"<h4 style='color: #FFD54F;'>{details.get('name', 'Actor Profile')}</h4>"
-            st.markdown(html_title, unsafe_allow_html=True)
-        with col_btn: 
-            st.button("✖ Close", key=f"close_act_{actor_id}", on_click=cb_close_active_actor, use_container_width=True)
-        
-        c1, c2 = st.columns([1, 2])
-        with c1:
-            img_url = f"https://image.tmdb.org/t/p/w185{details.get('profile_path')}" if details.get("profile_path") else "https://via.placeholder.com/185x278/222222/555555?text=No+Image"
-            st.markdown(f'<img src="{img_url}" style="width: 100%; border-radius: 8px;">', unsafe_allow_html=True)
-        with c2:
-            st.caption(f"**Born:** {details.get('birthday', 'Unknown')}")
-            bio = details.get("biography", "")
-            if len(bio) > 150: bio = bio[:150] + "..."
-            st.write(bio if bio else "No biography available.")
-            
-        if owned_items:
-            st.markdown(f"**📚 In Your Library ({len(owned_items)})**")
-            cols = st.columns(len(owned_items))
-            for idx, item in enumerate(owned_items):
-                with cols[idx]:
-                    st.markdown('<span class="carousel-marker"></span>', unsafe_allow_html=True)
-                    display_poster(item.get("poster"), width=154)
-                    html_grid = f'<div class="grid-title" title="{item["title"]}">{item["title"]}</div>'
-                    st.markdown(html_grid, unsafe_allow_html=True)
-        
-        st.markdown("**🌟 Famous Roles**")
-        top_credits = sorted(credits.get("cast", []), key=lambda x: x.get("popularity", 0), reverse=True)[:10]
-        if top_credits:
-            cols = st.columns(len(top_credits))
-            for idx, item in enumerate(top_credits):
-                with cols[idx]:
-                    st.markdown('<span class="carousel-marker"></span>', unsafe_allow_html=True)
-                    display_poster(item.get("poster_path"), width=154)
-                    i_title = item.get("name") if item.get("media_type") == "tv" else item.get("title")
-                    html_grid = f'<div class="grid-title" title="{i_title}">{i_title}</div>'
-                    st.markdown(html_grid, unsafe_allow_html=True)
+            st.button(actor.get('name', 'Unknown'), key=f"cast_{key_prefix}_{actor['id']}_{idx}", on_click=cb_set_active_actor, args=(actor['id'],), use_container_width=True, type="tertiary")
 
 def render_clickable_grid(data_list, key_prefix, layout="grid", is_nested=False):
     if not data_list: return None
@@ -554,6 +495,62 @@ def render_clickable_grid(data_list, key_prefix, layout="grid", is_nested=False)
         st.session_state[session_key] = clicked
         return data_list[clicked]
     return None
+
+def render_inline_actor_pokedex(actor_id):
+    details = fetch_api(f"https://api.themoviedb.org/3/person/{actor_id}?api_key={TMDB_KEY}")
+    credits = fetch_api(f"https://api.themoviedb.org/3/person/{actor_id}/combined_credits?api_key={TMDB_KEY}")
+    
+    db_shows = {str(s["id"]): s for s in st.session_state.db["shows"]}
+    db_movies = {str(m["id"]): m for m in st.session_state.db["movies"]}
+    
+    owned_items = []
+    seen_ids = set()
+    for c in credits.get("cast", []):
+        cid = str(c["id"])
+        if c["media_type"] == "tv" and cid in db_shows and cid not in seen_ids:
+            owned_items.append({"id": cid, "title": db_shows[cid]["name"], "type": "tv", "poster_path": db_shows[cid].get("poster_path")})
+            seen_ids.add(cid)
+        elif c["media_type"] == "movie" and cid in db_movies and cid not in seen_ids:
+            owned_items.append({"id": cid, "title": db_movies[cid]["name"], "type": "movie", "poster_path": db_movies[cid].get("poster_path")})
+            seen_ids.add(cid)
+            
+    st.markdown("<hr style='margin: 0.5rem 0; border-color: #FFC107;'>", unsafe_allow_html=True)
+    with st.container(border=True):
+        col_title, col_btn = st.columns([8, 2])
+        with col_title: 
+            html_title = f"<h4 style='color: #FFD54F;'>{details.get('name', 'Actor Profile')}</h4>"
+            st.markdown(html_title, unsafe_allow_html=True)
+        with col_btn: 
+            st.button("✖ Close", key=f"close_act_{actor_id}", on_click=cb_close_active_actor, use_container_width=True)
+        
+        c1, c2 = st.columns([1, 2])
+        with c1:
+            img_url = f"https://image.tmdb.org/t/p/w185{details.get('profile_path')}" if details.get("profile_path") else "https://via.placeholder.com/185x278/222222/555555?text=No+Image"
+            st.markdown(f'<img src="{img_url}" style="width: 100%; border-radius: 8px;">', unsafe_allow_html=True)
+        with c2:
+            st.caption(f"**Born:** {details.get('birthday', 'Unknown')}")
+            bio = details.get("biography", "")
+            if len(bio) > 150: bio = bio[:150] + "..."
+            st.write(bio if bio else "No biography available.")
+            
+        if owned_items:
+            st.markdown(f"**📚 In Your Library ({len(owned_items)})**")
+            clicked_own = render_clickable_grid(owned_items, f"act_own_{actor_id}", layout="carousel")
+            if clicked_own:
+                st.session_state.active_actor = None
+                st.session_state.open_dialog_trigger = {"t": clicked_own["type"], "id": clicked_own['id'], "title": clicked_own['title']}
+                st.rerun()
+        
+        st.markdown("**🌟 Famous Roles**")
+        top_credits = sorted(credits.get("cast", []), key=lambda x: x.get("popularity", 0), reverse=True)[:15]
+        if top_credits:
+            clicked_role = render_clickable_grid(top_credits, f"act_roles_{actor_id}", layout="carousel")
+            if clicked_role:
+                st.session_state.active_actor = None
+                c_type = clicked_role.get("media_type")
+                i_title = clicked_role.get("name") if c_type == "tv" else clicked_role.get("title")
+                st.session_state.open_dialog_trigger = {"t": c_type, "id": clicked_role['id'], "title": i_title}
+                st.rerun()
 
 def render_poster_card(title, poster_path, subtitle="", progress_pct=-1.0):
     img_url = f"https://image.tmdb.org/t/p/w342{poster_path}" if poster_path else "https://via.placeholder.com/342x513/222222/555555?text=No+Poster"
@@ -962,6 +959,14 @@ def show_movie_details(m_id, m_name, details=None, is_watched=False):
             save_db()
             st.rerun()
 
+# --- GLOBAL DIALOG ROUTER (Fixes Nested Dialog Bug) ---
+if st.session_state.get("open_dialog_trigger"):
+    trig = st.session_state.open_dialog_trigger
+    st.session_state.open_dialog_trigger = None
+    details = fetch_api(f"https://api.themoviedb.org/3/{trig['t']}/{trig['id']}?api_key={TMDB_KEY}")
+    if trig['t'] == "tv": manage_show_dialog(trig['id'], trig['title'], details)
+    else: show_movie_details(trig['id'], trig['title'], details, is_watched=False)
+
 # --- IMMEDIATE REVIEW EVALUATOR ---
 if st.session_state.get("prompt_review"):
     pr = st.session_state.prompt_review
@@ -1277,29 +1282,41 @@ with t_search:
                                 if search_type == "TV Shows": manage_show_dialog(item_id, title, details)
                                 else: show_movie_details(item_id, title, details, is_watched=False)
     else:
+        # THE PILL FILTER NAVIGATION
         genre_options = ["🔥 Trending", "🤣 Comedy", "💥 Action", "🐉 Sci-Fi", "🔪 Thriller", "👻 Horror"]
         selected_genre = st.radio("Filters", genre_options, label_visibility="collapsed", horizontal=True)
         st.divider()
 
         def render_carousel(title, items, c_type):
             if not items: return
-            html_title = f"<h5 style='margin-bottom:5px; margin-top:10px;'>{title}</h5>"
+            html_title = f"<h5 style='margin-bottom:5px;'>{title}</h5>"
             st.markdown(html_title, unsafe_allow_html=True)
             limit = st.session_state.c_limits.get(title, 10)
+            render_items, show_load_more = items[:limit], limit < len(items)
+            cols = st.columns(len(render_items) + (1 if show_load_more else 0))
             
             safe_title = "".join(e for e in title if e.isalnum())
-            clicked_car = render_clickable_grid(items[:limit], f"car_{safe_title}", layout="carousel")
-            if clicked_car:
-                st.session_state.active_actor = None
-                item_id = clicked_car["id"]
-                i_title = clicked_car.get("name") if c_type == "tv" else clicked_car.get("title")
-                details = fetch_api(f"https://api.themoviedb.org/3/{c_type}/{item_id}?api_key={TMDB_KEY}")
-                if c_type == "tv": manage_show_dialog(item_id, i_title, details)
-                else: show_movie_details(item_id, i_title, details, is_watched=False)
             
-            if limit < len(items):
-                if st.button("＋ Load More", key=f"more_{safe_title}", use_container_width=True):
-                    st.session_state.c_limits[title] = limit + 10; st.rerun()
+            for idx, item in enumerate(render_items):
+                with cols[idx]:
+                    st.markdown('<span class="carousel-marker"></span>', unsafe_allow_html=True)
+                    i_title = item.get("name") if c_type == "tv" else item.get("title")
+                    item_id = item["id"]
+                    
+                    render_poster_card(i_title, item.get("poster_path"))
+                    
+                    st.markdown('<span class="poster-wrapper"></span>', unsafe_allow_html=True)
+                    if st.button("OPEN", key=f"c_inf_{safe_title}_{item_id}_{idx}", use_container_width=True):
+                        st.session_state.active_actor = None
+                        details = fetch_api(f"https://api.themoviedb.org/3/{c_type}/{item_id}?api_key={TMDB_KEY}")
+                        if c_type == "tv": manage_show_dialog(item_id, i_title, details)
+                        else: show_movie_details(item_id, i_title, details, is_watched=False)
+            
+            if show_load_more:
+                with cols[-1]:
+                    st.markdown('<span class="carousel-marker"></span><div style="height: 60px;"></div>', unsafe_allow_html=True)
+                    if st.button("＋ More", key=f"c_more_{safe_title}", use_container_width=True):
+                        st.session_state.c_limits[title] = limit + 10; st.rerun()
 
         if selected_genre == "🔥 Trending":
             if not st.session_state.rec_show:
@@ -1320,11 +1337,8 @@ with t_search:
             
             k_tv = fetch_api(f"https://api.themoviedb.org/3/discover/tv?api_key={TMDB_KEY}&with_original_language=ko&first_air_date.gte={start_month}&first_air_date.lte={end_month_str}&sort_by=popularity.desc")
             if k_tv.get("results"): render_carousel(f"🇰🇷 K-Dramas ({current_date.strftime('%B %Y')})", k_tv["results"], "tv")
-            
-            k_mov = fetch_api(f"https://api.themoviedb.org/3/discover/movie?api_key={TMDB_KEY}&with_original_language=ko&primary_release_year={current_date.year}&primary_release_month={current_date.month}&sort_by=popularity.desc")
-            valid_k_mov = [m for m in k_mov.get("results", []) if m.get("poster_path")]
-            if valid_k_mov: render_carousel(f"🇰🇷 K-Movies ({current_date.strftime('%B %Y')})", valid_k_mov, "movie")
-            
+            k_mov = fetch_api(f"https://api.themoviedb.org/3/discover/movie?api_key={TMDB_KEY}&with_original_language=ko&primary_release_date.gte={start_month}&primary_release_date.lte={end_month_str}&sort_by=popularity.desc")
+            if k_mov.get("results"): render_carousel(f"🇰🇷 K-Movies ({current_date.strftime('%B %Y')})", k_mov["results"], "movie")
         else:
             genre_map_tv = {"🤣 Comedy": 35, "💥 Action": 10759, "🐉 Sci-Fi": 10765, "🔪 Thriller": 9648, "👻 Horror": 9648} 
             genre_map_mov = {"🤣 Comedy": 35, "💥 Action": 28, "🐉 Sci-Fi": 878, "🔪 Thriller": 53, "👻 Horror": 27}
