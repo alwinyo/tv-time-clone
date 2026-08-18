@@ -40,6 +40,73 @@ st.markdown("""
     h3 { color: #FFD54F !important; font-weight: 800 !important; letter-spacing: -0.5px !important; }
     h3.tab-title { margin-top: -0.8rem !important; padding-top: 0 !important; }
     
+    /* --- INVISIBLE POSTER CLICK SYSTEM (FOR NATIVE CAROUSELS) --- */
+    div[data-testid="column"]:has(.poster-wrapper) {
+        position: relative !important;
+        overflow: hidden !important;
+        border-radius: 8px !important;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.5) !important;
+        background: #111 !important;
+        transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1), box-shadow 0.3s ease !important;
+        cursor: pointer !important;
+    }
+    div[data-testid="column"]:has(.poster-wrapper):hover {
+        transform: scale(1.03) !important;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.8) !important;
+    }
+    div[data-testid="column"]:has(.poster-wrapper) > div {
+        gap: 0 !important;
+        padding: 0 !important;
+    }
+    div[data-testid="column"]:has(.poster-wrapper) img {
+        transition: transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1) !important;
+    }
+    div[data-testid="column"]:has(.poster-wrapper):hover img {
+        transform: scale(1.06) !important;
+    }
+    div[data-testid="column"]:has(.poster-wrapper) div.stButton {
+        position: absolute !important;
+        top: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        bottom: 0 !important;
+        z-index: 20 !important;
+        opacity: 0 !important;
+    }
+    div[data-testid="column"]:has(.poster-wrapper) div.stButton > button {
+        width: 100% !important;
+        height: 100% !important;
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+    
+    /* --- INVISIBLE HISTORY CLICK SYSTEM --- */
+    div[data-testid="column"]:has(.history-wrapper) {
+        position: relative !important;
+        transition: transform 0.2s cubic-bezier(0.25, 0.8, 0.25, 1) !important;
+        cursor: pointer !important;
+    }
+    div[data-testid="column"]:has(.history-wrapper):hover {
+        transform: translateX(5px) !important;
+    }
+    div[data-testid="column"]:has(.history-wrapper) > div {
+        gap: 0 !important;
+        padding: 0 !important;
+    }
+    div[data-testid="column"]:has(.history-wrapper) div.stButton {
+        position: absolute !important;
+        top: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        bottom: 0 !important;
+        z-index: 20 !important;
+        opacity: 0 !important;
+    }
+    div[data-testid="column"]:has(.history-wrapper) div.stButton > button {
+        width: 100% !important;
+        height: 100% !important;
+    }
+    
     /* --- PILL NAVIGATION (DISCOVER) --- */
     div[role="radiogroup"] {
         display: flex !important; flex-direction: row !important; background-color: transparent !important; 
@@ -63,6 +130,11 @@ st.markdown("""
     div[data-testid="stTabs"] button[role="tab"][aria-selected="true"] { border-bottom: 3px solid #FFC107 !important; background: linear-gradient(to top, rgba(255, 193, 7, 0.15) 0%, transparent 100%) !important; box-shadow: inset 0px -10px 15px -10px rgba(255, 193, 7, 0.5) !important; }
     div[data-testid="stTabs"] button[role="tab"][aria-selected="true"] p { color: #FFD54F !important; text-shadow: 0px 0px 10px rgba(255, 193, 7, 0.6) !important; }
     
+    /* --- CAROUSEL HACKS --- */
+    div[data-testid="stHorizontalBlock"]:has(.carousel-marker), div[data-testid="stColumns"]:has(.carousel-marker) { display: flex !important; flex-direction: row !important; overflow-x: auto !important; flex-wrap: nowrap !important; scrollbar-width: none; padding-bottom: 15px !important; gap: 10px !important; }
+    div[data-testid="stHorizontalBlock"]:has(.carousel-marker)::-webkit-scrollbar, div[data-testid="stColumns"]:has(.carousel-marker)::-webkit-scrollbar { display: none; }
+    div[data-testid="column"]:has(.carousel-marker), div[data-testid="stColumn"]:has(.carousel-marker) { flex: 0 0 115px !important; width: 115px !important; min-width: 115px !important; padding: 0 !important; display: block !important; }
+
     /* --- INVISIBLE NATIVE BUTTON HACK FOR CAST --- */
     div[data-testid="stHorizontalBlock"]:has(.carousel-marker-cast), div[data-testid="stColumns"]:has(.carousel-marker-cast) { display: flex !important; flex-direction: row !important; overflow-x: auto !important; flex-wrap: nowrap !important; scrollbar-width: none; padding-bottom: 10px !important; gap: 10px !important; }
     div[data-testid="stHorizontalBlock"]:has(.carousel-marker-cast)::-webkit-scrollbar, div[data-testid="stColumns"]:has(.carousel-marker-cast)::-webkit-scrollbar { display: none; }
@@ -75,6 +147,8 @@ st.markdown("""
     div:has(> .clear-btn-hook) + div { position: absolute !important; right: 8px !important; top: 7px !important; width: 26px !important; z-index: 100 !important; }
     div:has(> .clear-btn-hook) + div button { background: rgba(255,255,255,0.08) !important; border: none !important; box-shadow: none !important; color: #aaa !important; padding: 0 !important; min-height: 26px !important; height: 26px !important; width: 26px !important; border-radius: 50% !important; font-size: 0.7rem !important; display: flex !important; align-items: center !important; justify-content: center !important; margin: 0 !important; line-height: 1 !important; }
     div:has(> .clear-btn-hook) + div button:hover { background: rgba(255, 193, 7, 0.3) !important; color: #FFD54F !important; }
+
+    .grid-title { font-size: 0.65rem; color: #ccc; text-align: center; margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 600; }
 
     @media (max-width: 992px) {
         div[role="dialog"] { width: 95vw !important; max-width: 95vw !important; margin: 0 auto !important; padding: 0 !important; background: rgba(15, 17, 22, 0.95) !important; backdrop-filter: blur(20px) !important; -webkit-backdrop-filter: blur(20px) !important; border: 1px solid rgba(255, 255, 255, 0.1) !important; overflow: hidden !important;}
@@ -336,6 +410,15 @@ def cb_clear_lib_tv(): st.session_state.lib_tv_reset_ctr += 1
 def cb_clear_lib_mov(): st.session_state.lib_mov_reset_ctr += 1
 def cb_toggle_ep_info(sid, ecode): st.session_state[f"view_info_{sid}_{ecode}"] = not st.session_state.get(f"view_info_{sid}_{ecode}", False)
 
+# --- GLOBAL SAFE UNDO BANNER ---
+if st.session_state.last_action and not st.session_state.prompt_review:
+    la = st.session_state.last_action
+    with st.container(border=True):
+        c1, c2, c3 = st.columns([6, 2, 2])
+        with c1: st.success("✅ Logged successfully!")
+        with c2: st.button("↩️ Undo", key="undo_btn", on_click=cb_undo_action, args=(la["t"], la["i"], la["e"]), use_container_width=True)
+        with c3: st.button("✖", key="dismiss_undo", on_click=cb_clear_action, use_container_width=True)
+
 # --- VISUAL HELPERS ---
 def render_badges(items, is_gold=False):
     css_class = "badge badge-gold" if is_gold else "badge"
@@ -406,8 +489,7 @@ def render_inline_actor_pokedex(actor_id):
         
         c1, c2 = st.columns([1, 2])
         with c1:
-            img_url = f"https://image.tmdb.org/t/p/w185{details.get('profile_path')}" if details.get("profile_path") else "https://via.placeholder.com/185x278/222222/555555?text=No+Image"
-            st.markdown(f'<img src="{img_url}" style="width: 100%; border-radius: 8px;">', unsafe_allow_html=True)
+            display_poster(details.get("profile_path"), width=185)
         with c2:
             st.caption(f"**Born:** {details.get('birthday', 'Unknown')}")
             bio = details.get("biography", "")
@@ -435,6 +517,25 @@ def render_inline_actor_pokedex(actor_id):
                     i_title = item.get("name") if item.get("media_type") == "tv" else item.get("title")
                     html_grid = f'<div class="grid-title" title="{i_title}">{i_title}</div>'
                     st.markdown(html_grid, unsafe_allow_html=True)
+
+def render_poster_card(title, poster_path, subtitle="", progress_pct=-1.0):
+    img_url = f"https://image.tmdb.org/t/p/w342{poster_path}" if poster_path else "https://via.placeholder.com/342x513/222222/555555?text=No+Poster"
+    prog_width = min(progress_pct, 1.0) * 100
+    prog_html = f'<div style="position: absolute; bottom: 0; left: 0; height: 4px; width: {prog_width}%; background: #FFC107; box-shadow: 0 0 8px #FFC107; z-index: 30;"></div>' if progress_pct >= 0 else ''
+    sub_html = f'<div style="color: #FFC107; font-weight: 700; font-size: 0.6rem; margin-top: 2px;">{subtitle}</div>' if subtitle else ''
+    
+    html = (
+        f'<div style="position: relative; aspect-ratio: 2/3; background-color: #111; border-radius: 8px; overflow: hidden;">'
+        f'<img src="{img_url}" style="width: 100%; height: 100%; object-fit: cover; display: block;">'
+        f'<div style="position: absolute; bottom: 0; left: 0; right: 0; height: 60%; background: linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0) 100%); z-index: 1;"></div>'
+        f'<div class="poster-text" style="position: absolute; bottom: 10px; left: 10px; right: 10px; z-index: 2;">'
+        f'<div style="color: white; font-weight: 800; font-size: 0.75rem; line-height: 1.2; text-shadow: 0 2px 4px rgba(0,0,0,0.8); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">{title}</div>'
+        f'{sub_html}'
+        f'</div>'
+        f'{prog_html}'
+        f'</div>'
+    )
+    st.markdown(html, unsafe_allow_html=True)
 
 def render_apple_tv_header(backdrop_path, poster_path, title, badges_html):
     bg = f"https://image.tmdb.org/t/p/w780{backdrop_path}" if backdrop_path else f"https://image.tmdb.org/t/p/w342{poster_path}"
@@ -850,6 +951,13 @@ def show_movie_details(m_id, m_name, details=None, is_watched=False):
             save_db()
             st.rerun()
 
+# --- IMMEDIATE REVIEW EVALUATOR ---
+if st.session_state.get("prompt_review"):
+    pr = st.session_state.prompt_review
+    st.session_state.prompt_review = None
+    if pr["t"] == "s": show_episode_details(pr["id"], pr["name"], pr["code"], ep_data=None, is_watched=True)
+    else: show_movie_details(pr["id"], pr["name"], details=None, is_watched=True)
+
 # --- APP NAVIGATION BAR ---
 t_next, t_soon, t_search, t_tv, t_movies, t_profile = st.tabs(["🔥 Next", "📅 Soon", "🔍 Search", "📺 TV", "🎬 Movies", "👤 Profile"])
 
@@ -1106,20 +1214,31 @@ with t_search:
             html_title = f"<h5 style='margin-bottom:5px;'>{title}</h5>"
             st.markdown(html_title, unsafe_allow_html=True)
             limit = st.session_state.c_limits.get(title, 10)
+            render_items, show_load_more = items[:limit], limit < len(items)
+            cols = st.columns(len(render_items) + (1 if show_load_more else 0))
             
             safe_title = "".join(e for e in title if e.isalnum())
-            clicked_car = render_clickable_grid(items[:limit], f"car_{safe_title}", layout="carousel")
-            if clicked_car:
-                st.session_state.active_actor = None
-                item_id = clicked_car["id"]
-                i_title = clicked_car.get("name") if c_type == "tv" else clicked_car.get("title")
-                details = fetch_api(f"https://api.themoviedb.org/3/{c_type}/{item_id}?api_key={TMDB_KEY}")
-                if c_type == "tv": manage_show_dialog(item_id, i_title, details)
-                else: show_movie_details(item_id, i_title, details, is_watched=False)
             
-            if limit < len(items):
-                if st.button("＋ Load More", key=f"more_{safe_title}", use_container_width=True):
-                    st.session_state.c_limits[title] = limit + 10; st.rerun()
+            for idx, item in enumerate(render_items):
+                with cols[idx]:
+                    st.markdown('<span class="carousel-marker"></span>', unsafe_allow_html=True)
+                    i_title = item.get("name") if c_type == "tv" else item.get("title")
+                    item_id = item["id"]
+                    
+                    render_poster_card(i_title, item.get("poster_path"))
+                    
+                    st.markdown('<span class="poster-wrapper"></span>', unsafe_allow_html=True)
+                    if st.button("OPEN", key=f"c_inf_{safe_title}_{item_id}_{idx}", use_container_width=True):
+                        st.session_state.active_actor = None
+                        details = fetch_api(f"https://api.themoviedb.org/3/{c_type}/{item_id}?api_key={TMDB_KEY}")
+                        if c_type == "tv": manage_show_dialog(item_id, i_title, details)
+                        else: show_movie_details(item_id, i_title, details, is_watched=False)
+            
+            if show_load_more:
+                with cols[-1]:
+                    st.markdown('<span class="carousel-marker"></span><div style="height: 60px;"></div>', unsafe_allow_html=True)
+                    if st.button("＋ More", key=f"c_more_{safe_title}", use_container_width=True):
+                        st.session_state.c_limits[title] = limit + 10; st.rerun()
 
         if selected_genre == "🔥 Trending":
             if not st.session_state.rec_show:
@@ -1206,7 +1325,7 @@ with t_tv:
             if lib_search_tv: st.info(f"No shows match '{lib_search_tv}' in this tab.")
             else: st.info(f"Your {st.session_state.tv_tab.lower()} is currently empty.")
         else:
-            clean_tv = [{"id": s[0]["id"], "name": s[0]["name"], "poster_path": s[0].get("poster_path")} for s in display_shows[:st.session_state.tv_lib_limit]]
+            clean_tv = [{"id": s["id"], "name": s["name"], "poster_path": s.get("poster_path")} for s, t_eps, w_eps in display_shows[:st.session_state.tv_lib_limit]]
             clicked_lib_tv = render_clickable_grid(clean_tv, f"lib_tv_{st.session_state.tv_tab}_{st.session_state.lib_tv_reset_ctr}")
             
             if clicked_lib_tv:
@@ -1270,7 +1389,7 @@ with t_movies:
             if lib_search_mov: st.info(f"No movies match '{lib_search_mov}' in this tab.")
             else: st.info(f"Your {st.session_state.mov_tab.lower()} is currently empty.")
         else:
-            clean_mov = [{"id": m[0]["id"], "name": m[0]["name"], "poster_path": m[0].get("poster_path"), "is_w": w} for m, w in display_movies[:st.session_state.mov_lib_limit]]
+            clean_mov = [{"id": m["id"], "name": m["name"], "poster_path": m.get("poster_path"), "is_w": w} for m, w in display_movies[:st.session_state.mov_lib_limit]]
             clicked_lib_mov = render_clickable_grid(clean_mov, f"lib_mov_{st.session_state.mov_tab}_{st.session_state.lib_mov_reset_ctr}")
             
             if clicked_lib_mov:
