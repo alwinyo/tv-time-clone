@@ -77,7 +77,7 @@ st.markdown("""
     }
     div[data-testid="column"]:has(.poster-wrapper) div[data-testid="stButton"] > button p { display: none !important; }
     
-    /* --- INVISIBLE HISTORY CLICK SYSTEM --- */
+    /* --- FULL CARD HISTORY CLICK & INFO BADGE SYSTEM --- */
     div[data-testid="column"]:has(.history-wrapper) {
         position: relative !important;
         transition: transform 0.2s cubic-bezier(0.25, 0.8, 0.25, 1) !important;
@@ -91,34 +91,39 @@ st.markdown("""
     }
     div[data-testid="column"]:has(.history-wrapper) div[data-testid="stButton"] {
         position: absolute !important;
-        top: 17px !important; 
-        left: 27px !important; 
-        width: 55px !important; 
-        height: 82px !important; 
+        top: 0 !important; left: 0 !important; right: 0 !important; bottom: 0 !important;
         z-index: 100 !important;
         display: block !important;
     }
     div[data-testid="column"]:has(.history-wrapper) div[data-testid="stButton"] > button {
         background: transparent !important;
-        background-color: transparent !important;
         border: none !important;
         box-shadow: none !important;
-        color: transparent !important;
         width: 100% !important; 
         height: 100% !important;
-        border-radius: 6px !important;
-        padding: 0 !important;
-        margin: 0 !important;
-        display: block !important;
+        border-radius: 12px !important;
+        display: flex !important;
+        align-items: flex-end !important;
+        justify-content: flex-end !important;
+        padding: 15px !important;
         transform: none !important;
         cursor: pointer !important;
     }
-    div[data-testid="column"]:has(.history-wrapper) div[data-testid="stButton"] > button * {
-        display: none !important;
+    div[data-testid="column"]:has(.history-wrapper) div[data-testid="stButton"] > button p {
+        background: rgba(255, 193, 7, 0.15) !important;
+        border: 1px solid rgba(255, 193, 7, 0.5) !important;
+        color: #FFC107 !important;
+        padding: 4px 12px !important;
+        border-radius: 12px !important;
+        font-size: 0.65rem !important;
+        font-weight: 800 !important;
+        backdrop-filter: blur(4px);
+        margin: 0 !important;
+        display: block !important;
     }
-    div[data-testid="column"]:has(.history-wrapper) div[data-testid="stButton"] > button:hover {
-        border: 2px solid rgba(255, 193, 7, 0.8) !important;
-        background: rgba(255, 193, 7, 0.1) !important;
+    div[data-testid="column"]:has(.history-wrapper) div[data-testid="stButton"] > button:hover p {
+        background: rgba(255, 193, 7, 0.4) !important;
+        color: #FFF !important;
     }
     
     /* --- SLEEK PILL NAVIGATION (FOR TABS & FILTERS) - PERFECT 50/50 GRID --- */
@@ -194,22 +199,41 @@ st.markdown("""
         border-color: #FFC107 !important;
     }
     
-    /* OVERRIDE FOR CAST NAMES TO FIT AND NOT BE UPPERCASE */
-    div[data-testid="column"]:has(.carousel-marker-cast) div[data-testid="stButton"] button {
-        background: transparent !important; border: none !important; box-shadow: none !important; padding: 0 !important; margin: 0 !important; 
-        height: auto !important; min-height: 0 !important; width: 100% !important; display: block !important; transform: none !important; 
+    /* --- PURE TEXT OVERRIDE FOR CAST BUTTONS --- */
+    div[data-testid="column"]:has(.carousel-marker-cast) div[data-testid="stButton"] > button,
+    div[data-testid="column"]:has(.carousel-marker-cast) div[data-testid="stButton"] > button:hover,
+    div[data-testid="column"]:has(.carousel-marker-cast) div[data-testid="stButton"] > button:active,
+    div[data-testid="column"]:has(.carousel-marker-cast) div[data-testid="stButton"] > button:focus {
+        background: transparent !important;
+        background-color: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        height: auto !important;
+        min-height: 0 !important;
+        width: 100% !important;
+        display: block !important;
+        transform: none !important;
     }
-    div[data-testid="column"]:has(.carousel-marker-cast) div[data-testid="stButton"] button p {
+    div[data-testid="column"]:has(.carousel-marker-cast) div[data-testid="stButton"] > button p,
+    div[data-testid="column"]:has(.carousel-marker-cast) div[data-testid="stButton"] > button span,
+    div[data-testid="column"]:has(.carousel-marker-cast) div[data-testid="stButton"] > button div {
         font-size: 0.55rem !important;
         font-weight: 500 !important;
         text-transform: none !important;
         letter-spacing: normal !important;
-        white-space: pre-wrap !important;
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
         line-height: 1.1 !important;
-        color: #ccc !important;
+        color: #aaa !important;
         margin: 0 !important;
     }
-    div[data-testid="column"]:has(.carousel-marker-cast) div[data-testid="stButton"] button:hover p { color: #FFC107 !important; text-decoration: underline !important;}
+    div[data-testid="column"]:has(.carousel-marker-cast) div[data-testid="stButton"] > button:hover p {
+        color: #FFC107 !important;
+        text-decoration: underline !important;
+    }
     
     /* --- TABS OVERHAUL --- */
     div[data-testid="stTabs"] > div[data-baseweb="tab-list"], div[data-testid="stTabs"] > div[role="tablist"] { display: flex !important; width: 100vw !important; max-width: 100% !important; margin-left: -0.5rem !important; padding: 0 0 5px 0 !important; gap: 0 !important; overflow-x: hidden !important; background-color: rgba(8, 9, 12, 0.85) !important; backdrop-filter: blur(12px) !important; -webkit-backdrop-filter: blur(12px) !important; border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important; }
@@ -539,8 +563,7 @@ def show_cast_horizontal(cast_list, key_prefix, limit=15):
                 html_char = f'<div style="font-size: 0.55rem; color: #FFC107; font-weight: 700; line-height: 1.1; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{char_name}</div>'
                 st.markdown(html_char, unsafe_allow_html=True)
             
-            st.button(" ", key=f"cast_{key_prefix}_{actor['id']}_{idx}", on_click=cb_set_active_actor, args=(actor['id'],), use_container_width=True)
-            st.markdown(f'<div style="font-size: 0.55rem; color: #ccc; font-weight: 500; line-height: 1.1; margin-top: -30px; text-align: center; position: relative; pointer-events: none;">{actor_name}</div>', unsafe_allow_html=True)
+            st.button(actor_name, key=f"cast_{key_prefix}_{actor['id']}_{idx}", on_click=cb_set_active_actor, args=(actor['id'],), use_container_width=True)
 
 def render_clickable_grid(data_list, key_prefix, layout="grid", is_nested=False):
     if not data_list: return None
@@ -1201,17 +1224,35 @@ with t_soon:
     with c_sort: soon_sort = st.selectbox("Sort by:", ["Release Date", "Alphabetical"], label_visibility="collapsed", key="soon_sort_box")
     
     if soon_filter == "📺 Series":
+        needs_heal_soon = False
         soon_tv = []
         for show in st.session_state.db["shows"]:
             if show.get("dropped", False): continue
+            w_eps = len(show.get("watched_episodes", []))
+            t_eps = show.get("total_episodes", 1)
             
-            w_list = show.get("watched_episodes", [])
-            air_date = show.get("first_air_date", "")
+            details = fetch_api(f"https://api.themoviedb.org/3/tv/{show['id']}?api_key={TMDB_KEY}")
+            tmdb_total = details.get("number_of_episodes", t_eps)
             
-            # Simple local check to avoid API rate limit
-            if air_date and air_date > TODAY:
-                soon_tv.append({"item": show, "date": air_date})
+            if tmdb_total != t_eps and tmdb_total > 0:
+                show["total_episodes"] = tmdb_total
+                needs_heal_soon = True
+                
+            if w_eps >= tmdb_total and tmdb_total > 0: continue
+            
+            found_next = False
+            watched_set = set(show.get("watched_episodes", []))
+            for s_info in [s for s in details.get("seasons", []) if s["season_number"] > 0]:
+                if found_next: break
+                for ep in fetch_api(f"https://api.themoviedb.org/3/tv/{show['id']}/season/{s_info['season_number']}?api_key={TMDB_KEY}").get("episodes", []):
+                    ep_code = f"S{s_info['season_number']}E{ep['episode_number']}"
+                    air_date = ep.get("air_date", "")
+                    if ep_code not in watched_set and air_date and air_date > TODAY:
+                        soon_tv.append({"item": show, "details": details, "ep": ep, "code": ep_code, "date": air_date})
+                        found_next = True; break
                         
+        if needs_heal_soon: save_db()
+
         if soon_sort == "Alphabetical": soon_tv.sort(key=lambda x: x["item"]["name"].lower())
         else: soon_tv.sort(key=lambda x: x["date"] or "2099-01-01", reverse=False)
 
@@ -1223,7 +1264,7 @@ with t_soon:
             clicked_soon = render_clickable_grid(soon_tv[:limit], "soon_tv_grid", is_nested=True)
             if clicked_soon:
                 st.session_state.active_actor = None
-                manage_show_dialog(clicked_soon['item']['id'], clicked_soon['item']['name'], fetch_api(f"https://api.themoviedb.org/3/tv/{clicked_soon['item']['id']}?api_key={TMDB_KEY}"))
+                show_episode_details(clicked_soon['item']['id'], clicked_soon['item']['name'], clicked_soon['code'], clicked_soon['ep'], is_watched=False)
 
             if len(soon_tv) > st.session_state.soon_tv_limit:
                 if st.button("Load More Upcoming Series", use_container_width=True, key="load_more_soon_tv"):
@@ -1234,7 +1275,8 @@ with t_soon:
         for m in st.session_state.db["movies"]:
             if m.get("dropped", False) or m.get("watched", False): continue
             r_date = m.get("release_date", "")
-            if r_date and r_date > TODAY: 
+            # Movies with future release dates or TBA dates are upcoming
+            if not r_date or r_date > TODAY: 
                 soon_mov.append({"item": m, "date": r_date})
 
         if soon_sort == "Alphabetical": soon_mov.sort(key=lambda x: x["item"]["name"].lower())
@@ -1384,13 +1426,14 @@ with t_tv:
             is_completed = (w_eps >= t_eps and t_eps > 0)
             is_dropped = show.get("dropped", False)
             
-            if st.session_state.tv_tab == "DROPPED" and is_dropped: display_shows.append((show, t_eps, w_eps))
+            if st.session_state.tv_tab == "DROPPED" and is_dropped: 
+                display_shows.append((show, t_eps, w_eps))
             elif not is_dropped:
                 if st.session_state.tv_tab == "WATCHED" and is_completed: 
                     display_shows.append((show, t_eps, w_eps))
-                elif st.session_state.tv_tab == "UPCOMING" and is_upcoming and not is_completed:
+                elif st.session_state.tv_tab == "UPCOMING" and is_upcoming and not is_completed: 
                     display_shows.append((show, t_eps, w_eps))
-                elif st.session_state.tv_tab == "WATCHLIST" and not is_upcoming and not is_completed:
+                elif st.session_state.tv_tab == "WATCHLIST" and not is_upcoming and not is_completed: 
                     display_shows.append((show, t_eps, w_eps))
                 
         if tv_sort == "Alphabetical": display_shows.sort(key=lambda x: x[0]['name'].lower())
@@ -1447,7 +1490,7 @@ with t_movies:
             
             r_date = m.get("release_date", "")
             is_watched = m.get("watched", False)
-            is_upcoming = bool(r_date and r_date > TODAY)
+            is_upcoming = bool(r_date and r_date > TODAY) or (not r_date and not is_watched)
             is_dropped = m.get("dropped", False)
             
             if st.session_state.mov_tab == "DROPPED" and is_dropped: 
@@ -1455,9 +1498,9 @@ with t_movies:
             elif not is_dropped:
                 if st.session_state.mov_tab == "WATCHED" and is_watched: 
                     display_movies.append((m, is_watched))
-                elif st.session_state.mov_tab == "UPCOMING" and is_upcoming and not is_watched:
+                elif st.session_state.mov_tab == "UPCOMING" and is_upcoming and not is_watched: 
                     display_movies.append((m, is_watched))
-                elif st.session_state.mov_tab == "WATCHLIST" and not is_upcoming and not is_watched:
+                elif st.session_state.mov_tab == "WATCHLIST" and not is_upcoming and not is_watched: 
                     display_movies.append((m, is_watched))
                 
         if mov_sort == "Alphabetical": display_movies.sort(key=lambda x: x[0]['name'].lower())
