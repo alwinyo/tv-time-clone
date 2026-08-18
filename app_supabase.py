@@ -77,7 +77,7 @@ st.markdown("""
     }
     div[data-testid="column"]:has(.poster-wrapper) div[data-testid="stButton"] > button p { display: none !important; }
     
-    /* --- INVISIBLE HISTORY CLICK SYSTEM --- */
+    /* --- FULL CARD HISTORY CLICK & INFO BADGE SYSTEM --- */
     div[data-testid="column"]:has(.history-wrapper) {
         position: relative !important;
         transition: transform 0.2s cubic-bezier(0.25, 0.8, 0.25, 1) !important;
@@ -91,34 +91,39 @@ st.markdown("""
     }
     div[data-testid="column"]:has(.history-wrapper) div[data-testid="stButton"] {
         position: absolute !important;
-        top: 14px !important; 
-        left: 29px !important; 
-        width: 55px !important; 
-        height: 82px !important; 
+        top: 0 !important; left: 0 !important; right: 0 !important; bottom: 0 !important;
         z-index: 100 !important;
         display: block !important;
     }
-    div[data-testid="column"]:has(.history-wrapper) div[data-testid="stButton"] > button,
-    div[data-testid="column"]:has(.history-wrapper) div[data-testid="stButton"] > button:hover,
-    div[data-testid="column"]:has(.history-wrapper) div[data-testid="stButton"] > button:active,
-    div[data-testid="column"]:has(.history-wrapper) div[data-testid="stButton"] > button:focus {
+    div[data-testid="column"]:has(.history-wrapper) div[data-testid="stButton"] > button {
         background: transparent !important;
-        background-color: transparent !important;
         border: none !important;
         box-shadow: none !important;
-        color: transparent !important;
         width: 100% !important; 
         height: 100% !important;
-        border-radius: 6px !important;
+        border-radius: 12px !important;
+        display: flex !important;
+        align-items: flex-end !important;
+        justify-content: flex-end !important;
+        padding: 15px !important;
         transform: none !important;
         cursor: pointer !important;
-        padding: 0 !important;
+    }
+    div[data-testid="column"]:has(.history-wrapper) div[data-testid="stButton"] > button p {
+        background: rgba(255, 193, 7, 0.15) !important;
+        border: 1px solid rgba(255, 193, 7, 0.5) !important;
+        color: #FFC107 !important;
+        padding: 4px 12px !important;
+        border-radius: 12px !important;
+        font-size: 0.65rem !important;
+        font-weight: 800 !important;
+        backdrop-filter: blur(4px);
         margin: 0 !important;
         display: block !important;
     }
-    div[data-testid="column"]:has(.history-wrapper) div[data-testid="stButton"] > button * {
-        display: none !important;
-        color: transparent !important;
+    div[data-testid="column"]:has(.history-wrapper) div[data-testid="stButton"] > button:hover p {
+        background: rgba(255, 193, 7, 0.4) !important;
+        color: #FFF !important;
     }
     
     /* --- SLEEK PILL NAVIGATION (FOR TABS & FILTERS) - PERFECT 50/50 GRID --- */
@@ -161,11 +166,13 @@ st.markdown("""
     /* --- UNIVERSAL BUTTONS --- */
     div[data-testid="stButton"] button {
         border-radius: 12px !important;
+        transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1) !important;
+        min-height: 40px !important;
+    }
+    div[data-testid="stButton"] button p {
         font-weight: 800 !important;
         text-transform: uppercase !important;
         letter-spacing: 0.5px !important;
-        transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1) !important;
-        min-height: 40px !important;
     }
     div[data-testid="stButton"] button[kind="primary"] {
         background: linear-gradient(135deg, #FFD54F 0%, #FFC107 100%) !important;
@@ -185,32 +192,38 @@ st.markdown("""
         border-color: #FFC107 !important;
     }
     
-    /* OVERRIDE FOR CAST NAMES TO FIT AND NOT BE UPPERCASE */
-    div[data-testid="column"]:has(.carousel-marker-cast) div[data-testid="stButton"] button {
-        background: transparent !important; border: none !important; box-shadow: none !important; padding: 0 !important; margin: 0 !important; 
-        height: auto !important; min-height: 0 !important; width: 100% !important; display: block !important; transform: none !important; 
+    /* --- CAST NAMES NORMALIZED (FIX FOR SCREENSHOT) --- */
+    div[data-testid="stButton"] button[kind="tertiary"] {
+        background: transparent !important; 
+        border: none !important; 
+        box-shadow: none !important; 
+        padding: 0 !important; 
+        margin: 0 !important; 
+        height: auto !important; 
+        min-height: 0 !important; 
+        width: 100% !important; 
+        display: block !important; 
+        transform: none !important; 
     }
-    div[data-testid="column"]:has(.carousel-marker-cast) div[data-testid="stButton"] button p,
-    div[data-testid="column"]:has(.carousel-marker-cast) div[data-testid="stButton"] button span,
-    div[data-testid="column"]:has(.carousel-marker-cast) div[data-testid="stButton"] button div {
+    div[data-testid="stButton"] button[kind="tertiary"] p {
         font-size: 0.55rem !important;
         font-weight: 500 !important;
         text-transform: none !important;
         letter-spacing: normal !important;
-        white-space: nowrap !important;
-        overflow: hidden !important; 
-        text-overflow: ellipsis !important;
+        white-space: pre-wrap !important;
         line-height: 1.1 !important;
         color: #aaa !important;
         margin: 0 !important;
     }
-    div[data-testid="column"]:has(.carousel-marker-cast) div[data-testid="stButton"] button:hover p,
-    div[data-testid="column"]:has(.carousel-marker-cast) div[data-testid="stButton"] button:hover span { color: #FFC107 !important; text-decoration: underline !important;}
+    div[data-testid="stButton"] button[kind="tertiary"]:hover p { 
+        color: #FFC107 !important; 
+        text-decoration: underline !important;
+    }
     
     /* --- TABS OVERHAUL --- */
     div[data-testid="stTabs"] > div[data-baseweb="tab-list"], div[data-testid="stTabs"] > div[role="tablist"] { display: flex !important; width: 100vw !important; max-width: 100% !important; margin-left: -0.5rem !important; padding: 0 0 5px 0 !important; gap: 0 !important; overflow-x: hidden !important; background-color: rgba(8, 9, 12, 0.85) !important; backdrop-filter: blur(12px) !important; -webkit-backdrop-filter: blur(12px) !important; border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important; }
     div[data-testid="stTabs"] button[role="tab"] { flex: 1 1 0px !important; min-width: 0 !important; padding: 10px 0px !important; margin: 0 !important; border-radius: 0 !important; transition: all 0.3s ease !important; }
-    div[data-testid="stTabs"] button[role="tab"] p { font-size: 0.55rem !important; font-weight: 700 !important; text-align: center !important; margin: 0 auto !important; white-space: nowrap !important; letter-spacing: -0.4px !important; overflow: hidden !important; text-overflow: clip !important; color: #888 !important; transition: all 0.3s ease !important; }
+    div[data-testid="stTabs"] button[role="tab"] p { font-size: 0.55rem !important; font-weight: 700 !important; text-align: center !important; margin: 0 auto !important; white-space: nowrap !important; letter-spacing: -0.4px !important; overflow: hidden !important; text-overflow: clip !important; color: #888 !important; transition: all 0.3s ease !important; text-transform: uppercase !important; }
     div[data-testid="stTabs"] button[role="tab"][aria-selected="true"] { border-bottom: 3px solid #FFC107 !important; background: linear-gradient(to top, rgba(255, 193, 7, 0.15) 0%, transparent 100%) !important; box-shadow: inset 0px -10px 15px -10px rgba(255, 193, 7, 0.5) !important; }
     div[data-testid="stTabs"] button[role="tab"][aria-selected="true"] p { color: #FFD54F !important; text-shadow: 0px 0px 10px rgba(255, 193, 7, 0.6) !important; }
     
@@ -229,6 +242,7 @@ st.markdown("""
     div:has(> .clear-btn-hook) + div { position: absolute !important; right: 8px !important; top: 7px !important; width: 26px !important; z-index: 100 !important; }
     div:has(> .clear-btn-hook) + div button { background: rgba(255,255,255,0.08) !important; border: none !important; box-shadow: none !important; color: #aaa !important; padding: 0 !important; min-height: 26px !important; height: 26px !important; width: 26px !important; border-radius: 50% !important; display: flex !important; align-items: center !important; justify-content: center !important; margin: 0 !important; line-height: 1 !important; transform: none !important; }
     div:has(> .clear-btn-hook) + div button:hover { background: rgba(255, 193, 7, 0.3) !important; color: #FFD54F !important; }
+    div:has(> .clear-btn-hook) + div button p { text-transform: none !important; }
 
     .grid-title { font-size: 0.65rem; color: #ccc; text-align: center; margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 600; }
 
@@ -533,7 +547,7 @@ def show_cast_horizontal(cast_list, key_prefix, limit=15):
                 html_char = f'<div style="font-size: 0.55rem; color: #FFC107; font-weight: 700; line-height: 1.1; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{char_name}</div>'
                 st.markdown(html_char, unsafe_allow_html=True)
             
-            st.button(actor.get('name', 'Unknown'), key=f"cast_{key_prefix}_{actor['id']}_{idx}", on_click=cb_set_active_actor, args=(actor['id'],), use_container_width=True)
+            st.button(actor.get('name', 'Unknown'), key=f"cast_{key_prefix}_{actor['id']}_{idx}", on_click=cb_set_active_actor, args=(actor['id'],), use_container_width=True, type="tertiary")
 
 def render_clickable_grid(data_list, key_prefix, layout="grid", is_nested=False):
     if not data_list: return None
@@ -1341,6 +1355,7 @@ with t_search:
             k_tv = fetch_api(f"https://api.themoviedb.org/3/discover/tv?api_key={TMDB_KEY}&with_original_language=ko&first_air_date.gte={start_month}&first_air_date.lte={end_month_str}&sort_by=popularity.desc")
             if k_tv.get("results"): render_carousel(f"🇰🇷 K-Dramas ({current_date.strftime('%B %Y')})", k_tv["results"], "tv")
             
+            # API FIX FOR K-MOVIES:
             k_mov = fetch_api(f"https://api.themoviedb.org/3/discover/movie?api_key={TMDB_KEY}&with_original_language=ko&primary_release_year={current_date.year}&primary_release_month={current_date.month}&sort_by=popularity.desc")
             valid_k_mov = [m for m in k_mov.get("results", []) if m.get("poster_path")]
             if valid_k_mov: render_carousel(f"🇰🇷 K-Movies ({current_date.strftime('%B %Y')})", valid_k_mov, "movie")
@@ -1367,7 +1382,7 @@ with t_tv:
         st.session_state.tv_tab = selected_tv_tab
         st.rerun()
         
-    st.markdown("<div style='margin-top: -22px;'></div>", unsafe_allow_html=True)
+    st.markdown("<div style='margin-top: -45px;'></div>", unsafe_allow_html=True)
     
     c_search, c_sort = st.columns([6, 4], gap="small")
     with c_search:
@@ -1378,6 +1393,8 @@ with t_tv:
             st.button("✖", key=f"clr_lib_tv_{st.session_state.lib_tv_reset_ctr}", on_click=cb_clear_lib_tv)
     with c_sort:
         tv_sort = st.selectbox("Sort", ["Release Date", "Alphabetical", "Recently Added"], label_visibility="collapsed", key="sort_tv_lib")
+    
+    st.markdown("<div style='margin-top: -15px;'></div>", unsafe_allow_html=True)
     
     shows = st.session_state.db.get("shows", [])
     if not shows: st.info("Your TV library is empty.")
@@ -1434,7 +1451,7 @@ with t_movies:
         st.session_state.mov_tab = selected_mov_tab
         st.rerun()
 
-    st.markdown("<div style='margin-top: -22px;'></div>", unsafe_allow_html=True)
+    st.markdown("<div style='margin-top: -45px;'></div>", unsafe_allow_html=True)
         
     c_search, c_sort = st.columns([6, 4], gap="small")
     with c_search:
@@ -1445,6 +1462,8 @@ with t_movies:
             st.button("✖", key=f"clr_lib_mov_{st.session_state.lib_mov_reset_ctr}", on_click=cb_clear_lib_mov)
     with c_sort:
         mov_sort = st.selectbox("Sort", ["Release Date", "Alphabetical", "Recently Added"], label_visibility="collapsed", key="sort_mov_lib")
+    
+    st.markdown("<div style='margin-top: -15px;'></div>", unsafe_allow_html=True)
     
     movies = st.session_state.db.get("movies", [])
     if not movies: st.info("Your Movie library is empty.")
@@ -1867,7 +1886,7 @@ with t_profile:
                         with c_col:
                             st.markdown(html_card, unsafe_allow_html=True)
                             st.markdown('<span class="history-wrapper"></span>', unsafe_allow_html=True)
-                            if st.button(" ", key=f"h_r_tv_{h['i']}_{ep_code}_{h_idx}", use_container_width=True): 
+                            if st.button("INFO", key=f"h_r_tv_{h['i']}_{ep_code}_{h_idx}", use_container_width=True): 
                                 st.session_state.active_actor = None
                                 show_episode_details(h['i'], s_name, ep_code, ep_data=None, is_watched=True)
                 if len(tv_hist) > st.session_state.hist_tv_limit:
@@ -1924,7 +1943,7 @@ with t_profile:
                         with c_col:
                             st.markdown(html_card, unsafe_allow_html=True)
                             st.markdown('<span class="history-wrapper"></span>', unsafe_allow_html=True)
-                            if st.button(" ", key=f"h_r_mov_{h['i']}_{h_idx}", use_container_width=True): 
+                            if st.button("INFO", key=f"h_r_mov_{h['i']}_{h_idx}", use_container_width=True): 
                                 st.session_state.active_actor = None
                                 show_movie_details(h['i'], m_name, details=None, is_watched=True)
                 if len(mov_hist) > st.session_state.hist_mov_limit:
