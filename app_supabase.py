@@ -33,7 +33,6 @@ st.markdown("""
     }
     
     .block-container { padding: 1rem 0.5rem 5rem 0.5rem !important; max-width: 100vw !important; overflow-x: hidden !important; }
-    hr { margin: 0.8rem 0 !important; border-color: rgba(255, 255, 255, 0.1) !important; }
     h1, h2, h3 { padding-top: 0.6rem !important; padding-bottom: 0.3rem !important; margin-bottom: 0 !important; }
     .stMarkdown p { margin-bottom: 0.5rem !important; }
     
@@ -64,8 +63,7 @@ st.markdown("""
     div[data-testid="column"]:has(.poster-wrapper):hover img {
         transform: scale(1.06) !important;
     }
-    /* Erase the normal button styling for the invisible overlay */
-    div[data-testid="column"]:has(.poster-wrapper) div.stButton > button {
+    div[data-testid="column"]:has(.poster-wrapper) div[data-testid="stButton"] > button {
         position: absolute !important;
         top: 0 !important; left: 0 !important; right: 0 !important; bottom: 0 !important;
         z-index: 20 !important;
@@ -75,73 +73,36 @@ st.markdown("""
         transform: none !important;
     }
     
-    /* --- INVISIBLE HISTORY CLICK SYSTEM --- */
+    /* --- INVISIBLE HISTORY POSTER CLICK --- */
     div[data-testid="column"]:has(.history-wrapper) {
         position: relative !important;
-        transition: transform 0.2s cubic-bezier(0.25, 0.8, 0.25, 1) !important;
-        cursor: pointer !important;
     }
-    div[data-testid="column"]:has(.history-wrapper):hover {
-        transform: translateX(5px) !important;
-    }
-    div[data-testid="column"]:has(.history-wrapper) > div {
-        gap: 0 !important;
-        padding: 0 !important;
-    }
-    div[data-testid="column"]:has(.history-wrapper) div.stButton > button {
+    div[data-testid="column"]:has(.history-wrapper) div[data-testid="stButton"] {
         position: absolute !important;
-        top: 0 !important; left: 0 !important; right: 0 !important; bottom: 0 !important;
+        top: 12px !important;
+        left: 25px !important;
+        width: 60px !important;
+        height: 90px !important;
         z-index: 20 !important;
         opacity: 0 !important;
-        width: 100% !important; height: 100% !important;
-        transform: none !important;
     }
-    
-    /* --- SLEEK PILL NAVIGATION (FOR TABS & FILTERS) - STRICT 50/50 GRID --- */
-    div[role="radiogroup"] {
-        display: flex !important; 
-        flex-direction: row !important; 
-        flex-wrap: wrap !important; 
-        background-color: transparent !important; 
-        border: none !important; 
-        box-shadow: none !important; 
-        padding: 0 !important; 
-        width: 100% !important; 
-        gap: 8px !important;
-        margin-bottom: 5px !important;
+    div[data-testid="column"]:has(.history-wrapper) div[data-testid="stButton"] > button {
+        width: 100% !important;
+        height: 100% !important;
+        cursor: pointer !important;
     }
-    div[role="radiogroup"]::-webkit-scrollbar { display: none; }
-    div[role="radiogroup"] > label {
-        flex: 0 0 calc(50% - 4px) !important; /* STRICT 50% SIZING */
-        min-width: calc(50% - 4px) !important;
-        max-width: calc(50% - 4px) !important;
-        background: rgba(255,255,255,0.05) !important; 
-        border: 1px solid rgba(255,255,255,0.1) !important;
-        border-radius: 12px !important; 
-        padding: 10px !important; 
-        margin: 0 !important; 
-        justify-content: center !important; /* CENTER TEXT */
-        transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1) !important;
-        box-sizing: border-box !important;
-    }
-    div[role="radiogroup"] > label > div:first-child { display: none !important; }
-    div[role="radiogroup"] > label:has(input:checked) { 
-        background: linear-gradient(135deg, #FFD54F 0%, #FFC107 100%) !important; 
-        border-color: #FFC107 !important; 
-        box-shadow: 0 4px 10px rgba(255, 193, 7, 0.3) !important; 
-        transform: scale(1.02); 
-    }
-    div[role="radiogroup"] > label:has(input:checked) p { color: #000 !important; font-weight: 800 !important; }
-    div[role="radiogroup"] > label p { font-size: 0.75rem !important; font-weight: 700 !important; margin: 0 !important; color: #EDEDED !important; white-space: nowrap !important; }
     
     /* --- UNIVERSAL PILL BUTTONS (2x2 / 50-50 GRIDS) --- */
     div[data-testid="stButton"] button {
         border-radius: 12px !important;
+        transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1) !important;
+        min-height: 40px !important;
+    }
+    div[data-testid="stButton"] button p {
         font-weight: 800 !important;
         text-transform: uppercase !important;
         letter-spacing: 0.5px !important;
-        transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1) !important;
-        min-height: 40px !important;
+        margin: 0 !important;
     }
     div[data-testid="stButton"] button[kind="primary"] {
         background: linear-gradient(135deg, #FFD54F 0%, #FFC107 100%) !important;
@@ -161,6 +122,14 @@ st.markdown("""
         border-color: #FFC107 !important;
     }
     
+    /* OVERRIDE FOR CAST NAMES TO FIT AND NOT BE UPPERCASE */
+    div[data-testid="column"]:has(.carousel-marker-cast) div[data-testid="stButton"] button p {
+        font-size: 0.6rem !important;
+        font-weight: 500 !important;
+        text-transform: none !important;
+        letter-spacing: 0px !important;
+    }
+    
     /* --- TABS OVERHAUL --- */
     div[data-testid="stTabs"] > div[data-baseweb="tab-list"], div[data-testid="stTabs"] > div[role="tablist"] { display: flex !important; width: 100vw !important; max-width: 100% !important; margin-left: -0.5rem !important; padding: 0 0 5px 0 !important; gap: 0 !important; overflow-x: hidden !important; background-color: rgba(8, 9, 12, 0.85) !important; backdrop-filter: blur(12px) !important; -webkit-backdrop-filter: blur(12px) !important; border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important; }
     div[data-testid="stTabs"] button[role="tab"] { flex: 1 1 0px !important; min-width: 0 !important; padding: 10px 0px !important; margin: 0 !important; border-radius: 0 !important; transition: all 0.3s ease !important; }
@@ -177,18 +146,19 @@ st.markdown("""
     div[data-testid="stHorizontalBlock"]:has(.carousel-marker-cast), div[data-testid="stColumns"]:has(.carousel-marker-cast) { display: flex !important; flex-direction: row !important; overflow-x: auto !important; flex-wrap: nowrap !important; scrollbar-width: none; padding-bottom: 10px !important; gap: 10px !important; }
     div[data-testid="stHorizontalBlock"]:has(.carousel-marker-cast)::-webkit-scrollbar, div[data-testid="stColumns"]:has(.carousel-marker-cast)::-webkit-scrollbar { display: none; }
     div[data-testid="column"]:has(.carousel-marker-cast), div[data-testid="stColumn"]:has(.carousel-marker-cast) { flex: 0 0 85px !important; width: 85px !important; min-width: 85px !important; padding: 0 !important; display: block !important; text-align: center !important; }
-    div[data-testid="column"]:has(.carousel-marker-cast) div.stButton > button { background: transparent !important; border: none !important; box-shadow: none !important; padding: 0 !important; margin: 0 !important; color: #E0E0E0 !important; font-size: 0.5rem !important; font-weight: 500 !important; letter-spacing: 0px !important; text-transform: none !important; line-height: 1.2 !important; white-space: nowrap !important; overflow: hidden !important; text-overflow: ellipsis !important; height: auto !important; min-height: 0 !important; width: 100% !important; display: block !important; transform: none !important; }
-    div[data-testid="column"]:has(.carousel-marker-cast) div.stButton > button:hover { color: #FFC107 !important; transform: none !important; text-decoration: underline !important;}
+    div[data-testid="column"]:has(.carousel-marker-cast) div.stButton > button { background: transparent !important; border: none !important; box-shadow: none !important; padding: 0 !important; margin: 0 !important; height: auto !important; min-height: 0 !important; width: 100% !important; display: block !important; transform: none !important; }
     
     /* --- INLINE SEARCH CLEAR BUTTON OVERRIDE --- */
     div[data-testid="stVerticalBlock"]:has(> div > div > .search-container-hook) { position: relative !important; }
     div:has(> .clear-btn-hook) + div { position: absolute !important; right: 8px !important; top: 7px !important; width: 26px !important; z-index: 100 !important; }
-    div:has(> .clear-btn-hook) + div button { background: rgba(255,255,255,0.08) !important; border: none !important; box-shadow: none !important; color: #aaa !important; padding: 0 !important; min-height: 26px !important; height: 26px !important; width: 26px !important; border-radius: 50% !important; font-size: 0.7rem !important; display: flex !important; align-items: center !important; justify-content: center !important; margin: 0 !important; line-height: 1 !important; transform: none !important; }
+    div:has(> .clear-btn-hook) + div button { background: rgba(255,255,255,0.08) !important; border: none !important; box-shadow: none !important; color: #aaa !important; padding: 0 !important; min-height: 26px !important; height: 26px !important; width: 26px !important; border-radius: 50% !important; display: flex !important; align-items: center !important; justify-content: center !important; margin: 0 !important; line-height: 1 !important; transform: none !important; }
     div:has(> .clear-btn-hook) + div button:hover { background: rgba(255, 193, 7, 0.3) !important; color: #FFD54F !important; }
 
     .grid-title { font-size: 0.65rem; color: #ccc; text-align: center; margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 600; }
 
     @media (max-width: 992px) {
+        div[data-testid="stHorizontalBlock"]:has(.grid-2-col), div[data-testid="stColumns"]:has(.grid-2-col) { display: flex !important; flex-direction: row !important; flex-wrap: nowrap !important; gap: 4% !important; }
+        div[data-testid="column"]:has(.grid-2-col), div[data-testid="stColumn"]:has(.grid-2-col) { width: 48% !important; flex: 1 1 48% !important; min-width: 0 !important; padding: 0 !important; display: block !important; }
         div[role="dialog"] { width: 95vw !important; max-width: 95vw !important; margin: 0 auto !important; padding: 0 !important; background: rgba(15, 17, 22, 0.95) !important; backdrop-filter: blur(20px) !important; -webkit-backdrop-filter: blur(20px) !important; border: 1px solid rgba(255, 255, 255, 0.1) !important; overflow: hidden !important;}
         div[role="dialog"] > div:first-child { padding: 0 15px 20px 15px !important; }
     }
@@ -449,7 +419,6 @@ def cb_clear_lib_tv(): st.session_state.lib_tv_reset_ctr += 1
 def cb_clear_lib_mov(): st.session_state.lib_mov_reset_ctr += 1
 def cb_toggle_ep_info(sid, ecode): st.session_state[f"view_info_{sid}_{ecode}"] = not st.session_state.get(f"view_info_{sid}_{ecode}", False)
 
-# --- VISUAL HELPERS ---
 def render_badges(items, is_gold=False):
     css_class = "badge badge-gold" if is_gold else "badge"
     html = "".join([f'<span class="{css_class}">{item}</span>' for item in items])
@@ -527,10 +496,10 @@ def render_inline_actor_pokedex(actor_id):
     for c in credits.get("cast", []):
         cid = str(c["id"])
         if c["media_type"] == "tv" and cid in db_shows and cid not in seen_ids:
-            owned_items.append({"id": cid, "title": db_shows[cid]["name"], "type": "tv", "poster_path": db_shows[cid].get("poster_path")})
+            owned_items.append({"id": cid, "title": db_shows[cid]["name"], "type": "tv", "poster": db_shows[cid].get("poster_path")})
             seen_ids.add(cid)
         elif c["media_type"] == "movie" and cid in db_movies and cid not in seen_ids:
-            owned_items.append({"id": cid, "title": db_movies[cid]["name"], "type": "movie", "poster_path": db_movies[cid].get("poster_path")})
+            owned_items.append({"id": cid, "title": db_movies[cid]["name"], "type": "movie", "poster": db_movies[cid].get("poster_path")})
             seen_ids.add(cid)
             
     st.markdown("<hr style='margin: 0.5rem 0; border-color: #FFC107;'>", unsafe_allow_html=True)
@@ -864,8 +833,12 @@ with t_next:
     st.markdown("<h3 class='tab-title'>Up Next</h3>", unsafe_allow_html=True)
     
     c_filter, c_sort = st.columns(2, gap="small")
-    with c_filter: next_filter = st.selectbox("Category:", ["📺 Series", "🎬 Movies"], label_visibility="collapsed", key="next_filter_box")
-    with c_sort: next_sort = st.selectbox("Sort by:", ["Smart Priority", "Release Date", "Alphabetical"], label_visibility="collapsed", key="next_sort_box")
+    with c_filter:
+        st.markdown('<span class="grid-2-col"></span>', unsafe_allow_html=True)
+        next_filter = st.selectbox("Category:", ["📺 Series", "🎬 Movies"], label_visibility="collapsed", key="next_filter_box")
+    with c_sort:
+        st.markdown('<span class="grid-2-col"></span>', unsafe_allow_html=True)
+        next_sort = st.selectbox("Sort by:", ["Smart Priority", "Release Date", "Alphabetical"], label_visibility="collapsed", key="next_sort_box")
     
     try: fifteen_days_ago = get_dubai_time() - pd.DateOffset(days=15)
     except: fifteen_days_ago = get_dubai_time() - timedelta(days=15)
@@ -960,8 +933,6 @@ with t_next:
             with c_h2: 
                 if st.button("ℹ INFO", key=f"hero_i_tv_{h_show['id']}", use_container_width=True): st.session_state.active_actor = None; show_episode_details(h_show['id'], h_show['name'], h_code, h_ep, is_watched=False)
             
-            st.markdown("<div style='height: 15px;'></div>", unsafe_allow_html=True)
-            
             rest_next = up_next_tv[1:st.session_state.next_tv_limit]
             if rest_next:
                 clicked_next = render_clickable_grid(rest_next, "next_tv_grid", is_nested=True)
@@ -1005,8 +976,12 @@ with t_soon:
     st.markdown("<h3 class='tab-title'>Upcoming Releases</h3>", unsafe_allow_html=True)
     
     c_filter, c_sort = st.columns(2, gap="small")
-    with c_filter: soon_filter = st.selectbox("Category:", ["📺 Series", "🎬 Movies"], label_visibility="collapsed", key="soon_filter_box")
-    with c_sort: soon_sort = st.selectbox("Sort by:", ["Release Date", "Alphabetical"], label_visibility="collapsed", key="soon_sort_box")
+    with c_filter: 
+        st.markdown('<span class="grid-2-col"></span>', unsafe_allow_html=True)
+        soon_filter = st.selectbox("Category:", ["📺 Series", "🎬 Movies"], label_visibility="collapsed", key="soon_filter_box")
+    with c_sort: 
+        st.markdown('<span class="grid-2-col"></span>', unsafe_allow_html=True)
+        soon_sort = st.selectbox("Sort by:", ["Release Date", "Alphabetical"], label_visibility="collapsed", key="soon_sort_box")
     
     if soon_filter == "📺 Series":
         needs_heal_soon = False
@@ -1041,7 +1016,6 @@ with t_soon:
         if soon_sort == "Alphabetical": soon_tv.sort(key=lambda x: x["item"]["name"].lower())
         else: soon_tv.sort(key=lambda x: x["date"] or "2099-01-01", reverse=False)
 
-        st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
         if not soon_tv: st.info("No upcoming episodes scheduled yet.")
         else:
             limit = st.session_state.soon_tv_limit
@@ -1064,7 +1038,6 @@ with t_soon:
         if soon_sort == "Alphabetical": soon_mov.sort(key=lambda x: x["item"]["name"].lower())
         else: soon_mov.sort(key=lambda x: x["date"] or "2099-01-01", reverse=False)
 
-        st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
         if not soon_mov: st.info("No upcoming movies scheduled yet.")
         else:
             limit = st.session_state.soon_mov_limit
@@ -1085,15 +1058,14 @@ with t_search:
     
     c_search, c_filter = st.columns([6, 4], gap="small")
     with c_search:
-        st.markdown('<span class="search-container-hook"></span>', unsafe_allow_html=True)
+        st.markdown('<span class="grid-2-col"></span><span class="search-container-hook"></span>', unsafe_allow_html=True)
         search_query = st_keyup("Search", debounce=1500, key=f"sq_{st.session_state.search_reset_ctr}", placeholder="Search titles...", label_visibility="collapsed")
         if search_query:
             st.markdown('<span class="clear-btn-hook"></span>', unsafe_allow_html=True)
             st.button("✖", key=f"clr_btn_{st.session_state.search_reset_ctr}", on_click=cb_clear_search)
     with c_filter:
+        st.markdown('<span class="grid-2-col"></span>', unsafe_allow_html=True)
         search_type = st.selectbox("Search in:", ["TV Shows", "Movies"], label_visibility="collapsed", key="search_filter_box")
-
-    st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
 
     if search_query:
         endpoint = "tv" if search_type == "TV Shows" else "movie"
@@ -1112,16 +1084,24 @@ with t_search:
         if "discover_genre" not in st.session_state: st.session_state.discover_genre = "🔥 Trending"
         genres = ["🔥 Trending", "🤣 Comedy", "💥 Action", "🐉 Sci-Fi", "🔪 Thriller", "👻 Horror"]
         
-        selected_genre = st.radio("Filters", genres, index=genres.index(st.session_state.discover_genre), horizontal=True, label_visibility="collapsed", key="discover_radio")
-        if selected_genre != st.session_state.discover_genre:
-            st.session_state.discover_genre = selected_genre
-            st.rerun()
+        for i in range(0, 6, 2):
+            c1, c2 = st.columns(2, gap="small")
+            with c1:
+                st.markdown('<span class="grid-2-col"></span>', unsafe_allow_html=True)
+                if st.button(genres[i], use_container_width=True, type="primary" if st.session_state.discover_genre == genres[i] else "secondary"): 
+                    st.session_state.discover_genre = genres[i]
+                    st.rerun()
+            with c2:
+                st.markdown('<span class="grid-2-col"></span>', unsafe_allow_html=True)
+                if st.button(genres[i+1], use_container_width=True, type="primary" if st.session_state.discover_genre == genres[i+1] else "secondary"): 
+                    st.session_state.discover_genre = genres[i+1]
+                    st.rerun()
 
-        st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
+        selected_genre = st.session_state.discover_genre
 
         def render_carousel(title, items, c_type):
             if not items: return
-            html_title = f"<h5 style='margin-bottom:5px;'>{title}</h5>"
+            html_title = f"<h5 style='margin-bottom:5px; margin-top:10px;'>{title}</h5>"
             st.markdown(html_title, unsafe_allow_html=True)
             limit = st.session_state.c_limits.get(title, 10)
             
@@ -1175,24 +1155,32 @@ with t_tv:
     st.markdown("<h3 class='tab-title'>My TV Collection</h3>", unsafe_allow_html=True)
     
     if "tv_tab" not in st.session_state: st.session_state.tv_tab = "WATCHLIST"
-    tv_options = ["WATCHLIST", "UPCOMING", "WATCHED", "DROPPED"]
-    selected_tv_tab = st.radio("TV Collection Filter", tv_options, index=tv_options.index(st.session_state.tv_tab), horizontal=True, label_visibility="collapsed", key="tv_tab_radio")
-    
-    if selected_tv_tab != st.session_state.tv_tab:
-        st.session_state.tv_tab = selected_tv_tab
-        st.rerun()
+        
+    c1, c2 = st.columns(2, gap="small")
+    with c1:
+        st.markdown('<span class="grid-2-col"></span>', unsafe_allow_html=True)
+        if st.button("Watchlist", use_container_width=True, type="primary" if st.session_state.tv_tab == "WATCHLIST" else "secondary", key="tv_wl"): st.session_state.tv_tab = "WATCHLIST"; st.rerun()
+    with c2:
+        st.markdown('<span class="grid-2-col"></span>', unsafe_allow_html=True)
+        if st.button("Upcoming", use_container_width=True, type="primary" if st.session_state.tv_tab == "UPCOMING" else "secondary", key="tv_up"): st.session_state.tv_tab = "UPCOMING"; st.rerun()
+    c3, c4 = st.columns(2, gap="small")
+    with c3:
+        st.markdown('<span class="grid-2-col"></span>', unsafe_allow_html=True)
+        if st.button("Watched", use_container_width=True, type="primary" if st.session_state.tv_tab == "WATCHED" else "secondary", key="tv_wd"): st.session_state.tv_tab = "WATCHED"; st.rerun()
+    with c4:
+        st.markdown('<span class="grid-2-col"></span>', unsafe_allow_html=True)
+        if st.button("Dropped", use_container_width=True, type="primary" if st.session_state.tv_tab == "DROPPED" else "secondary", key="tv_dr"): st.session_state.tv_tab = "DROPPED"; st.rerun()
         
     c_search, c_sort = st.columns([6, 4], gap="small")
     with c_search:
-        st.markdown('<span class="search-container-hook"></span>', unsafe_allow_html=True)
+        st.markdown('<span class="grid-2-col"></span><span class="search-container-hook"></span>', unsafe_allow_html=True)
         lib_search_tv = st_keyup("Search", debounce=500, key=f"lib_sq_tv_{st.session_state.lib_tv_reset_ctr}", placeholder="Filter shows...", label_visibility="collapsed")
         if lib_search_tv:
             st.markdown('<span class="clear-btn-hook"></span>', unsafe_allow_html=True)
             st.button("✖", key=f"clr_lib_tv_{st.session_state.lib_tv_reset_ctr}", on_click=cb_clear_lib_tv)
     with c_sort:
+        st.markdown('<span class="grid-2-col"></span>', unsafe_allow_html=True)
         tv_sort = st.selectbox("Sort", ["Release Date", "Alphabetical", "Recently Added"], label_visibility="collapsed", key="sort_tv_lib")
-    
-    st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
     
     shows = st.session_state.db.get("shows", [])
     if not shows: st.info("Your TV library is empty.")
@@ -1240,26 +1228,33 @@ with t_tv:
 # ==========================================
 with t_movies:
     st.markdown("<h3 class='tab-title'>My Movies</h3>", unsafe_allow_html=True)
-    
     if "mov_tab" not in st.session_state: st.session_state.mov_tab = "WATCHLIST"
-    mov_options = ["WATCHLIST", "UPCOMING", "WATCHED", "DROPPED"]
-    selected_mov_tab = st.radio("Movie Collection Filter", mov_options, index=mov_options.index(st.session_state.mov_tab), horizontal=True, label_visibility="collapsed", key="mov_tab_radio")
-    
-    if selected_mov_tab != st.session_state.mov_tab:
-        st.session_state.mov_tab = selected_mov_tab
-        st.rerun()
+        
+    c1, c2 = st.columns(2, gap="small")
+    with c1:
+        st.markdown('<span class="grid-2-col"></span>', unsafe_allow_html=True)
+        if st.button("Watchlist", use_container_width=True, type="primary" if st.session_state.mov_tab == "WATCHLIST" else "secondary", key="m_wl"): st.session_state.mov_tab = "WATCHLIST"; st.rerun()
+    with c2:
+        st.markdown('<span class="grid-2-col"></span>', unsafe_allow_html=True)
+        if st.button("Upcoming", use_container_width=True, type="primary" if st.session_state.mov_tab == "UPCOMING" else "secondary", key="m_up"): st.session_state.mov_tab = "UPCOMING"; st.rerun()
+    c3, c4 = st.columns(2, gap="small")
+    with c3:
+        st.markdown('<span class="grid-2-col"></span>', unsafe_allow_html=True)
+        if st.button("Watched", use_container_width=True, type="primary" if st.session_state.mov_tab == "WATCHED" else "secondary", key="m_wd"): st.session_state.mov_tab = "WATCHED"; st.rerun()
+    with c4:
+        st.markdown('<span class="grid-2-col"></span>', unsafe_allow_html=True)
+        if st.button("Dropped", use_container_width=True, type="primary" if st.session_state.mov_tab == "DROPPED" else "secondary", key="m_dr"): st.session_state.mov_tab = "DROPPED"; st.rerun()
         
     c_search, c_sort = st.columns([6, 4], gap="small")
     with c_search:
-        st.markdown('<span class="search-container-hook"></span>', unsafe_allow_html=True)
+        st.markdown('<span class="grid-2-col"></span><span class="search-container-hook"></span>', unsafe_allow_html=True)
         lib_search_mov = st_keyup("Search", debounce=500, key=f"lib_sq_mov_{st.session_state.lib_mov_reset_ctr}", placeholder="Filter movies...", label_visibility="collapsed")
         if lib_search_mov:
             st.markdown('<span class="clear-btn-hook"></span>', unsafe_allow_html=True)
             st.button("✖", key=f"clr_lib_mov_{st.session_state.lib_mov_reset_ctr}", on_click=cb_clear_lib_mov)
     with c_sort:
+        st.markdown('<span class="grid-2-col"></span>', unsafe_allow_html=True)
         mov_sort = st.selectbox("Sort", ["Release Date", "Alphabetical", "Recently Added"], label_visibility="collapsed", key="sort_mov_lib")
-    
-    st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
     
     movies = st.session_state.db.get("movies", [])
     if not movies: st.info("Your Movie library is empty.")
