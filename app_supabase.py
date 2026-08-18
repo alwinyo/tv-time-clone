@@ -1212,31 +1212,13 @@ with t_soon:
         soon_tv = []
         for show in st.session_state.db["shows"]:
             if show.get("dropped", False): continue
-            w_eps = len(show.get("watched_episodes", []))
-            t_eps = show.get("total_episodes", 1)
             
-            details = fetch_api(f"https://api.themoviedb.org/3/tv/{show['id']}?api_key={TMDB_KEY}")
-            tmdb_total = details.get("number_of_episodes", t_eps)
+            air_date = show.get("first_air_date") or ""
             
-            if tmdb_total != t_eps and tmdb_total > 0:
-                show["total_episodes"] = tmdb_total
-                needs_heal_soon = True
-                
-            if w_eps >= tmdb_total and tmdb_total > 0: continue
-            
-            found_next = False
-            watched_set = set(show.get("watched_episodes", []))
-            for s_info in [s for s in details.get("seasons", []) if s["season_number"] > 0]:
-                if found_next: break
-                for ep in fetch_api(f"https://api.themoviedb.org/3/tv/{show['id']}/season/{s_info['season_number']}?api_key={TMDB_KEY}").get("episodes", []):
-                    ep_code = f"S{s_info['season_number']}E{ep['episode_number']}"
-                    air_date = ep.get("air_date", "")
-                    if ep_code not in watched_set and air_date and air_date > TODAY:
-                        soon_tv.append({"item": show, "details": details, "ep": ep, "code": ep_code, "date": air_date})
-                        found_next = True; break
+            # Simple local check to avoid API rate limit. TBA/Unreleased shows have empty air_date.
+            if not air_date or air_date > TODAY:
+                soon_tv.append({"item": show, "date": air_date})
                         
-        if needs_heal_soon: save_db()
-
         if soon_sort == "Alphabetical": soon_tv.sort(key=lambda x: x["item"]["name"].lower())
         else: soon_tv.sort(key=lambda x: x["date"] or "2099-01-01", reverse=False)
 
@@ -1248,7 +1230,7 @@ with t_soon:
             clicked_soon = render_clickable_grid(soon_tv[:limit], "soon_tv_grid", is_nested=True)
             if clicked_soon:
                 st.session_state.active_actor = None
-                show_episode_details(clicked_soon['item']['id'], clicked_soon['item']['name'], clicked_soon['code'], clicked_soon['ep'], is_watched=False)
+                manage_show_dialog(clicked_soon['item']['id'], clicked_soon['item']['name'], fetch_api(f"https://api.themoviedb.org/3/tv/{clicked_soon['item']['id']}?api_key={TMDB_KEY}"))
 
             if len(soon_tv) > st.session_state.soon_tv_limit:
                 if st.button("Load More Upcoming Series", use_container_width=True, key="load_more_soon_tv"):
@@ -1258,9 +1240,10 @@ with t_soon:
         soon_mov = []
         for m in st.session_state.db["movies"]:
             if m.get("dropped", False) or m.get("watched", False): continue
-            r_date = m.get("release_date", "")
             
-            # Show movies releasing in the future AND movies with unannounced dates (TBA)
+            r_date = m.get("release_date") or ""
+            
+            # If r_date is empty (TBA) or in the future, it is Upcoming
             if not r_date or r_date > TODAY: 
                 soon_mov.append({"item": m, "date": r_date})
 
@@ -1408,10 +1391,13 @@ with t_tv:
         for show in shows:
             if lib_search_tv and lib_search_tv.lower() not in show["name"].lower(): continue
             
-            air_date = show.get("first_air_date", "")
+            air_date = show.get("first_air_date") or ""
             t_eps = show.get("total_episodes", 1) 
             w_eps = len(show.get("watched_episodes", []))
-            is_upcoming = bool(air_date and air_date > TODAY)
+            
+            # TBA or Future -> Upcoming
+            is_upcoming = bool(not air_date or air_date > TODAY)
+            
             is_completed = (w_eps >= t_eps and t_eps > 0)
             is_dropped = show.get("dropped", False)
             
@@ -1480,11 +1466,10 @@ with t_movies:
         for m in movies:
             if lib_search_mov and lib_search_mov.lower() not in m["name"].lower(): continue
             
-            r_date = m.get("release_date", "")
+            r_date = m.get("release_date") or ""
             is_watched = m.get("watched", False)
             
-            # Watchlist: Has release date, and date is in past
-            # Upcoming: No release date (TBA), or date is in future
+            # TBA or Future -> Upcoming
             is_upcoming = bool(not r_date or r_date > TODAY)
             is_dropped = m.get("dropped", False)
             
