@@ -189,9 +189,10 @@ st.markdown("""
     div[data-testid="column"]:has(.carousel-marker-cast) div[data-testid="stButton"] button {
         background: transparent !important; border: none !important; box-shadow: none !important; padding: 0 !important; margin: 0 !important; 
         height: auto !important; min-height: 0 !important; width: 100% !important; display: block !important; transform: none !important; 
-        text-transform: none !important;
     }
-    div[data-testid="column"]:has(.carousel-marker-cast) div[data-testid="stButton"] button * {
+    div[data-testid="column"]:has(.carousel-marker-cast) div[data-testid="stButton"] button p,
+    div[data-testid="column"]:has(.carousel-marker-cast) div[data-testid="stButton"] button span,
+    div[data-testid="column"]:has(.carousel-marker-cast) div[data-testid="stButton"] button div {
         font-size: 0.55rem !important;
         font-weight: 500 !important;
         text-transform: none !important;
@@ -203,7 +204,8 @@ st.markdown("""
         color: #aaa !important;
         margin: 0 !important;
     }
-    div[data-testid="column"]:has(.carousel-marker-cast) div[data-testid="stButton"] button:hover * { color: #FFC107 !important; text-decoration: underline !important;}
+    div[data-testid="column"]:has(.carousel-marker-cast) div[data-testid="stButton"] button:hover p,
+    div[data-testid="column"]:has(.carousel-marker-cast) div[data-testid="stButton"] button:hover span { color: #FFC107 !important; text-decoration: underline !important;}
     
     /* --- TABS OVERHAUL --- */
     div[data-testid="stTabs"] > div[data-baseweb="tab-list"], div[data-testid="stTabs"] > div[role="tablist"] { display: flex !important; width: 100vw !important; max-width: 100% !important; margin-left: -0.5rem !important; padding: 0 0 5px 0 !important; gap: 0 !important; overflow-x: hidden !important; background-color: rgba(8, 9, 12, 0.85) !important; backdrop-filter: blur(12px) !important; -webkit-backdrop-filter: blur(12px) !important; border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important; }
@@ -1275,6 +1277,8 @@ with t_search:
     with c_filter:
         search_type = st.selectbox("Search in:", ["TV Shows", "Movies"], label_visibility="collapsed", key="search_filter_box")
 
+    st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
+
     if search_query:
         endpoint = "tv" if search_type == "TV Shows" else "movie"
         results = fetch_api(f"https://api.themoviedb.org/3/search/{endpoint}?api_key={TMDB_KEY}&query={search_query}").get("results", [])
@@ -1363,6 +1367,8 @@ with t_tv:
         st.session_state.tv_tab = selected_tv_tab
         st.rerun()
         
+    st.markdown("<div style='margin-top: -22px;'></div>", unsafe_allow_html=True)
+    
     c_search, c_sort = st.columns([6, 4], gap="small")
     with c_search:
         st.markdown('<span class="search-container-hook"></span>', unsafe_allow_html=True)
@@ -1427,6 +1433,8 @@ with t_movies:
     if selected_mov_tab != st.session_state.mov_tab:
         st.session_state.mov_tab = selected_mov_tab
         st.rerun()
+
+    st.markdown("<div style='margin-top: -22px;'></div>", unsafe_allow_html=True)
         
     c_search, c_sort = st.columns([6, 4], gap="small")
     with c_search:
