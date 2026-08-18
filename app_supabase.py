@@ -200,24 +200,26 @@ st.markdown("""
     }
     
     /* OVERRIDE FOR CAST NAMES TO FIT AND NOT BE UPPERCASE */
-    div[data-testid="column"]:has(.carousel-marker-cast) div[data-testid="stButton"] button {
-        background: transparent !important; border: none !important; box-shadow: none !important; padding: 0 !important; margin: 0 !important; 
-        height: auto !important; min-height: 0 !important; width: 100% !important; display: block !important; transform: none !important; 
-    }
-    div[data-testid="column"]:has(.carousel-marker-cast) div[data-testid="stButton"] button p,
-    div[data-testid="column"]:has(.carousel-marker-cast) div[data-testid="stButton"] button div,
-    div[data-testid="column"]:has(.carousel-marker-cast) div[data-testid="stButton"] button span {
+    .cast-btn-wrapper button, .cast-btn-wrapper button * {
+        background: transparent !important; 
+        border: none !important; 
+        box-shadow: none !important; 
+        padding: 0 !important; 
+        margin: 0 !important; 
+        height: auto !important; 
+        min-height: 0 !important; 
+        width: 100% !important; 
+        display: block !important; 
+        transform: none !important; 
+        text-transform: none !important;
         font-size: 0.55rem !important;
         font-weight: 500 !important;
-        text-transform: none !important;
         letter-spacing: normal !important;
         white-space: pre-wrap !important;
         line-height: 1.1 !important;
         color: #aaa !important;
-        margin: 0 !important;
     }
-    div[data-testid="column"]:has(.carousel-marker-cast) div[data-testid="stButton"] button:hover p,
-    div[data-testid="column"]:has(.carousel-marker-cast) div[data-testid="stButton"] button:hover span { 
+    .cast-btn-wrapper button:hover * { 
         color: #FFC107 !important; 
         text-decoration: underline !important;
     }
@@ -549,7 +551,9 @@ def show_cast_horizontal(cast_list, key_prefix, limit=15):
                 html_char = f'<div style="font-size: 0.55rem; color: #FFC107; font-weight: 700; line-height: 1.1; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{char_name}</div>'
                 st.markdown(html_char, unsafe_allow_html=True)
             
-            st.button(actor.get('name', 'Unknown'), key=f"cast_{key_prefix}_{actor['id']}_{idx}", on_click=cb_set_active_actor, args=(actor['id'],), use_container_width=True, type="tertiary")
+            st.markdown('<div class="cast-btn-wrapper">', unsafe_allow_html=True)
+            st.button(str(actor.get('name', 'Unknown')).title(), key=f"cast_{key_prefix}_{actor['id']}_{idx}", on_click=cb_set_active_actor, args=(actor['id'],), use_container_width=True, type="tertiary")
+            st.markdown('</div>', unsafe_allow_html=True)
 
 def render_clickable_grid(data_list, key_prefix, layout="grid", is_nested=False):
     if not data_list: return None
@@ -968,10 +972,11 @@ def manage_show_dialog(show_id, show_name, details):
 def show_movie_details(m_id, m_name, details=None, is_watched=False):
     if not details: details = fetch_api(f"https://api.themoviedb.org/3/movie/{m_id}?api_key={TMDB_KEY}")
     
+    current_movie = next((m for m in st.session_state.db["movies"] if str(m["id"]) == str(m_id)), None)
+    is_watched = current_movie.get("watched", False) if current_movie else False
+    
     badges = f'<span class="badge badge-gold">{details.get("runtime", 0)} mins</span>' + "".join([f'<span class="badge">{g["name"]}</span>' for g in details.get("genres", [])])
     render_apple_tv_header(details.get("backdrop_path"), details.get("poster_path"), m_name, badges)
-    
-    current_movie = next((m for m in st.session_state.db["movies"] if str(m["id"]) == str(m_id)), None)
     
     if not current_movie:
         if st.button("➕ Add to Library", use_container_width=True, type="primary"):
@@ -1242,7 +1247,8 @@ with t_soon:
         else: soon_tv.sort(key=lambda x: x["date"] or "2099-01-01", reverse=False)
 
         st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
-        if not soon_tv: st.info("No upcoming episodes scheduled yet.")
+        if not soon_tv: 
+            st.markdown("<div style='padding:20px; text-align:center; color:#888; font-weight:600;'>Your library has no upcoming episodes.</div>", unsafe_allow_html=True)
         else:
             limit = st.session_state.soon_tv_limit
             clicked_soon = render_clickable_grid(soon_tv[:limit], "soon_tv_grid", is_nested=True)
@@ -1265,7 +1271,16 @@ with t_soon:
         else: soon_mov.sort(key=lambda x: x["date"] or "2099-01-01", reverse=False)
 
         st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
-        if not soon_mov: st.info("No upcoming movies scheduled yet.")
+        if not soon_mov: 
+            st.markdown("<div style='padding:20px; text-align:center; color:#888; font-weight:600;'>Your library has no upcoming movies. Here are global upcoming hits:</div>", unsafe_allow_html=True)
+            upc_api = fetch_api(f"https://api.themoviedb.org/3/movie/upcoming?api_key={TMDB_KEY}")
+            if upc_api.get("results"):
+                clean_api = [{"id": r["id"], "name": r.get("title"), "poster_path": r.get("poster_path")} for r in upc_api["results"]]
+                clk = render_clickable_grid(clean_api, "soon_api_mov")
+                if clk:
+                    st.session_state.active_actor = None
+                    st.session_state.open_dialog_trigger = {"t": "movie", "id": clk["id"], "title": clk["name"]}
+                    st.rerun()
         else:
             limit = st.session_state.soon_mov_limit
             clicked_soon_m = render_clickable_grid(soon_mov[:limit], "soon_mov_grid", is_nested=True)
@@ -1307,7 +1322,7 @@ with t_search:
                 title = clicked_search["name"]
                 details = fetch_api(f"https://api.themoviedb.org/3/{'tv' if search_type == 'TV Shows' else 'movie'}/{item_id}?api_key={TMDB_KEY}")
                 if search_type == "TV Shows": manage_show_dialog(item_id, title, details)
-                else: show_movie_details(item_id, title, details, is_watched=False)
+                else: show_movie_details(item_id, title, details) # Auto-detects watched status
     else:
         if "discover_genre" not in st.session_state: st.session_state.discover_genre = "🔥 Trending"
         genres = ["🔥 Trending", "🤣 Comedy", "💥 Action", "🐉 Sci-Fi", "🔪 Thriller", "👻 Horror"]
@@ -1331,7 +1346,7 @@ with t_search:
                 i_title = clicked_car.get("name") if c_type == "tv" else clicked_car.get("title")
                 details = fetch_api(f"https://api.themoviedb.org/3/{c_type}/{item_id}?api_key={TMDB_KEY}")
                 if c_type == "tv": manage_show_dialog(item_id, i_title, details)
-                else: show_movie_details(item_id, i_title, details, is_watched=False)
+                else: show_movie_details(item_id, i_title, details)
             
             if limit < len(items):
                 if st.button("＋ Load More", key=f"more_{safe_title}", use_container_width=True):
@@ -1383,6 +1398,8 @@ with t_tv:
         st.session_state.tv_tab = selected_tv_tab
         st.rerun()
         
+    st.markdown("<div style='margin-bottom: -20px !important;'></div>", unsafe_allow_html=True)
+    
     c_search, c_sort = st.columns([6, 4], gap="small")
     with c_search:
         st.markdown('<span class="search-container-hook"></span>', unsafe_allow_html=True)
@@ -1392,6 +1409,8 @@ with t_tv:
             st.button("✖", key=f"clr_lib_tv_{st.session_state.lib_tv_reset_ctr}", on_click=cb_clear_lib_tv)
     with c_sort:
         tv_sort = st.selectbox("Sort", ["Release Date", "Alphabetical", "Recently Added"], label_visibility="collapsed", key="sort_tv_lib")
+    
+    st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
     
     shows = st.session_state.db.get("shows", [])
     if not shows: st.info("Your TV library is empty.")
@@ -1420,8 +1439,7 @@ with t_tv:
         elif tv_sort == "Recently Added": display_shows.reverse()
                 
         if not display_shows: 
-            if lib_search_tv: st.info(f"No shows match '{lib_search_tv}' in this tab.")
-            else: st.info(f"Your {st.session_state.tv_tab.lower()} is currently empty.")
+            st.markdown(f"<div style='text-align:center; padding: 30px; color: #888; font-weight: 600; font-size: 1.2rem;'>Your {st.session_state.tv_tab} list is empty.</div>", unsafe_allow_html=True)
         else:
             clean_tv = [{"id": s["id"], "name": s["name"], "poster_path": s.get("poster_path")} for s, t_eps, w_eps in display_shows[:st.session_state.tv_lib_limit]]
             clicked_lib_tv = render_clickable_grid(clean_tv, f"lib_tv_{st.session_state.tv_tab}_{st.session_state.lib_tv_reset_ctr}")
@@ -1448,6 +1466,8 @@ with t_movies:
         st.session_state.mov_tab = selected_mov_tab
         st.rerun()
 
+    st.markdown("<div style='margin-bottom: -20px !important;'></div>", unsafe_allow_html=True)
+        
     c_search, c_sort = st.columns([6, 4], gap="small")
     with c_search:
         st.markdown('<span class="search-container-hook"></span>', unsafe_allow_html=True)
@@ -1457,6 +1477,8 @@ with t_movies:
             st.button("✖", key=f"clr_lib_mov_{st.session_state.lib_mov_reset_ctr}", on_click=cb_clear_lib_mov)
     with c_sort:
         mov_sort = st.selectbox("Sort", ["Release Date", "Alphabetical", "Recently Added"], label_visibility="collapsed", key="sort_mov_lib")
+    
+    st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
     
     movies = st.session_state.db.get("movies", [])
     if not movies: st.info("Your Movie library is empty.")
@@ -1483,15 +1505,14 @@ with t_movies:
         elif mov_sort == "Recently Added": display_movies.reverse()
                 
         if not display_movies: 
-            if lib_search_mov: st.info(f"No movies match '{lib_search_mov}' in this tab.")
-            else: st.info(f"Your {st.session_state.mov_tab.lower()} is currently empty.")
+            st.markdown(f"<div style='text-align:center; padding: 30px; color: #888; font-weight: 600; font-size: 1.2rem;'>Your {st.session_state.mov_tab} list is empty.</div>", unsafe_allow_html=True)
         else:
             clean_mov = [{"id": m["id"], "name": m["name"], "poster_path": m.get("poster_path"), "is_w": w} for m, w in display_movies[:st.session_state.mov_lib_limit]]
             clicked_lib_mov = render_clickable_grid(clean_mov, f"lib_mov_{st.session_state.mov_tab}_{st.session_state.lib_mov_reset_ctr}")
             
             if clicked_lib_mov:
                 st.session_state.active_actor = None
-                show_movie_details(clicked_lib_mov['id'], clicked_lib_mov['name'], details=None, is_watched=clicked_lib_mov["is_w"])
+                show_movie_details(clicked_lib_mov['id'], clicked_lib_mov['name'], details=None) # NO OVERRIDE
                                 
             if len(display_movies) > st.session_state.mov_lib_limit:
                 if st.button("Load 50 More", use_container_width=True, key="load_more_mov_lib"):
