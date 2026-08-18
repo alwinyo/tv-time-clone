@@ -127,7 +127,7 @@ st.markdown("""
     }
     
     /* --- SLEEK PILL NAVIGATION (FOR TABS & FILTERS) - PERFECT 50/50 GRID --- */
-    div[data-testid="stRadio"] { margin-bottom: -20px !important; }
+    div[data-testid="stRadio"] { margin-bottom: -8px !important; }
     div[role="radiogroup"] {
         display: flex !important; 
         flex-direction: row !important; 
@@ -166,8 +166,8 @@ st.markdown("""
     
     /* --- COMPACT SEARCH BAR --- */
     div[data-testid="stHorizontalBlock"]:has(.search-container-hook) {
-        margin-top: -25px !important;
-        margin-bottom: -10px !important;
+        margin-top: -8px !important;
+        margin-bottom: 0px !important;
     }
 
     /* --- UNIVERSAL BUTTONS --- */
@@ -200,19 +200,13 @@ st.markdown("""
     }
     
     /* OVERRIDE FOR CAST NAMES TO FIT AND NOT BE UPPERCASE */
-    div[data-testid="column"]:has(.carousel-marker-cast) div[data-testid="stButton"] button[kind="tertiary"] {
-        background: transparent !important; 
-        border: none !important; 
-        box-shadow: none !important; 
-        padding: 0 !important; 
-        margin: 0 !important; 
-        height: auto !important; 
-        min-height: 0 !important; 
-        width: 100% !important; 
-        display: block !important; 
-        transform: none !important; 
+    div[data-testid="column"]:has(.carousel-marker-cast) div[data-testid="stButton"] button {
+        background: transparent !important; border: none !important; box-shadow: none !important; padding: 0 !important; margin: 0 !important; 
+        height: auto !important; min-height: 0 !important; width: 100% !important; display: block !important; transform: none !important; 
     }
-    div[data-testid="column"]:has(.carousel-marker-cast) div[data-testid="stButton"] button[kind="tertiary"] p {
+    div[data-testid="column"]:has(.carousel-marker-cast) div[data-testid="stButton"] button p,
+    div[data-testid="column"]:has(.carousel-marker-cast) div[data-testid="stButton"] button div,
+    div[data-testid="column"]:has(.carousel-marker-cast) div[data-testid="stButton"] button span {
         font-size: 0.55rem !important;
         font-weight: 500 !important;
         text-transform: none !important;
@@ -222,7 +216,8 @@ st.markdown("""
         color: #aaa !important;
         margin: 0 !important;
     }
-    div[data-testid="column"]:has(.carousel-marker-cast) div[data-testid="stButton"] button[kind="tertiary"]:hover p { 
+    div[data-testid="column"]:has(.carousel-marker-cast) div[data-testid="stButton"] button:hover p,
+    div[data-testid="column"]:has(.carousel-marker-cast) div[data-testid="stButton"] button:hover span { 
         color: #FFC107 !important; 
         text-decoration: underline !important;
     }
@@ -1452,7 +1447,7 @@ with t_movies:
     if selected_mov_tab != st.session_state.mov_tab:
         st.session_state.mov_tab = selected_mov_tab
         st.rerun()
-        
+
     c_search, c_sort = st.columns([6, 4], gap="small")
     with c_search:
         st.markdown('<span class="search-container-hook"></span>', unsafe_allow_html=True)
