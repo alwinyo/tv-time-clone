@@ -127,6 +127,7 @@ st.markdown("""
     }
     
     /* --- SLEEK PILL NAVIGATION (FOR TABS & FILTERS) - PERFECT 50/50 GRID --- */
+    div[data-testid="stRadio"] { margin-bottom: -20px !important; }
     div[role="radiogroup"] {
         display: flex !important; 
         flex-direction: row !important; 
@@ -163,6 +164,12 @@ st.markdown("""
     div[role="radiogroup"] > label:has(input:checked) p { color: #000 !important; font-weight: 800 !important; }
     div[role="radiogroup"] > label p { font-size: 0.75rem !important; font-weight: 700 !important; margin: 0 !important; color: #EDEDED !important; white-space: nowrap !important; text-transform: uppercase !important; letter-spacing: 0.5px !important;}
     
+    /* --- COMPACT SEARCH BAR --- */
+    div[data-testid="stHorizontalBlock"]:has(.search-container-hook) {
+        margin-top: -25px !important;
+        margin-bottom: -10px !important;
+    }
+
     /* --- UNIVERSAL BUTTONS --- */
     div[data-testid="stButton"] button {
         border-radius: 12px !important;
@@ -192,8 +199,8 @@ st.markdown("""
         border-color: #FFC107 !important;
     }
     
-    /* --- CAST NAMES NORMALIZED (FIX FOR SCREENSHOT) --- */
-    div[data-testid="stButton"] button[kind="tertiary"] {
+    /* OVERRIDE FOR CAST NAMES TO FIT AND NOT BE UPPERCASE */
+    div[data-testid="column"]:has(.carousel-marker-cast) div[data-testid="stButton"] button[kind="tertiary"] {
         background: transparent !important; 
         border: none !important; 
         box-shadow: none !important; 
@@ -205,7 +212,7 @@ st.markdown("""
         display: block !important; 
         transform: none !important; 
     }
-    div[data-testid="stButton"] button[kind="tertiary"] p {
+    div[data-testid="column"]:has(.carousel-marker-cast) div[data-testid="stButton"] button[kind="tertiary"] p {
         font-size: 0.55rem !important;
         font-weight: 500 !important;
         text-transform: none !important;
@@ -215,7 +222,7 @@ st.markdown("""
         color: #aaa !important;
         margin: 0 !important;
     }
-    div[data-testid="stButton"] button[kind="tertiary"]:hover p { 
+    div[data-testid="column"]:has(.carousel-marker-cast) div[data-testid="stButton"] button[kind="tertiary"]:hover p { 
         color: #FFC107 !important; 
         text-decoration: underline !important;
     }
@@ -1355,7 +1362,6 @@ with t_search:
             k_tv = fetch_api(f"https://api.themoviedb.org/3/discover/tv?api_key={TMDB_KEY}&with_original_language=ko&first_air_date.gte={start_month}&first_air_date.lte={end_month_str}&sort_by=popularity.desc")
             if k_tv.get("results"): render_carousel(f"🇰🇷 K-Dramas ({current_date.strftime('%B %Y')})", k_tv["results"], "tv")
             
-            # API FIX FOR K-MOVIES:
             k_mov = fetch_api(f"https://api.themoviedb.org/3/discover/movie?api_key={TMDB_KEY}&with_original_language=ko&primary_release_year={current_date.year}&primary_release_month={current_date.month}&sort_by=popularity.desc")
             valid_k_mov = [m for m in k_mov.get("results", []) if m.get("poster_path")]
             if valid_k_mov: render_carousel(f"🇰🇷 K-Movies ({current_date.strftime('%B %Y')})", valid_k_mov, "movie")
@@ -1382,8 +1388,6 @@ with t_tv:
         st.session_state.tv_tab = selected_tv_tab
         st.rerun()
         
-    st.markdown("<div style='margin-top: -45px;'></div>", unsafe_allow_html=True)
-    
     c_search, c_sort = st.columns([6, 4], gap="small")
     with c_search:
         st.markdown('<span class="search-container-hook"></span>', unsafe_allow_html=True)
@@ -1393,8 +1397,6 @@ with t_tv:
             st.button("✖", key=f"clr_lib_tv_{st.session_state.lib_tv_reset_ctr}", on_click=cb_clear_lib_tv)
     with c_sort:
         tv_sort = st.selectbox("Sort", ["Release Date", "Alphabetical", "Recently Added"], label_visibility="collapsed", key="sort_tv_lib")
-    
-    st.markdown("<div style='margin-top: -15px;'></div>", unsafe_allow_html=True)
     
     shows = st.session_state.db.get("shows", [])
     if not shows: st.info("Your TV library is empty.")
@@ -1450,8 +1452,6 @@ with t_movies:
     if selected_mov_tab != st.session_state.mov_tab:
         st.session_state.mov_tab = selected_mov_tab
         st.rerun()
-
-    st.markdown("<div style='margin-top: -45px;'></div>", unsafe_allow_html=True)
         
     c_search, c_sort = st.columns([6, 4], gap="small")
     with c_search:
@@ -1462,8 +1462,6 @@ with t_movies:
             st.button("✖", key=f"clr_lib_mov_{st.session_state.lib_mov_reset_ctr}", on_click=cb_clear_lib_mov)
     with c_sort:
         mov_sort = st.selectbox("Sort", ["Release Date", "Alphabetical", "Recently Added"], label_visibility="collapsed", key="sort_mov_lib")
-    
-    st.markdown("<div style='margin-top: -15px;'></div>", unsafe_allow_html=True)
     
     movies = st.session_state.db.get("movies", [])
     if not movies: st.info("Your Movie library is empty.")
