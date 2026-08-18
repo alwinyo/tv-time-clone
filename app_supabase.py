@@ -33,6 +33,7 @@ st.markdown("""
     }
     
     .block-container { padding: 1rem 0.5rem 5rem 0.5rem !important; max-width: 100vw !important; overflow-x: hidden !important; }
+    hr { margin: 0.8rem 0 !important; border-color: rgba(255, 255, 255, 0.1) !important; }
     h1, h2, h3 { padding-top: 0.6rem !important; padding-bottom: 0.3rem !important; margin-bottom: 0 !important; }
     .stMarkdown p { margin-bottom: 0.5rem !important; }
     
@@ -129,6 +130,33 @@ st.markdown("""
     }
     div[role="radiogroup"] > label:has(input:checked) p { color: #000 !important; font-weight: 800 !important; }
     div[role="radiogroup"] > label p { font-size: 0.75rem !important; font-weight: 700 !important; margin: 0 !important; color: #EDEDED !important; white-space: nowrap !important; }
+    
+    /* --- UNIVERSAL PILL BUTTONS (2x2 / 50-50 GRIDS) --- */
+    div[data-testid="stButton"] button {
+        border-radius: 12px !important;
+        font-weight: 800 !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.5px !important;
+        transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1) !important;
+        min-height: 40px !important;
+    }
+    div[data-testid="stButton"] button[kind="primary"] {
+        background: linear-gradient(135deg, #FFD54F 0%, #FFC107 100%) !important;
+        color: #000 !important;
+        border: none !important;
+        box-shadow: 0 4px 10px rgba(255, 193, 7, 0.3) !important;
+        transform: scale(1.02);
+    }
+    div[data-testid="stButton"] button[kind="secondary"] {
+        background: rgba(255,255,255,0.05) !important;
+        border: 1px solid rgba(255,255,255,0.1) !important;
+        color: #EDEDED !important;
+    }
+    div[data-testid="stButton"] button[kind="secondary"]:hover {
+        background: rgba(255,255,255,0.1) !important;
+        color: #FFF !important;
+        border-color: #FFC107 !important;
+    }
     
     /* --- TABS OVERHAUL --- */
     div[data-testid="stTabs"] > div[data-baseweb="tab-list"], div[data-testid="stTabs"] > div[role="tablist"] { display: flex !important; width: 100vw !important; max-width: 100% !important; margin-left: -0.5rem !important; padding: 0 0 5px 0 !important; gap: 0 !important; overflow-x: hidden !important; background-color: rgba(8, 9, 12, 0.85) !important; backdrop-filter: blur(12px) !important; -webkit-backdrop-filter: blur(12px) !important; border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important; }
@@ -418,7 +446,284 @@ def cb_clear_lib_tv(): st.session_state.lib_tv_reset_ctr += 1
 def cb_clear_lib_mov(): st.session_state.lib_mov_reset_ctr += 1
 def cb_toggle_ep_info(sid, ecode): st.session_state[f"view_info_{sid}_{ecode}"] = not st.session_state.get(f"view_info_{sid}_{ecode}", False)
 
-# --- CENTRALIZED MANAGEMENT DIALOGS ---
+# --- VISUAL HELPERS ---
+def render_badges(items, is_gold=False):
+    css_class = "badge badge-gold" if is_gold else "badge"
+    html = "".join([f'<span class="{css_class}">{item}</span>' for item in items])
+    st.markdown(html, unsafe_allow_html=True)
+
+def display_poster(path, width=185):
+    if path and str(path).lower() not in ["none", "null", ""]: 
+        st.image(f"https://image.tmdb.org/t/p/w{width}{path}", use_container_width=True)
+    else: 
+        html = (
+            f'<div style="background-color: rgba(255,255,255,0.05); border-radius:8px; width:100%; '
+            f'aspect-ratio: 2/3; display:flex; align-items:center; justify-content:center; color:#555; '
+            f'font-size:0.8rem; text-align:center; margin-bottom:5px;">No Image</div>'
+        )
+        st.markdown(html, unsafe_allow_html=True)
+
+def show_cast_horizontal(cast_list, key_prefix, limit=15):
+    if not cast_list: return
+    cols = st.columns(len(cast_list[:limit]))
+    for idx, actor in enumerate(cast_list[:limit]):
+        with cols[idx]:
+            st.markdown('<span class="carousel-marker-cast"></span>', unsafe_allow_html=True)
+            img_url = f"https://image.tmdb.org/t/p/w185{actor['profile_path']}" if actor.get("profile_path") else "https://via.placeholder.com/185x278/222222/888888?text=No+Photo"
+            encoded_name = str(actor.get('name', '')).replace(" ", "+")
+            imdb_url = f"https://www.imdb.com/find/?q={encoded_name}"
+            char_name = str(actor.get('character', '')).strip()
+            
+            html_img = (
+                f'<a href="{imdb_url}" target="_blank">'
+                f'<img src="{img_url}" style="width: 85px; height: 127px; border-radius: 8px; object-fit: cover; box-shadow: 0 4px 6px rgba(0,0,0,0.3); margin-bottom: 6px; transition: transform 0.2s;">'
+                f'</a>'
+            )
+            st.markdown(html_img, unsafe_allow_html=True)
+            
+            if char_name: 
+                html_char = f'<div style="font-size: 0.55rem; color: #FFC107; font-weight: 700; line-height: 1.1; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{char_name}</div>'
+                st.markdown(html_char, unsafe_allow_html=True)
+            
+            st.button(actor.get('name', 'Unknown'), key=f"cast_{key_prefix}_{actor['id']}_{idx}", on_click=cb_set_active_actor, args=(actor['id'],), use_container_width=True)
+
+def render_clickable_grid(data_list, key_prefix, layout="grid", is_nested=False):
+    if not data_list: return None
+    paths, titles = [], []
+    for d in data_list:
+        if is_nested:
+            poster = d["item"].get("poster_path") or d.get("details", {}).get("poster_path")
+            name = d["item"].get("name", "Unknown")
+        else:
+            poster = d.get("poster_path") or d.get("poster")
+            name = d.get("name") or d.get("title") or "Unknown"
+        
+        paths.append(f"https://image.tmdb.org/t/p/w342{poster}" if poster else "https://via.placeholder.com/342x513/222222/555555?text=No+Poster")
+        titles.append(name)
+
+    div_style = {"display": "flex", "flex-wrap": "wrap", "gap": "10px", "justify-content": "center"} if layout == "grid" else {"display": "flex", "overflow-x": "auto", "gap": "10px", "padding-bottom": "15px", "scrollbar-width": "none"}
+    img_style = {"width": "110px", "border-radius": "8px", "box-shadow": "0 6px 15px rgba(0,0,0,0.5)", "cursor": "pointer", "transition": "transform 0.2s cubic-bezier(0.25, 0.8, 0.25, 1)", "object-fit": "cover", "aspect-ratio": "2/3"}
+    
+    clicked = clickable_images(paths, titles=titles, div_style=div_style, img_style=img_style, key=key_prefix)
+    
+    session_key = f"clk_{key_prefix}"
+    if clicked > -1 and st.session_state.get(session_key) != clicked:
+        st.session_state[session_key] = clicked
+        return data_list[clicked]
+    return None
+
+def render_inline_actor_pokedex(actor_id):
+    details = fetch_api(f"https://api.themoviedb.org/3/person/{actor_id}?api_key={TMDB_KEY}")
+    credits = fetch_api(f"https://api.themoviedb.org/3/person/{actor_id}/combined_credits?api_key={TMDB_KEY}")
+    
+    db_shows = {str(s["id"]): s for s in st.session_state.db["shows"]}
+    db_movies = {str(m["id"]): m for m in st.session_state.db["movies"]}
+    
+    owned_items = []
+    seen_ids = set()
+    for c in credits.get("cast", []):
+        cid = str(c["id"])
+        if c["media_type"] == "tv" and cid in db_shows and cid not in seen_ids:
+            owned_items.append({"id": cid, "title": db_shows[cid]["name"], "type": "tv", "poster": db_shows[cid].get("poster_path")})
+            seen_ids.add(cid)
+        elif c["media_type"] == "movie" and cid in db_movies and cid not in seen_ids:
+            owned_items.append({"id": cid, "title": db_movies[cid]["name"], "type": "movie", "poster": db_movies[cid].get("poster_path")})
+            seen_ids.add(cid)
+            
+    st.markdown("<hr style='margin: 0.5rem 0; border-color: #FFC107;'>", unsafe_allow_html=True)
+    with st.container(border=True):
+        col_title, col_btn = st.columns([8, 2])
+        with col_title: 
+            html_title = f"<h4 style='color: #FFD54F;'>{details.get('name', 'Actor Profile')}</h4>"
+            st.markdown(html_title, unsafe_allow_html=True)
+        with col_btn: 
+            st.button("✖ Close", key=f"close_act_{actor_id}", on_click=cb_close_active_actor, use_container_width=True)
+        
+        c1, c2 = st.columns([1, 2])
+        with c1:
+            img_url = f"https://image.tmdb.org/t/p/w185{details.get('profile_path')}" if details.get("profile_path") else "https://via.placeholder.com/185x278/222222/555555?text=No+Image"
+            st.markdown(f'<img src="{img_url}" style="width: 100%; border-radius: 8px;">', unsafe_allow_html=True)
+        with c2:
+            st.caption(f"**Born:** {details.get('birthday', 'Unknown')}")
+            bio = details.get("biography", "")
+            if len(bio) > 150: bio = bio[:150] + "..."
+            st.write(bio if bio else "No biography available.")
+            
+        if owned_items:
+            st.markdown(f"**📚 In Your Library ({len(owned_items)})**")
+            clicked_own = render_clickable_grid(owned_items, f"act_own_{actor_id}", layout="carousel")
+            if clicked_own:
+                st.session_state.active_actor = None
+                st.session_state.open_dialog_trigger = {"t": clicked_own["type"], "id": clicked_own['id'], "title": clicked_own['title']}
+                st.rerun()
+        
+        st.markdown("**🌟 Famous Roles**")
+        top_credits = sorted(credits.get("cast", []), key=lambda x: x.get("popularity", 0), reverse=True)[:15]
+        if top_credits:
+            clicked_role = render_clickable_grid(top_credits, f"act_roles_{actor_id}", layout="carousel")
+            if clicked_role:
+                st.session_state.active_actor = None
+                c_type = clicked_role.get("media_type")
+                i_title = clicked_role.get("name") if c_type == "tv" else clicked_role.get("title")
+                st.session_state.open_dialog_trigger = {"t": c_type, "id": clicked_role['id'], "title": i_title}
+                st.rerun()
+
+def render_poster_card(title, poster_path, subtitle="", progress_pct=-1.0):
+    img_url = f"https://image.tmdb.org/t/p/w342{poster_path}" if poster_path else "https://via.placeholder.com/342x513/222222/555555?text=No+Poster"
+    prog_width = min(progress_pct, 1.0) * 100
+    prog_html = f'<div style="position: absolute; bottom: 0; left: 0; height: 4px; width: {prog_width}%; background: #FFC107; box-shadow: 0 0 8px #FFC107; z-index: 30;"></div>' if progress_pct >= 0 else ''
+    sub_html = f'<div style="color: #FFC107; font-weight: 700; font-size: 0.6rem; margin-top: 2px;">{subtitle}</div>' if subtitle else ''
+    
+    html = (
+        f'<div style="position: relative; aspect-ratio: 2/3; background-color: #111; border-radius: 8px; overflow: hidden;">'
+        f'<img src="{img_url}" style="width: 100%; height: 100%; object-fit: cover; display: block;">'
+        f'<div style="position: absolute; bottom: 0; left: 0; right: 0; height: 60%; background: linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0) 100%); z-index: 1;"></div>'
+        f'<div class="poster-text" style="position: absolute; bottom: 10px; left: 10px; right: 10px; z-index: 2;">'
+        f'<div style="color: white; font-weight: 800; font-size: 0.75rem; line-height: 1.2; text-shadow: 0 2px 4px rgba(0,0,0,0.8); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">{title}</div>'
+        f'{sub_html}'
+        f'</div>'
+        f'{prog_html}'
+        f'</div>'
+    )
+    st.markdown(html, unsafe_allow_html=True)
+
+def render_apple_tv_header(backdrop_path, poster_path, title, badges_html):
+    bg = f"https://image.tmdb.org/t/p/w780{backdrop_path}" if backdrop_path else f"https://image.tmdb.org/t/p/w342{poster_path}"
+    post = f"https://image.tmdb.org/t/p/w185{poster_path}" if poster_path else "https://via.placeholder.com/185x278/222222/555555?text=No+Poster"
+    blur = 0 if backdrop_path else 15
+    
+    html = (
+        f'<div style="margin: -24px -24px 0 -24px; position: relative; overflow: hidden;">'
+        f'<div style="width: 100%; height: 220px; background-image: url(\'{bg}\'); background-size: cover; background-position: center; filter: brightness(0.6) blur({blur}px);"></div>'
+        f'<div style="position: absolute; bottom: 0; left: 0; right: 0; height: 120px; background: linear-gradient(to top, rgba(15,17,22,1) 0%, rgba(15,17,22,0) 100%);"></div>'
+        f'<div style="position: absolute; bottom: -20px; left: 20px; right: 20px; display: flex; align-items: flex-end; gap: 15px; z-index: 10;">'
+        f'<img src="{post}" style="width: 105px; height: 157px; border-radius: 8px; box-shadow: 0 8px 20px rgba(0,0,0,0.8); border: 1px solid rgba(255,255,255,0.1); object-fit: cover;">'
+        f'<div style="padding-bottom: 25px; flex: 1; min-width: 0;">'
+        f'<div style="margin: 0; padding: 0; font-size: 1.4rem; font-weight: 800; line-height: 1.1; text-shadow: 0 2px 4px rgba(0,0,0,0.8); color: white; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">{title}</div>'
+        f'<div style="margin-top: 6px;">{badges_html}</div>'
+        f'</div>'
+        f'</div>'
+        f'</div>'
+        f'<div style="height: 35px;"></div>'
+    )
+    st.markdown(html, unsafe_allow_html=True)
+
+# --- DIALOGS ---
+@st.dialog("🌙 Monthly Wrap-Up")
+def show_monthly_recap_dialog(month_key, month_title, stats, recap_id):
+    st.markdown(f"## {month_title} Recap")
+    st.write("Here is a quick look at your screening inventory from last month:")
+    tv_count, mov_count = stats.get("tv", 0), stats.get("movie", 0)
+    total_mins = (tv_count * 45) + (mov_count * 120)
+    
+    c1, c2 = st.columns(2)
+    with c1: st.metric("📺 Episodes Logged", f"{tv_count} eps")
+    with c2: st.metric("🎬 Movies Watched", f"{mov_count} titles")
+    st.markdown(f"⏳ **Screen Time Investment:** ~`{total_mins // 60}` hours spent streaming.")
+    
+    show_counts, plat_counts, feel_counts = {}, {}, {}
+    for h in st.session_state.db.get("history", []):
+        if str(h.get("d", "")).startswith(month_key):
+            if h.get("t") == "s": show_counts[h["i"]] = show_counts.get(h["i"], 0) + 1
+            if h.get("p") and h.get("p") != "None": plat_counts[h["p"]] = plat_counts.get(h["p"], 0) + 1
+            if h.get("f") and h.get("f") != "None": feel_counts[h["f"]] = feel_counts.get(h["f"], 0) + 1
+            
+    if show_counts:
+        top_show_id = max(show_counts, key=show_counts.get)
+        show = next((s for s in st.session_state.db["shows"] if str(s["id"]) == str(top_show_id)), None)
+        if show: st.markdown(f"🔥 **Top Binge Focus:** *{show['name']}* ({show_counts[top_show_id]} episodes)")
+    if plat_counts: st.markdown(f"📡 **Platform Loyalty:** Most watched on **{max(plat_counts, key=plat_counts.get)}**")
+    if feel_counts: st.markdown(f"🎭 **Monthly Vibe:** **{max(feel_counts, key=feel_counts.get)}**")
+            
+    st.divider()
+    is_seen = recap_id in st.session_state.db.get("seen_recaps", [])
+    if st.button("✖ Close Recap" if is_seen else "Sweet!", use_container_width=True, key=f"close_month_recap_{recap_id}"):
+        if not is_seen:
+            st.session_state.db.setdefault("seen_recaps", []).append(recap_id)
+            save_db()
+        st.rerun()
+
+@st.dialog("🏆 Your Cinematic Wrapped")
+def show_yearly_recap_dialog(year, y_tv, y_mov, recap_id):
+    st.markdown(f"# 🍿 {year} YEAR IN REVIEW")
+    st.write("You smashed your theater goals last year! Check out your custom achievements:")
+    total_time = (y_tv * 45) + (y_mov * 120)
+    days = total_time // 1440
+    
+    html_hero = (
+        f'<div style="background: linear-gradient(135deg, #FFD54F 0%, #FFC107 100%); border-radius: 14px; padding: 22px; color: black; text-align: center; margin-bottom: 15px; box-shadow: 0 4px 15px rgba(255,193,7,0.3);">'
+        f'<div style="font-size: 2.6rem; font-weight: 900; line-height:1;">{y_tv + y_mov:,}</div>'
+        f'<div style="font-size: 0.75rem; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; margin-top:4px;">Total Titles Inventoried</div>'
+        f'</div>'
+    )
+    st.markdown(html_hero, unsafe_allow_html=True)
+    
+    c1, c2 = st.columns(2)
+    with c1: 
+        html_tv = (
+            f'<div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 15px; text-align: center;">'
+            f'<div style="font-size: 1.4rem; font-weight: 800; color: #FFC107;">{y_tv}</div>'
+            f'<div style="font-size: 0.65rem; color: #aaa; text-transform: uppercase; font-weight:700;">Episodes Logged</div>'
+            f'</div>'
+        )
+        st.markdown(html_tv, unsafe_allow_html=True)
+    with c2: 
+        html_mov = (
+            f'<div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 15px; text-align: center;">'
+            f'<div style="font-size: 1.4rem; font-weight: 800; color: #FFC107;">{y_mov}</div>'
+            f'<div style="font-size: 0.65rem; color: #aaa; text-transform: uppercase; font-weight:700;">Movies Checked</div>'
+            f'</div>'
+        )
+        st.markdown(html_mov, unsafe_allow_html=True)
+        
+    st.markdown(f"⏳ **Time Commitment:** You dedicated total of **{days} days** and **{(total_time % 1440) // 60} hours** to premium story arcs.")
+    
+    y_hist = [h for h in st.session_state.db.get("history", []) if str(h.get("d", "")).startswith(str(year))]
+    date_counts, plat_counts, feel_counts, show_counts, ratings = {}, {}, {}, {}, []
+    
+    for h in y_hist:
+        d_only = h["d"][:10]
+        date_counts[d_only] = date_counts.get(d_only, 0) + 1
+        if h.get("p") and h.get("p") != "None": plat_counts[h["p"]] = plat_counts.get(h["p"], 0) + 1
+        if h.get("f") and h.get("f") != "None": feel_counts[h["f"]] = feel_counts.get(h["f"], 0) + 1
+        if h["t"] == "s": show_counts[h["i"]] = show_counts.get(h["i"], 0) + 1
+        if h.get("r", 0) > 0: ratings.append(h["r"])
+        
+    st.divider()
+    st.markdown("### The Deep Dive")
+    if ratings: st.markdown(f"⭐ **Average Rating:** {round(sum(ratings)/len(ratings), 1)} / 5.0")
+    if plat_counts: st.markdown(f"📡 **Top Platform:** {max(plat_counts, key=plat_counts.get)}")
+    if feel_counts: st.markdown(f"🎭 **Top Vibe:** {max(feel_counts, key=feel_counts.get)}")
+    if date_counts: 
+        max_d, max_c = max(date_counts.items(), key=lambda x: x[1])
+        st.markdown(f"🔥 **Ultimate Binge Day:** {max_c} items on {max_d}")
+        
+    if show_counts:
+        st.markdown("**🏆 Top 3 Shows:**")
+        top_shows = sorted(show_counts.items(), key=lambda x: x[1], reverse=True)[:3]
+        for sid, sc in top_shows:
+            s_obj = next((s for s in st.session_state.db["shows"] if str(s["id"]) == str(sid)), None)
+            if s_obj: st.markdown(f"- {s_obj['name']} ({sc} eps)")
+
+    if days > 12: tier_title, tier_desc = "👑 Emperor of the Couch", "Absolute legend. Hollywood production lines should put you on their payroll."
+    elif days > 5: tier_title, tier_desc = "🍿 Marathon Veteran", "You know exactly how to lock down a weekend block and demolish complex plotlines."
+    else: tier_title, tier_desc = "🎬 Curation Connoisseur", "High-taste selection habits. You filter for absolute choice cinema narrative styles."
+        
+    html_tier = (
+        f'<div style="background: rgba(255, 193, 7, 0.08); border: 1px dashed #FFC107; border-radius: 12px; padding: 15px; margin-top: 15px; text-align: center;">'
+        f'<div style="font-size: 1.15rem; font-weight: 800; color: #FFD54F;">{tier_title}</div>'
+        f'<div style="font-size: 0.75rem; color: #eee; margin-top: 5px; line-height:1.3;">{tier_desc}</div>'
+        f'</div>'
+    )
+    st.markdown(html_tier, unsafe_allow_html=True)
+    st.divider()
+    is_seen = recap_id in st.session_state.db.get("seen_recaps", [])
+    if st.button("✖ Close Recap" if is_seen else "Claim Achievement Status", use_container_width=True, key=f"close_year_recap_{recap_id}"):
+        if not is_seen:
+            st.session_state.db.setdefault("seen_recaps", []).append(recap_id)
+            save_db()
+        st.rerun()
+
 @st.dialog("Episode Details")
 def show_episode_details(show_id, show_name, ep_code, ep_data=None, is_watched=False):
     if not ep_data:
@@ -646,301 +951,7 @@ def show_movie_details(m_id, m_name, details=None, is_watched=False):
             save_db()
             st.rerun()
 
-# --- GLOBAL DIALOG ROUTER (Fixes Nested Dialog Bug) ---
-if st.session_state.get("open_dialog_trigger"):
-    trig = st.session_state.open_dialog_trigger
-    st.session_state.open_dialog_trigger = None
-    details = fetch_api(f"https://api.themoviedb.org/3/{trig['t']}/{trig['id']}?api_key={TMDB_KEY}")
-    if trig['t'] == "tv": manage_show_dialog(trig['id'], trig['title'], details)
-    else: show_movie_details(trig['id'], trig['title'], details, is_watched=False)
-
-# --- GLOBAL SAFE UNDO BANNER ---
-if st.session_state.last_action and not st.session_state.prompt_review:
-    la = st.session_state.last_action
-    with st.container(border=True):
-        c1, c2, c3 = st.columns([6, 2, 2])
-        with c1: st.success("✅ Logged successfully!")
-        with c2: st.button("↩️ Undo", key="undo_btn", on_click=cb_undo_action, args=(la["t"], la["i"], la["e"]), use_container_width=True)
-        with c3: st.button("✖", key="dismiss_undo", on_click=cb_clear_action, use_container_width=True)
-
-def render_badges(items, is_gold=False):
-    css_class = "badge badge-gold" if is_gold else "badge"
-    html = "".join([f'<span class="{css_class}">{item}</span>' for item in items])
-    st.markdown(html, unsafe_allow_html=True)
-
-def display_poster(path, width=185):
-    if path and str(path).lower() not in ["none", "null", ""]: 
-        st.image(f"https://image.tmdb.org/t/p/w{width}{path}", use_container_width=True)
-    else: 
-        html = (
-            f'<div style="background-color: rgba(255,255,255,0.05); border-radius:8px; width:100%; '
-            f'aspect-ratio: 2/3; display:flex; align-items:center; justify-content:center; color:#555; '
-            f'font-size:0.8rem; text-align:center; margin-bottom:5px;">No Image</div>'
-        )
-        st.markdown(html, unsafe_allow_html=True)
-
-def show_cast_horizontal(cast_list, key_prefix, limit=15):
-    if not cast_list: return
-    cols = st.columns(len(cast_list[:limit]))
-    for idx, actor in enumerate(cast_list[:limit]):
-        with cols[idx]:
-            st.markdown('<span class="carousel-marker-cast"></span>', unsafe_allow_html=True)
-            img_url = f"https://image.tmdb.org/t/p/w185{actor['profile_path']}" if actor.get("profile_path") else "https://via.placeholder.com/185x278/222222/888888?text=No+Photo"
-            encoded_name = str(actor.get('name', '')).replace(" ", "+")
-            imdb_url = f"https://www.imdb.com/find/?q={encoded_name}"
-            char_name = str(actor.get('character', '')).strip()
-            
-            html_img = (
-                f'<a href="{imdb_url}" target="_blank">'
-                f'<img src="{img_url}" style="width: 85px; height: 127px; border-radius: 8px; object-fit: cover; box-shadow: 0 4px 6px rgba(0,0,0,0.3); margin-bottom: 6px; transition: transform 0.2s;">'
-                f'</a>'
-            )
-            st.markdown(html_img, unsafe_allow_html=True)
-            
-            if char_name: 
-                html_char = f'<div style="font-size: 0.55rem; color: #FFC107; font-weight: 700; line-height: 1.1; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{char_name}</div>'
-                st.markdown(html_char, unsafe_allow_html=True)
-            
-            st.button(actor.get('name', 'Unknown'), key=f"cast_{key_prefix}_{actor['id']}_{idx}", on_click=cb_set_active_actor, args=(actor['id'],), use_container_width=True)
-
-# --- THE PLUGIN BRIDGE: st-clickable-images ---
-def render_clickable_grid(data_list, key_prefix, layout="grid", is_nested=False):
-    if not data_list: return None
-    paths, titles = [], []
-    for d in data_list:
-        if is_nested:
-            poster = d["item"].get("poster_path") or d.get("details", {}).get("poster_path")
-            name = d["item"].get("name", "Unknown")
-        else:
-            poster = d.get("poster_path") or d.get("poster")
-            name = d.get("name") or d.get("title") or "Unknown"
-        
-        paths.append(f"https://image.tmdb.org/t/p/w342{poster}" if poster else "https://via.placeholder.com/342x513/222222/555555?text=No+Poster")
-        titles.append(name)
-
-    div_style = {"display": "flex", "flex-wrap": "wrap", "gap": "10px", "justify-content": "center"} if layout == "grid" else {"display": "flex", "overflow-x": "auto", "gap": "10px", "padding-bottom": "15px", "scrollbar-width": "none"}
-    img_style = {"width": "110px", "border-radius": "8px", "box-shadow": "0 6px 15px rgba(0,0,0,0.5)", "cursor": "pointer", "transition": "transform 0.2s cubic-bezier(0.25, 0.8, 0.25, 1)", "object-fit": "cover", "aspect-ratio": "2/3"}
-    
-    clicked = clickable_images(paths, titles=titles, div_style=div_style, img_style=img_style, key=key_prefix)
-    
-    session_key = f"clk_{key_prefix}"
-    if clicked > -1 and st.session_state.get(session_key) != clicked:
-        st.session_state[session_key] = clicked
-        return data_list[clicked]
-    return None
-
-def render_inline_actor_pokedex(actor_id):
-    details = fetch_api(f"https://api.themoviedb.org/3/person/{actor_id}?api_key={TMDB_KEY}")
-    credits = fetch_api(f"https://api.themoviedb.org/3/person/{actor_id}/combined_credits?api_key={TMDB_KEY}")
-    
-    db_shows = {str(s["id"]): s for s in st.session_state.db["shows"]}
-    db_movies = {str(m["id"]): m for m in st.session_state.db["movies"]}
-    
-    owned_items = []
-    seen_ids = set()
-    for c in credits.get("cast", []):
-        cid = str(c["id"])
-        if c["media_type"] == "tv" and cid in db_shows and cid not in seen_ids:
-            owned_items.append({"id": cid, "title": db_shows[cid]["name"], "type": "tv", "poster": db_shows[cid].get("poster_path")})
-            seen_ids.add(cid)
-        elif c["media_type"] == "movie" and cid in db_movies and cid not in seen_ids:
-            owned_items.append({"id": cid, "title": db_movies[cid]["name"], "type": "movie", "poster": db_movies[cid].get("poster_path")})
-            seen_ids.add(cid)
-            
-    st.markdown("<hr style='margin: 0.5rem 0; border-color: #FFC107;'>", unsafe_allow_html=True)
-    with st.container(border=True):
-        col_title, col_btn = st.columns([8, 2])
-        with col_title: 
-            html_title = f"<h4 style='color: #FFD54F;'>{details.get('name', 'Actor Profile')}</h4>"
-            st.markdown(html_title, unsafe_allow_html=True)
-        with col_btn: 
-            st.button("✖ Close", key=f"close_act_{actor_id}", on_click=cb_close_active_actor, use_container_width=True)
-        
-        c1, c2 = st.columns([1, 2])
-        with c1:
-            img_url = f"https://image.tmdb.org/t/p/w185{details.get('profile_path')}" if details.get("profile_path") else "https://via.placeholder.com/185x278/222222/555555?text=No+Image"
-            st.markdown(f'<img src="{img_url}" style="width: 100%; border-radius: 8px;">', unsafe_allow_html=True)
-        with c2:
-            st.caption(f"**Born:** {details.get('birthday', 'Unknown')}")
-            bio = details.get("biography", "")
-            if len(bio) > 150: bio = bio[:150] + "..."
-            st.write(bio if bio else "No biography available.")
-            
-        if owned_items:
-            st.markdown(f"**📚 In Your Library ({len(owned_items)})**")
-            clicked_own = render_clickable_grid(owned_items, f"act_own_{actor_id}", layout="carousel")
-            if clicked_own:
-                st.session_state.active_actor = None
-                st.session_state.open_dialog_trigger = {"t": clicked_own["type"], "id": clicked_own['id'], "title": clicked_own['title']}
-                st.rerun()
-        
-        st.markdown("**🌟 Famous Roles**")
-        top_credits = sorted(credits.get("cast", []), key=lambda x: x.get("popularity", 0), reverse=True)[:15]
-        if top_credits:
-            clicked_role = render_clickable_grid(top_credits, f"act_roles_{actor_id}", layout="carousel")
-            if clicked_role:
-                st.session_state.active_actor = None
-                c_type = clicked_role.get("media_type")
-                i_title = clicked_role.get("name") if c_type == "tv" else clicked_role.get("title")
-                st.session_state.open_dialog_trigger = {"t": c_type, "id": clicked_role['id'], "title": i_title}
-                st.rerun()
-
-def render_poster_card(title, poster_path, subtitle="", progress_pct=-1.0):
-    img_url = f"https://image.tmdb.org/t/p/w342{poster_path}" if poster_path else "https://via.placeholder.com/342x513/222222/555555?text=No+Poster"
-    prog_width = min(progress_pct, 1.0) * 100
-    prog_html = f'<div style="position: absolute; bottom: 0; left: 0; height: 4px; width: {prog_width}%; background: #FFC107; box-shadow: 0 0 8px #FFC107; z-index: 30;"></div>' if progress_pct >= 0 else ''
-    sub_html = f'<div style="color: #FFC107; font-weight: 700; font-size: 0.6rem; margin-top: 2px;">{subtitle}</div>' if subtitle else ''
-    
-    html = (
-        f'<div style="position: relative; aspect-ratio: 2/3; background-color: #111; border-radius: 8px; overflow: hidden;">'
-        f'<img src="{img_url}" style="width: 100%; height: 100%; object-fit: cover; display: block;">'
-        f'<div style="position: absolute; bottom: 0; left: 0; right: 0; height: 60%; background: linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0) 100%); z-index: 1;"></div>'
-        f'<div class="poster-text" style="position: absolute; bottom: 10px; left: 10px; right: 10px; z-index: 2;">'
-        f'<div style="color: white; font-weight: 800; font-size: 0.75rem; line-height: 1.2; text-shadow: 0 2px 4px rgba(0,0,0,0.8); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">{title}</div>'
-        f'{sub_html}'
-        f'</div>'
-        f'{prog_html}'
-        f'</div>'
-    )
-    st.markdown(html, unsafe_allow_html=True)
-
-def render_apple_tv_header(backdrop_path, poster_path, title, badges_html):
-    bg = f"https://image.tmdb.org/t/p/w780{backdrop_path}" if backdrop_path else f"https://image.tmdb.org/t/p/w342{poster_path}"
-    post = f"https://image.tmdb.org/t/p/w185{poster_path}" if poster_path else "https://via.placeholder.com/185x278/222222/555555?text=No+Poster"
-    blur = 0 if backdrop_path else 15
-    
-    html = (
-        f'<div style="margin: -24px -24px 0 -24px; position: relative; overflow: hidden;">'
-        f'<div style="width: 100%; height: 220px; background-image: url(\'{bg}\'); background-size: cover; background-position: center; filter: brightness(0.6) blur({blur}px);"></div>'
-        f'<div style="position: absolute; bottom: 0; left: 0; right: 0; height: 120px; background: linear-gradient(to top, rgba(15,17,22,1) 0%, rgba(15,17,22,0) 100%);"></div>'
-        f'<div style="position: absolute; bottom: -20px; left: 20px; right: 20px; display: flex; align-items: flex-end; gap: 15px; z-index: 10;">'
-        f'<img src="{post}" style="width: 105px; height: 157px; border-radius: 8px; box-shadow: 0 8px 20px rgba(0,0,0,0.8); border: 1px solid rgba(255,255,255,0.1); object-fit: cover;">'
-        f'<div style="padding-bottom: 25px; flex: 1; min-width: 0;">'
-        f'<div style="margin: 0; padding: 0; font-size: 1.4rem; font-weight: 800; line-height: 1.1; text-shadow: 0 2px 4px rgba(0,0,0,0.8); color: white; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">{title}</div>'
-        f'<div style="margin-top: 6px;">{badges_html}</div>'
-        f'</div>'
-        f'</div>'
-        f'</div>'
-        f'<div style="height: 35px;"></div>'
-    )
-    st.markdown(html, unsafe_allow_html=True)
-
-# --- RECAP ENGINE ---
-@st.dialog("🌙 Monthly Wrap-Up")
-def show_monthly_recap_dialog(month_key, month_title, stats, recap_id):
-    st.markdown(f"## {month_title} Recap")
-    st.write("Here is a quick look at your screening inventory from last month:")
-    tv_count, mov_count = stats.get("tv", 0), stats.get("movie", 0)
-    total_mins = (tv_count * 45) + (mov_count * 120)
-    
-    c1, c2 = st.columns(2)
-    with c1: st.metric("📺 Episodes Logged", f"{tv_count} eps")
-    with c2: st.metric("🎬 Movies Watched", f"{mov_count} titles")
-    st.markdown(f"⏳ **Screen Time Investment:** ~`{total_mins // 60}` hours spent streaming.")
-    
-    show_counts, plat_counts, feel_counts = {}, {}, {}
-    for h in st.session_state.db.get("history", []):
-        if str(h.get("d", "")).startswith(month_key):
-            if h.get("t") == "s": show_counts[h["i"]] = show_counts.get(h["i"], 0) + 1
-            if h.get("p") and h.get("p") != "None": plat_counts[h["p"]] = plat_counts.get(h["p"], 0) + 1
-            if h.get("f") and h.get("f") != "None": feel_counts[h["f"]] = feel_counts.get(h["f"], 0) + 1
-            
-    if show_counts:
-        top_show_id = max(show_counts, key=show_counts.get)
-        show = next((s for s in st.session_state.db["shows"] if str(s["id"]) == str(top_show_id)), None)
-        if show: st.markdown(f"🔥 **Top Binge Focus:** *{show['name']}* ({show_counts[top_show_id]} episodes)")
-    if plat_counts: st.markdown(f"📡 **Platform Loyalty:** Most watched on **{max(plat_counts, key=plat_counts.get)}**")
-    if feel_counts: st.markdown(f"🎭 **Monthly Vibe:** **{max(feel_counts, key=feel_counts.get)}**")
-            
-    st.divider()
-    is_seen = recap_id in st.session_state.db.get("seen_recaps", [])
-    if st.button("✖ Close Recap" if is_seen else "Sweet!", use_container_width=True, key=f"close_month_recap_{recap_id}"):
-        if not is_seen:
-            st.session_state.db.setdefault("seen_recaps", []).append(recap_id)
-            save_db()
-        st.rerun()
-
-@st.dialog("🏆 Your Cinematic Wrapped")
-def show_yearly_recap_dialog(year, y_tv, y_mov, recap_id):
-    st.markdown(f"# 🍿 {year} YEAR IN REVIEW")
-    st.write("You smashed your theater goals last year! Check out your custom achievements:")
-    total_time = (y_tv * 45) + (y_mov * 120)
-    days = total_time // 1440
-    
-    html_hero = (
-        f'<div style="background: linear-gradient(135deg, #FFD54F 0%, #FFC107 100%); border-radius: 14px; padding: 22px; color: black; text-align: center; margin-bottom: 15px; box-shadow: 0 4px 15px rgba(255,193,7,0.3);">'
-        f'<div style="font-size: 2.6rem; font-weight: 900; line-height:1;">{y_tv + y_mov:,}</div>'
-        f'<div style="font-size: 0.75rem; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; margin-top:4px;">Total Titles Inventoried</div>'
-        f'</div>'
-    )
-    st.markdown(html_hero, unsafe_allow_html=True)
-    
-    c1, c2 = st.columns(2)
-    with c1: 
-        html_tv = (
-            f'<div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 15px; text-align: center;">'
-            f'<div style="font-size: 1.4rem; font-weight: 800; color: #FFC107;">{y_tv}</div>'
-            f'<div style="font-size: 0.65rem; color: #aaa; text-transform: uppercase; font-weight:700;">Episodes Logged</div>'
-            f'</div>'
-        )
-        st.markdown(html_tv, unsafe_allow_html=True)
-    with c2: 
-        html_mov = (
-            f'<div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 15px; text-align: center;">'
-            f'<div style="font-size: 1.4rem; font-weight: 800; color: #FFC107;">{y_mov}</div>'
-            f'<div style="font-size: 0.65rem; color: #aaa; text-transform: uppercase; font-weight:700;">Movies Checked</div>'
-            f'</div>'
-        )
-        st.markdown(html_mov, unsafe_allow_html=True)
-        
-    st.markdown(f"⏳ **Time Commitment:** You dedicated total of **{days} days** and **{(total_time % 1440) // 60} hours** to premium story arcs.")
-    
-    y_hist = [h for h in st.session_state.db.get("history", []) if str(h.get("d", "")).startswith(str(year))]
-    date_counts, plat_counts, feel_counts, show_counts, ratings = {}, {}, {}, {}, []
-    
-    for h in y_hist:
-        d_only = h["d"][:10]
-        date_counts[d_only] = date_counts.get(d_only, 0) + 1
-        if h.get("p") and h.get("p") != "None": plat_counts[h["p"]] = plat_counts.get(h["p"], 0) + 1
-        if h.get("f") and h.get("f") != "None": feel_counts[h["f"]] = feel_counts.get(h["f"], 0) + 1
-        if h["t"] == "s": show_counts[h["i"]] = show_counts.get(h["i"], 0) + 1
-        if h.get("r", 0) > 0: ratings.append(h["r"])
-        
-    st.divider()
-    st.markdown("### The Deep Dive")
-    if ratings: st.markdown(f"⭐ **Average Rating:** {round(sum(ratings)/len(ratings), 1)} / 5.0")
-    if plat_counts: st.markdown(f"📡 **Top Platform:** {max(plat_counts, key=plat_counts.get)}")
-    if feel_counts: st.markdown(f"🎭 **Top Vibe:** {max(feel_counts, key=feel_counts.get)}")
-    if date_counts: 
-        max_d, max_c = max(date_counts.items(), key=lambda x: x[1])
-        st.markdown(f"🔥 **Ultimate Binge Day:** {max_c} items on {max_d}")
-        
-    if show_counts:
-        st.markdown("**🏆 Top 3 Shows:**")
-        top_shows = sorted(show_counts.items(), key=lambda x: x[1], reverse=True)[:3]
-        for sid, sc in top_shows:
-            s_obj = next((s for s in st.session_state.db["shows"] if str(s["id"]) == str(sid)), None)
-            if s_obj: st.markdown(f"- {s_obj['name']} ({sc} eps)")
-
-    if days > 12: tier_title, tier_desc = "👑 Emperor of the Couch", "Absolute legend. Hollywood production lines should put you on their payroll."
-    elif days > 5: tier_title, tier_desc = "🍿 Marathon Veteran", "You know exactly how to lock down a weekend block and demolish complex plotlines."
-    else: tier_title, tier_desc = "🎬 Curation Connoisseur", "High-taste selection habits. You filter for absolute choice cinema narrative styles."
-        
-    html_tier = (
-        f'<div style="background: rgba(255, 193, 7, 0.08); border: 1px dashed #FFC107; border-radius: 12px; padding: 15px; margin-top: 15px; text-align: center;">'
-        f'<div style="font-size: 1.15rem; font-weight: 800; color: #FFD54F;">{tier_title}</div>'
-        f'<div style="font-size: 0.75rem; color: #eee; margin-top: 5px; line-height:1.3;">{tier_desc}</div>'
-        f'</div>'
-    )
-    st.markdown(html_tier, unsafe_allow_html=True)
-    st.divider()
-    is_seen = recap_id in st.session_state.db.get("seen_recaps", [])
-    if st.button("✖ Close Recap" if is_seen else "Claim Achievement Status", use_container_width=True, key=f"close_year_recap_{recap_id}"):
-        if not is_seen:
-            st.session_state.db.setdefault("seen_recaps", []).append(recap_id)
-            save_db()
-        st.rerun()
-
+# --- RECAP ENGINE TRIGGER ---
 def evaluate_and_trigger_recaps():
     if "recaps_checked" in st.session_state: return
     st.session_state.recaps_checked = True
@@ -963,6 +974,21 @@ def evaluate_and_trigger_recaps():
         if y_tv > 0 or y_mov > 0: show_yearly_recap_dialog(now.year - 1, y_tv, y_mov, f"yearly-{now.year - 1}")
 
 evaluate_and_trigger_recaps()
+
+# --- GLOBAL DIALOG ROUTER (Fixes Nested Dialog Bug) ---
+if st.session_state.get("open_dialog_trigger"):
+    trig = st.session_state.open_dialog_trigger
+    st.session_state.open_dialog_trigger = None
+    details = fetch_api(f"https://api.themoviedb.org/3/{trig['t']}/{trig['id']}?api_key={TMDB_KEY}")
+    if trig['t'] == "tv": manage_show_dialog(trig['id'], trig['title'], details)
+    else: show_movie_details(trig['id'], trig['title'], details, is_watched=False)
+
+# --- IMMEDIATE REVIEW EVALUATOR ---
+if st.session_state.get("prompt_review"):
+    pr = st.session_state.prompt_review
+    st.session_state.prompt_review = None
+    if pr["t"] == "s": show_episode_details(pr["id"], pr["name"], pr["code"], ep_data=None, is_watched=True)
+    else: show_movie_details(pr["id"], pr["name"], details=None, is_watched=True)
 
 # --- APP NAVIGATION BAR ---
 t_next, t_soon, t_search, t_tv, t_movies, t_profile = st.tabs(["🔥 Next", "📅 Soon", "🔍 Search", "📺 TV", "🎬 Movies", "👤 Profile"])
@@ -1222,12 +1248,20 @@ with t_search:
         if "discover_genre" not in st.session_state: st.session_state.discover_genre = "🔥 Trending"
         genres = ["🔥 Trending", "🤣 Comedy", "💥 Action", "🐉 Sci-Fi", "🔪 Thriller", "👻 Horror"]
         
-        selected_genre = st.radio("Filters", genres, index=genres.index(st.session_state.discover_genre), horizontal=True, label_visibility="collapsed", key="discover_radio")
-        if selected_genre != st.session_state.discover_genre:
-            st.session_state.discover_genre = selected_genre
-            st.rerun()
+        # 2x2x2 Equal Box Pills
+        for i in range(0, 6, 2):
+            c1, c2 = st.columns(2, gap="small")
+            with c1:
+                if st.button(genres[i], use_container_width=True, type="primary" if st.session_state.discover_genre == genres[i] else "secondary"): 
+                    st.session_state.discover_genre = genres[i]
+                    st.rerun()
+            with c2:
+                if st.button(genres[i+1], use_container_width=True, type="primary" if st.session_state.discover_genre == genres[i+1] else "secondary"): 
+                    st.session_state.discover_genre = genres[i+1]
+                    st.rerun()
 
         st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
+        selected_genre = st.session_state.discover_genre
 
         def render_carousel(title, items, c_type):
             if not items: return
@@ -1285,12 +1319,17 @@ with t_tv:
     st.markdown("<h3 class='tab-title'>My TV Collection</h3>", unsafe_allow_html=True)
     
     if "tv_tab" not in st.session_state: st.session_state.tv_tab = "WATCHLIST"
-    tv_options = ["WATCHLIST", "UPCOMING", "WATCHED", "DROPPED"]
-    selected_tv_tab = st.radio("TV Collection Filter", tv_options, index=tv_options.index(st.session_state.tv_tab), horizontal=True, label_visibility="collapsed", key="tv_tab_radio")
-    
-    if selected_tv_tab != st.session_state.tv_tab:
-        st.session_state.tv_tab = selected_tv_tab
-        st.rerun()
+        
+    c1, c2 = st.columns(2, gap="small")
+    with c1:
+        if st.button("Watchlist", use_container_width=True, type="primary" if st.session_state.tv_tab == "WATCHLIST" else "secondary"): st.session_state.tv_tab = "WATCHLIST"; st.rerun()
+    with c2:
+        if st.button("Upcoming", use_container_width=True, type="primary" if st.session_state.tv_tab == "UPCOMING" else "secondary"): st.session_state.tv_tab = "UPCOMING"; st.rerun()
+    c3, c4 = st.columns(2, gap="small")
+    with c3:
+        if st.button("Watched", use_container_width=True, type="primary" if st.session_state.tv_tab == "WATCHED" else "secondary"): st.session_state.tv_tab = "WATCHED"; st.rerun()
+    with c4:
+        if st.button("Dropped", use_container_width=True, type="primary" if st.session_state.tv_tab == "DROPPED" else "secondary"): st.session_state.tv_tab = "DROPPED"; st.rerun()
         
     c_search, c_sort = st.columns([6, 4], gap="small")
     with c_search:
@@ -1350,14 +1389,18 @@ with t_tv:
 # ==========================================
 with t_movies:
     st.markdown("<h3 class='tab-title'>My Movies</h3>", unsafe_allow_html=True)
-    
     if "mov_tab" not in st.session_state: st.session_state.mov_tab = "WATCHLIST"
-    mov_options = ["WATCHLIST", "UPCOMING", "WATCHED", "DROPPED"]
-    selected_mov_tab = st.radio("Movie Collection Filter", mov_options, index=mov_options.index(st.session_state.mov_tab), horizontal=True, label_visibility="collapsed", key="mov_tab_radio")
-    
-    if selected_mov_tab != st.session_state.mov_tab:
-        st.session_state.mov_tab = selected_mov_tab
-        st.rerun()
+        
+    c1, c2 = st.columns(2, gap="small")
+    with c1:
+        if st.button("Watchlist", use_container_width=True, type="primary" if st.session_state.mov_tab == "WATCHLIST" else "secondary", key="m_wl"): st.session_state.mov_tab = "WATCHLIST"; st.rerun()
+    with c2:
+        if st.button("Upcoming", use_container_width=True, type="primary" if st.session_state.mov_tab == "UPCOMING" else "secondary", key="m_up"): st.session_state.mov_tab = "UPCOMING"; st.rerun()
+    c3, c4 = st.columns(2, gap="small")
+    with c3:
+        if st.button("Watched", use_container_width=True, type="primary" if st.session_state.mov_tab == "WATCHED" else "secondary", key="m_wd"): st.session_state.mov_tab = "WATCHED"; st.rerun()
+    with c4:
+        if st.button("Dropped", use_container_width=True, type="primary" if st.session_state.mov_tab == "DROPPED" else "secondary", key="m_dr"): st.session_state.mov_tab = "DROPPED"; st.rerun()
         
     c_search, c_sort = st.columns([6, 4], gap="small")
     with c_search:
