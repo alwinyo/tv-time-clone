@@ -199,21 +199,42 @@ st.markdown("""
         border-color: #FFC107 !important;
     }
     
-    /* --- INVISIBLE OVERLAY FOR CAST CARDS TO PROTECT NORMAL TEXT --- */
-    div[data-testid="column"]:has(.carousel-marker-cast) {
-        position: relative !important;
-    }
-    div[data-testid="column"]:has(.carousel-marker-cast) div[data-testid="stButton"] {
-        position: absolute !important;
-        top: 0 !important; left: 0 !important; right: 0 !important; bottom: 0 !important;
-        z-index: 20 !important;
-    }
+    /* --- NUKE CAST BUTTON STYLING (PURE TEXT) --- */
     div[data-testid="column"]:has(.carousel-marker-cast) div[data-testid="stButton"] > button {
-        background: transparent !important; color: transparent !important; border: none !important;
-        width: 100% !important; height: 100% !important; padding: 0 !important; margin: 0 !important;
-        box-shadow: none !important; transform: none !important; cursor: pointer !important;
+        background-color: transparent !important; 
+        background: none !important;
+        border: none !important; 
+        box-shadow: none !important; 
+        padding: 0 !important; 
+        margin: 0 !important; 
+        height: auto !important; 
+        min-height: 0 !important; 
+        width: 100% !important; 
+        display: block !important; 
+        transform: none !important; 
     }
-    div[data-testid="column"]:has(.carousel-marker-cast) div[data-testid="stButton"] > button p { display: none !important; }
+    div[data-testid="column"]:has(.carousel-marker-cast) div[data-testid="stButton"] > button:hover,
+    div[data-testid="column"]:has(.carousel-marker-cast) div[data-testid="stButton"] > button:active,
+    div[data-testid="column"]:has(.carousel-marker-cast) div[data-testid="stButton"] > button:focus {
+        background-color: transparent !important; 
+        background: none !important;
+        border: none !important; 
+        box-shadow: none !important; 
+    }
+    div[data-testid="column"]:has(.carousel-marker-cast) div[data-testid="stButton"] > button * {
+        font-size: 0.55rem !important;
+        font-weight: 500 !important;
+        text-transform: none !important;
+        letter-spacing: normal !important;
+        white-space: pre-wrap !important;
+        line-height: 1.1 !important;
+        color: #aaa !important;
+        margin: 0 !important;
+    }
+    div[data-testid="column"]:has(.carousel-marker-cast) div[data-testid="stButton"] > button:hover * { 
+        color: #FFC107 !important; 
+        text-decoration: underline !important;
+    }
     
     /* --- TABS OVERHAUL --- */
     div[data-testid="stTabs"] > div[data-baseweb="tab-list"], div[data-testid="stTabs"] > div[role="tablist"] { display: flex !important; width: 100vw !important; max-width: 100% !important; margin-left: -0.5rem !important; padding: 0 0 5px 0 !important; gap: 0 !important; overflow-x: hidden !important; background-color: rgba(8, 9, 12, 0.85) !important; backdrop-filter: blur(12px) !important; -webkit-backdrop-filter: blur(12px) !important; border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important; }
@@ -543,10 +564,7 @@ def show_cast_horizontal(cast_list, key_prefix, limit=15):
                 html_char = f'<div style="font-size: 0.55rem; color: #FFC107; font-weight: 700; line-height: 1.1; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{char_name}</div>'
                 st.markdown(html_char, unsafe_allow_html=True)
             
-            html_actor = f'<div style="font-size: 0.55rem; color: #aaa; font-weight: 500; line-height: 1.1; white-space: pre-wrap; margin-bottom: 5px;">{actor_name}</div>'
-            st.markdown(html_actor, unsafe_allow_html=True)
-            
-            st.button(" ", key=f"cast_{key_prefix}_{actor['id']}_{idx}", on_click=cb_set_active_actor, args=(actor['id'],), use_container_width=True)
+            st.button(actor_name, key=f"cast_{key_prefix}_{actor['id']}_{idx}", on_click=cb_set_active_actor, args=(actor['id'],), use_container_width=True)
 
 def render_clickable_grid(data_list, key_prefix, layout="grid", is_nested=False):
     if not data_list: return None
@@ -1256,9 +1274,13 @@ with t_soon:
     else:
         soon_mov = []
         for m in st.session_state.db["movies"]:
-            if m.get("dropped", False): continue
-            r_date = m.get("release_date", "")
-            if not m.get("watched") and r_date and r_date > TODAY: soon_mov.append({"item": m, "date": r_date})
+            if m.get("dropped", False) or m.get("watched", False): continue
+            
+            details = fetch_api(f"https://api.themoviedb.org/3/movie/{m['id']}?api_key={TMDB_KEY}")
+            r_date = details.get("release_date") or m.get("release_date", "")
+            
+            if r_date and r_date > TODAY: 
+                soon_mov.append({"item": m, "details": details, "date": r_date})
 
         if soon_sort == "Alphabetical": soon_mov.sort(key=lambda x: x["item"]["name"].lower())
         else: soon_mov.sort(key=lambda x: x["date"] or "2099-01-01", reverse=False)
@@ -1393,6 +1415,8 @@ with t_tv:
     with c_sort:
         tv_sort = st.selectbox("Sort", ["Release Date", "Alphabetical", "Recently Added"], label_visibility="collapsed", key="sort_tv_lib")
     
+    st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
+    
     shows = st.session_state.db.get("shows", [])
     if not shows: st.info("Your TV library is empty.")
     else:
@@ -1400,23 +1424,24 @@ with t_tv:
         for show in shows:
             if lib_search_tv and lib_search_tv.lower() not in show["name"].lower(): continue
             
-            air_date = show.get("first_air_date", "")
             t_eps = show.get("total_episodes", 1) 
             w_eps = len(show.get("watched_episodes", []))
-            is_upcoming = bool(air_date and air_date > TODAY)
             is_completed = (w_eps >= t_eps and t_eps > 0)
             is_dropped = show.get("dropped", False)
             
-            if st.session_state.tv_tab == "DROPPED" and is_dropped: display_shows.append((show, t_eps, w_eps))
+            if st.session_state.tv_tab == "DROPPED" and is_dropped: 
+                display_shows.append((show, t_eps, w_eps))
             elif not is_dropped:
                 if st.session_state.tv_tab == "WATCHED" and is_completed: 
                     display_shows.append((show, t_eps, w_eps))
-                elif st.session_state.tv_tab == "WATCHLIST" and not is_completed: 
-                    display_shows.append((show, t_eps, w_eps))
-                elif st.session_state.tv_tab == "UPCOMING" and not is_completed:
+                elif st.session_state.tv_tab in ["UPCOMING", "WATCHLIST"] and not is_completed:
                     details = fetch_api(f"https://api.themoviedb.org/3/tv/{show['id']}?api_key={TMDB_KEY}")
                     next_ep = details.get("next_episode_to_air")
-                    if next_ep and next_ep.get("air_date") and next_ep.get("air_date") > TODAY:
+                    is_upcoming_live = bool(next_ep and next_ep.get("air_date") and next_ep.get("air_date") > TODAY)
+                    
+                    if st.session_state.tv_tab == "UPCOMING" and is_upcoming_live:
+                        display_shows.append((show, t_eps, w_eps))
+                    elif st.session_state.tv_tab == "WATCHLIST" and not is_upcoming_live:
                         display_shows.append((show, t_eps, w_eps))
                 
         if tv_sort == "Alphabetical": display_shows.sort(key=lambda x: x[0]['name'].lower())
@@ -1464,6 +1489,8 @@ with t_movies:
     with c_sort:
         mov_sort = st.selectbox("Sort", ["Release Date", "Alphabetical", "Recently Added"], label_visibility="collapsed", key="sort_mov_lib")
     
+    st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
+    
     movies = st.session_state.db.get("movies", [])
     if not movies: st.info("Your Movie library is empty.")
     else:
@@ -1471,20 +1498,22 @@ with t_movies:
         for m in movies:
             if lib_search_mov and lib_search_mov.lower() not in m["name"].lower(): continue
             
-            r_date = m.get("release_date", "")
             is_watched = m.get("watched", False)
             is_dropped = m.get("dropped", False)
             
-            if st.session_state.mov_tab == "DROPPED" and is_dropped: display_movies.append((m, is_watched))
+            if st.session_state.mov_tab == "DROPPED" and is_dropped: 
+                display_movies.append((m, is_watched))
             elif not is_dropped:
                 if st.session_state.mov_tab == "WATCHED" and is_watched: 
                     display_movies.append((m, is_watched))
-                elif st.session_state.mov_tab == "WATCHLIST" and not is_watched: 
-                    display_movies.append((m, is_watched))
-                elif st.session_state.mov_tab == "UPCOMING" and not is_watched:
+                elif st.session_state.mov_tab in ["UPCOMING", "WATCHLIST"] and not is_watched:
                     details = fetch_api(f"https://api.themoviedb.org/3/movie/{m['id']}?api_key={TMDB_KEY}")
-                    r_date = details.get("release_date") or m.get("release_date", "")
-                    if r_date and r_date > TODAY:
+                    live_r_date = details.get("release_date") or m.get("release_date", "")
+                    is_upcoming_live = bool(live_r_date and live_r_date > TODAY)
+                    
+                    if st.session_state.mov_tab == "UPCOMING" and is_upcoming_live:
+                        display_movies.append((m, is_watched))
+                    elif st.session_state.mov_tab == "WATCHLIST" and not is_upcoming_live:
                         display_movies.append((m, is_watched))
                 
         if mov_sort == "Alphabetical": display_movies.sort(key=lambda x: x[0]['name'].lower())
@@ -1890,7 +1919,7 @@ with t_profile:
                         with c_col:
                             st.markdown(html_card, unsafe_allow_html=True)
                             st.markdown('<span class="history-wrapper"></span>', unsafe_allow_html=True)
-                            if st.button("INFO", key=f"h_r_tv_{h['i']}_{ep_code}_{h_idx}", use_container_width=True): 
+                            if st.button(f"INFO", key=f"h_r_tv_{h['i']}_{ep_code}_{h_idx}", use_container_width=True): 
                                 st.session_state.active_actor = None
                                 show_episode_details(h['i'], s_name, ep_code, ep_data=None, is_watched=True)
                 if len(tv_hist) > st.session_state.hist_tv_limit:
@@ -1947,7 +1976,7 @@ with t_profile:
                         with c_col:
                             st.markdown(html_card, unsafe_allow_html=True)
                             st.markdown('<span class="history-wrapper"></span>', unsafe_allow_html=True)
-                            if st.button("INFO", key=f"h_r_mov_{h['i']}_{h_idx}", use_container_width=True): 
+                            if st.button(f"INFO", key=f"h_r_mov_{h['i']}_{h_idx}", use_container_width=True): 
                                 st.session_state.active_actor = None
                                 show_movie_details(h['i'], m_name, details=None, is_watched=True)
                 if len(mov_hist) > st.session_state.hist_mov_limit:
