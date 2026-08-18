@@ -70,7 +70,7 @@ st.markdown("""
     }
 
     /* The Invisible Overlay Button */
-    div[data-testid="column"]:has(.poster-wrapper) div[data-testid="stButton"] {
+    div[data-testid="column"]:has(.poster-wrapper) div.stButton {
         position: absolute !important;
         top: 0 !important;
         left: 0 !important;
@@ -79,7 +79,7 @@ st.markdown("""
         z-index: 20 !important;
         opacity: 0 !important;
     }
-    div[data-testid="column"]:has(.poster-wrapper) div[data-testid="stButton"] > button {
+    div[data-testid="column"]:has(.poster-wrapper) div.stButton > button {
         width: 100% !important;
         height: 100% !important;
         padding: 0 !important;
@@ -99,7 +99,7 @@ st.markdown("""
         gap: 0 !important;
         padding: 0 !important;
     }
-    div[data-testid="column"]:has(.history-wrapper) div[data-testid="stButton"] {
+    div[data-testid="column"]:has(.history-wrapper) div.stButton {
         position: absolute !important;
         top: 0 !important;
         left: 0 !important;
@@ -108,7 +108,7 @@ st.markdown("""
         z-index: 20 !important;
         opacity: 0 !important;
     }
-    div[data-testid="column"]:has(.history-wrapper) div[data-testid="stButton"] > button {
+    div[data-testid="column"]:has(.history-wrapper) div.stButton > button {
         width: 100% !important;
         height: 100% !important;
     }
@@ -469,7 +469,7 @@ def show_cast_horizontal(cast_list, key_prefix, limit=15):
                 html_char = f'<div style="font-size: 0.55rem; color: #FFC107; font-weight: 700; line-height: 1.1; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{char_name}</div>'
                 st.markdown(html_char, unsafe_allow_html=True)
             
-            st.button(actor.get('name', 'Unknown').title(), key=f"cast_{key_prefix}_{actor['id']}_{idx}", on_click=cb_set_active_actor, args=(actor['id'],), use_container_width=True, type="tertiary")
+            st.button(actor.get('name', 'Unknown'), key=f"cast_{key_prefix}_{actor['id']}_{idx}", on_click=cb_set_active_actor, args=(actor['id'],), use_container_width=True, type="tertiary")
 
 def render_clickable_grid(data_list, key_prefix, layout="grid", is_nested=False):
     if not data_list: return None
@@ -508,10 +508,10 @@ def render_inline_actor_pokedex(actor_id):
     for c in credits.get("cast", []):
         cid = str(c["id"])
         if c["media_type"] == "tv" and cid in db_shows and cid not in seen_ids:
-            owned_items.append({"id": cid, "title": db_shows[cid]["name"], "type": "tv", "poster": db_shows[cid].get("poster_path")})
+            owned_items.append({"id": cid, "title": db_shows[cid]["name"], "type": "tv", "poster_path": db_shows[cid].get("poster_path")})
             seen_ids.add(cid)
         elif c["media_type"] == "movie" and cid in db_movies and cid not in seen_ids:
-            owned_items.append({"id": cid, "title": db_movies[cid]["name"], "type": "movie", "poster": db_movies[cid].get("poster_path")})
+            owned_items.append({"id": cid, "title": db_movies[cid]["name"], "type": "movie", "poster_path": db_movies[cid].get("poster_path")})
             seen_ids.add(cid)
             
     st.markdown("<hr style='margin: 0.5rem 0; border-color: #FFC107;'>", unsafe_allow_html=True)
@@ -959,6 +959,14 @@ def show_movie_details(m_id, m_name, details=None, is_watched=False):
             save_db()
             st.rerun()
 
+# --- GLOBAL DIALOG ROUTER (Fixes Nested Dialog Bug) ---
+if st.session_state.get("open_dialog_trigger"):
+    trig = st.session_state.open_dialog_trigger
+    st.session_state.open_dialog_trigger = None
+    details = fetch_api(f"https://api.themoviedb.org/3/{trig['t']}/{trig['id']}?api_key={TMDB_KEY}")
+    if trig['t'] == "tv": manage_show_dialog(trig['id'], trig['title'], details)
+    else: show_movie_details(trig['id'], trig['title'], details, is_watched=False)
+
 # --- IMMEDIATE REVIEW EVALUATOR ---
 if st.session_state.get("prompt_review"):
     pr = st.session_state.prompt_review
@@ -1205,6 +1213,7 @@ with t_soon:
             if m.get("dropped", False) or m.get("watched", False): continue
             r_date = m.get("release_date", "")
             
+            # Logic Fixed: TBA (No release date) OR Future release date
             if not r_date or r_date > TODAY: 
                 soon_mov.append({"item": m, "date": r_date})
 
@@ -1273,6 +1282,7 @@ with t_search:
                                 if search_type == "TV Shows": manage_show_dialog(item_id, title, details)
                                 else: show_movie_details(item_id, title, details, is_watched=False)
     else:
+        # THE PILL FILTER NAVIGATION
         genre_options = ["🔥 Trending", "🤣 Comedy", "💥 Action", "🐉 Sci-Fi", "🔪 Thriller", "👻 Horror"]
         selected_genre = st.radio("Filters", genre_options, label_visibility="collapsed", horizontal=True)
         st.divider()
@@ -1374,6 +1384,7 @@ with t_tv:
             t_eps = show.get("total_episodes", 1) 
             w_eps = len(show.get("watched_episodes", []))
             
+            # Logic Fixed: No API hit here. Just local DB matching
             is_upcoming = bool(not air_date or air_date > TODAY)
             is_completed = (w_eps >= t_eps and t_eps > 0)
             is_dropped = show.get("dropped", False)
@@ -1453,6 +1464,8 @@ with t_movies:
             is_watched = m.get("watched", False)
             is_dropped = m.get("dropped", False)
             
+            # Logic Fixed: No API hit here. Just local DB matching
+            # Unwatched + TBA (no date) = Upcoming. Unwatched + Future Date = Upcoming. Else Watchlist
             is_upcoming = bool(not r_date or r_date > TODAY)
             
             if st.session_state.mov_tab == "DROPPED" and is_dropped: display_movies.append((m, is_watched))
