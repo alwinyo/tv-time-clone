@@ -112,7 +112,9 @@ st.markdown("""
     }
     div[role="radiogroup"]::-webkit-scrollbar { display: none; }
     div[role="radiogroup"] > label {
-        flex: 1 1 calc(50% - 8px) !important; /* STRICT 50% SIZING */
+        flex: 0 0 calc(50% - 4px) !important; /* STRICT 50% SIZING */
+        min-width: calc(50% - 4px) !important;
+        max-width: calc(50% - 4px) !important;
         background: rgba(255,255,255,0.05) !important; 
         border: 1px solid rgba(255,255,255,0.1) !important;
         border-radius: 12px !important; 
@@ -120,6 +122,7 @@ st.markdown("""
         margin: 0 !important; 
         justify-content: center !important; /* CENTER TEXT */
         transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1) !important;
+        box-sizing: border-box !important;
     }
     div[role="radiogroup"] > label > div:first-child { display: none !important; }
     div[role="radiogroup"] > label:has(input:checked) { 
@@ -174,7 +177,7 @@ st.markdown("""
     div[data-testid="stHorizontalBlock"]:has(.carousel-marker-cast), div[data-testid="stColumns"]:has(.carousel-marker-cast) { display: flex !important; flex-direction: row !important; overflow-x: auto !important; flex-wrap: nowrap !important; scrollbar-width: none; padding-bottom: 10px !important; gap: 10px !important; }
     div[data-testid="stHorizontalBlock"]:has(.carousel-marker-cast)::-webkit-scrollbar, div[data-testid="stColumns"]:has(.carousel-marker-cast)::-webkit-scrollbar { display: none; }
     div[data-testid="column"]:has(.carousel-marker-cast), div[data-testid="stColumn"]:has(.carousel-marker-cast) { flex: 0 0 85px !important; width: 85px !important; min-width: 85px !important; padding: 0 !important; display: block !important; text-align: center !important; }
-    div[data-testid="column"]:has(.carousel-marker-cast) div.stButton > button { background: transparent !important; border: none !important; box-shadow: none !important; padding: 0 !important; margin: 0 !important; color: #E0E0E0 !important; font-size: 0.6rem !important; font-weight: 600 !important; line-height: 1.2 !important; white-space: nowrap !important; overflow: hidden !important; text-overflow: ellipsis !important; height: auto !important; min-height: 0 !important; width: 100% !important; display: block !important; transform: none !important; }
+    div[data-testid="column"]:has(.carousel-marker-cast) div.stButton > button { background: transparent !important; border: none !important; box-shadow: none !important; padding: 0 !important; margin: 0 !important; color: #E0E0E0 !important; font-size: 0.5rem !important; font-weight: 500 !important; letter-spacing: 0px !important; text-transform: none !important; line-height: 1.2 !important; white-space: nowrap !important; overflow: hidden !important; text-overflow: ellipsis !important; height: auto !important; min-height: 0 !important; width: 100% !important; display: block !important; transform: none !important; }
     div[data-testid="column"]:has(.carousel-marker-cast) div.stButton > button:hover { color: #FFC107 !important; transform: none !important; text-decoration: underline !important;}
     
     /* --- INLINE SEARCH CLEAR BUTTON OVERRIDE --- */
@@ -524,10 +527,10 @@ def render_inline_actor_pokedex(actor_id):
     for c in credits.get("cast", []):
         cid = str(c["id"])
         if c["media_type"] == "tv" and cid in db_shows and cid not in seen_ids:
-            owned_items.append({"id": cid, "title": db_shows[cid]["name"], "type": "tv", "poster": db_shows[cid].get("poster_path")})
+            owned_items.append({"id": cid, "title": db_shows[cid]["name"], "type": "tv", "poster_path": db_shows[cid].get("poster_path")})
             seen_ids.add(cid)
         elif c["media_type"] == "movie" and cid in db_movies and cid not in seen_ids:
-            owned_items.append({"id": cid, "title": db_movies[cid]["name"], "type": "movie", "poster": db_movies[cid].get("poster_path")})
+            owned_items.append({"id": cid, "title": db_movies[cid]["name"], "type": "movie", "poster_path": db_movies[cid].get("poster_path")})
             seen_ids.add(cid)
             
     st.markdown("<hr style='margin: 0.5rem 0; border-color: #FFC107;'>", unsafe_allow_html=True)
@@ -608,122 +611,7 @@ def render_apple_tv_header(backdrop_path, poster_path, title, badges_html):
     )
     st.markdown(html, unsafe_allow_html=True)
 
-# --- DIALOGS ---
-@st.dialog("🌙 Monthly Wrap-Up")
-def show_monthly_recap_dialog(month_key, month_title, stats, recap_id):
-    st.markdown(f"## {month_title} Recap")
-    st.write("Here is a quick look at your screening inventory from last month:")
-    tv_count, mov_count = stats.get("tv", 0), stats.get("movie", 0)
-    total_mins = (tv_count * 45) + (mov_count * 120)
-    
-    c1, c2 = st.columns(2)
-    with c1: st.metric("📺 Episodes Logged", f"{tv_count} eps")
-    with c2: st.metric("🎬 Movies Watched", f"{mov_count} titles")
-    st.markdown(f"⏳ **Screen Time Investment:** ~`{total_mins // 60}` hours spent streaming.")
-    
-    show_counts, plat_counts, feel_counts = {}, {}, {}
-    for h in st.session_state.db.get("history", []):
-        if str(h.get("d", "")).startswith(month_key):
-            if h.get("t") == "s": show_counts[h["i"]] = show_counts.get(h["i"], 0) + 1
-            if h.get("p") and h.get("p") != "None": plat_counts[h["p"]] = plat_counts.get(h["p"], 0) + 1
-            if h.get("f") and h.get("f") != "None": feel_counts[h["f"]] = feel_counts.get(h["f"], 0) + 1
-            
-    if show_counts:
-        top_show_id = max(show_counts, key=show_counts.get)
-        show = next((s for s in st.session_state.db["shows"] if str(s["id"]) == str(top_show_id)), None)
-        if show: st.markdown(f"🔥 **Top Binge Focus:** *{show['name']}* ({show_counts[top_show_id]} episodes)")
-    if plat_counts: st.markdown(f"📡 **Platform Loyalty:** Most watched on **{max(plat_counts, key=plat_counts.get)}**")
-    if feel_counts: st.markdown(f"🎭 **Monthly Vibe:** **{max(feel_counts, key=feel_counts.get)}**")
-            
-    st.divider()
-    is_seen = recap_id in st.session_state.db.get("seen_recaps", [])
-    if st.button("✖ Close Recap" if is_seen else "Sweet!", use_container_width=True, key=f"close_month_recap_{recap_id}"):
-        if not is_seen:
-            st.session_state.db.setdefault("seen_recaps", []).append(recap_id)
-            save_db()
-        st.rerun()
-
-@st.dialog("🏆 Your Cinematic Wrapped")
-def show_yearly_recap_dialog(year, y_tv, y_mov, recap_id):
-    st.markdown(f"# 🍿 {year} YEAR IN REVIEW")
-    st.write("You smashed your theater goals last year! Check out your custom achievements:")
-    total_time = (y_tv * 45) + (y_mov * 120)
-    days = total_time // 1440
-    
-    html_hero = (
-        f'<div style="background: linear-gradient(135deg, #FFD54F 0%, #FFC107 100%); border-radius: 14px; padding: 22px; color: black; text-align: center; margin-bottom: 15px; box-shadow: 0 4px 15px rgba(255,193,7,0.3);">'
-        f'<div style="font-size: 2.6rem; font-weight: 900; line-height:1;">{y_tv + y_mov:,}</div>'
-        f'<div style="font-size: 0.75rem; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; margin-top:4px;">Total Titles Inventoried</div>'
-        f'</div>'
-    )
-    st.markdown(html_hero, unsafe_allow_html=True)
-    
-    c1, c2 = st.columns(2)
-    with c1: 
-        html_tv = (
-            f'<div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 15px; text-align: center;">'
-            f'<div style="font-size: 1.4rem; font-weight: 800; color: #FFC107;">{y_tv}</div>'
-            f'<div style="font-size: 0.65rem; color: #aaa; text-transform: uppercase; font-weight:700;">Episodes Logged</div>'
-            f'</div>'
-        )
-        st.markdown(html_tv, unsafe_allow_html=True)
-    with c2: 
-        html_mov = (
-            f'<div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 15px; text-align: center;">'
-            f'<div style="font-size: 1.4rem; font-weight: 800; color: #FFC107;">{y_mov}</div>'
-            f'<div style="font-size: 0.65rem; color: #aaa; text-transform: uppercase; font-weight:700;">Movies Checked</div>'
-            f'</div>'
-        )
-        st.markdown(html_mov, unsafe_allow_html=True)
-        
-    st.markdown(f"⏳ **Time Commitment:** You dedicated total of **{days} days** and **{(total_time % 1440) // 60} hours** to premium story arcs.")
-    
-    y_hist = [h for h in st.session_state.db.get("history", []) if str(h.get("d", "")).startswith(str(year))]
-    date_counts, plat_counts, feel_counts, show_counts, ratings = {}, {}, {}, {}, []
-    
-    for h in y_hist:
-        d_only = h["d"][:10]
-        date_counts[d_only] = date_counts.get(d_only, 0) + 1
-        if h.get("p") and h.get("p") != "None": plat_counts[h["p"]] = plat_counts.get(h["p"], 0) + 1
-        if h.get("f") and h.get("f") != "None": feel_counts[h["f"]] = feel_counts.get(h["f"], 0) + 1
-        if h["t"] == "s": show_counts[h["i"]] = show_counts.get(h["i"], 0) + 1
-        if h.get("r", 0) > 0: ratings.append(h["r"])
-        
-    st.divider()
-    st.markdown("### The Deep Dive")
-    if ratings: st.markdown(f"⭐ **Average Rating:** {round(sum(ratings)/len(ratings), 1)} / 5.0")
-    if plat_counts: st.markdown(f"📡 **Top Platform:** {max(plat_counts, key=plat_counts.get)}")
-    if feel_counts: st.markdown(f"🎭 **Top Vibe:** {max(feel_counts, key=feel_counts.get)}")
-    if date_counts: 
-        max_d, max_c = max(date_counts.items(), key=lambda x: x[1])
-        st.markdown(f"🔥 **Ultimate Binge Day:** {max_c} items on {max_d}")
-        
-    if show_counts:
-        st.markdown("**🏆 Top 3 Shows:**")
-        top_shows = sorted(show_counts.items(), key=lambda x: x[1], reverse=True)[:3]
-        for sid, sc in top_shows:
-            s_obj = next((s for s in st.session_state.db["shows"] if str(s["id"]) == str(sid)), None)
-            if s_obj: st.markdown(f"- {s_obj['name']} ({sc} eps)")
-
-    if days > 12: tier_title, tier_desc = "👑 Emperor of the Couch", "Absolute legend. Hollywood production lines should put you on their payroll."
-    elif days > 5: tier_title, tier_desc = "🍿 Marathon Veteran", "You know exactly how to lock down a weekend block and demolish complex plotlines."
-    else: tier_title, tier_desc = "🎬 Curation Connoisseur", "High-taste selection habits. You filter for absolute choice cinema narrative styles."
-        
-    html_tier = (
-        f'<div style="background: rgba(255, 193, 7, 0.08); border: 1px dashed #FFC107; border-radius: 12px; padding: 15px; margin-top: 15px; text-align: center;">'
-        f'<div style="font-size: 1.15rem; font-weight: 800; color: #FFD54F;">{tier_title}</div>'
-        f'<div style="font-size: 0.75rem; color: #eee; margin-top: 5px; line-height:1.3;">{tier_desc}</div>'
-        f'</div>'
-    )
-    st.markdown(html_tier, unsafe_allow_html=True)
-    st.divider()
-    is_seen = recap_id in st.session_state.db.get("seen_recaps", [])
-    if st.button("✖ Close Recap" if is_seen else "Claim Achievement Status", use_container_width=True, key=f"close_year_recap_{recap_id}"):
-        if not is_seen:
-            st.session_state.db.setdefault("seen_recaps", []).append(recap_id)
-            save_db()
-        st.rerun()
-
+# --- CENTRALIZED MANAGEMENT DIALOGS ---
 @st.dialog("Episode Details")
 def show_episode_details(show_id, show_name, ep_code, ep_data=None, is_watched=False):
     if not ep_data:
@@ -950,30 +838,6 @@ def show_movie_details(m_id, m_name, details=None, is_watched=False):
             else: remove_watch("movie", m_id)
             save_db()
             st.rerun()
-
-# --- RECAP ENGINE TRIGGER ---
-def evaluate_and_trigger_recaps():
-    if "recaps_checked" in st.session_state: return
-    st.session_state.recaps_checked = True
-    db = st.session_state.db
-    seen = db.setdefault("seen_recaps", [])
-    now = get_dubai_time()
-    
-    first_of_this_month = now.replace(day=1)
-    last_day_of_prev_month = first_of_this_month - timedelta(days=1)
-    prev_month_key = last_day_of_prev_month.strftime("%Y-%m")
-    
-    if f"monthly-{prev_month_key}" not in seen:
-        stats = db.get("analytics", {}).get(prev_month_key, {"tv": 0, "movie": 0})
-        if stats["tv"] > 0 or stats["movie"] > 0: show_monthly_recap_dialog(prev_month_key, last_day_of_prev_month.strftime("%B %Y"), stats, f"monthly-{prev_month_key}")
-            
-    if f"yearly-{now.year - 1}" not in seen:
-        y_tv, y_mov = 0, 0
-        for k, v in db.get("analytics", {}).items():
-            if k.startswith(str(now.year - 1)): y_tv += v.get("tv", 0); y_mov += v.get("movie", 0)
-        if y_tv > 0 or y_mov > 0: show_yearly_recap_dialog(now.year - 1, y_tv, y_mov, f"yearly-{now.year - 1}")
-
-evaluate_and_trigger_recaps()
 
 # --- GLOBAL DIALOG ROUTER (Fixes Nested Dialog Bug) ---
 if st.session_state.get("open_dialog_trigger"):
@@ -1248,20 +1112,12 @@ with t_search:
         if "discover_genre" not in st.session_state: st.session_state.discover_genre = "🔥 Trending"
         genres = ["🔥 Trending", "🤣 Comedy", "💥 Action", "🐉 Sci-Fi", "🔪 Thriller", "👻 Horror"]
         
-        # 2x2x2 Equal Box Pills
-        for i in range(0, 6, 2):
-            c1, c2 = st.columns(2, gap="small")
-            with c1:
-                if st.button(genres[i], use_container_width=True, type="primary" if st.session_state.discover_genre == genres[i] else "secondary"): 
-                    st.session_state.discover_genre = genres[i]
-                    st.rerun()
-            with c2:
-                if st.button(genres[i+1], use_container_width=True, type="primary" if st.session_state.discover_genre == genres[i+1] else "secondary"): 
-                    st.session_state.discover_genre = genres[i+1]
-                    st.rerun()
+        selected_genre = st.radio("Filters", genres, index=genres.index(st.session_state.discover_genre), horizontal=True, label_visibility="collapsed", key="discover_radio")
+        if selected_genre != st.session_state.discover_genre:
+            st.session_state.discover_genre = selected_genre
+            st.rerun()
 
         st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
-        selected_genre = st.session_state.discover_genre
 
         def render_carousel(title, items, c_type):
             if not items: return
@@ -1319,17 +1175,12 @@ with t_tv:
     st.markdown("<h3 class='tab-title'>My TV Collection</h3>", unsafe_allow_html=True)
     
     if "tv_tab" not in st.session_state: st.session_state.tv_tab = "WATCHLIST"
-        
-    c1, c2 = st.columns(2, gap="small")
-    with c1:
-        if st.button("Watchlist", use_container_width=True, type="primary" if st.session_state.tv_tab == "WATCHLIST" else "secondary"): st.session_state.tv_tab = "WATCHLIST"; st.rerun()
-    with c2:
-        if st.button("Upcoming", use_container_width=True, type="primary" if st.session_state.tv_tab == "UPCOMING" else "secondary"): st.session_state.tv_tab = "UPCOMING"; st.rerun()
-    c3, c4 = st.columns(2, gap="small")
-    with c3:
-        if st.button("Watched", use_container_width=True, type="primary" if st.session_state.tv_tab == "WATCHED" else "secondary"): st.session_state.tv_tab = "WATCHED"; st.rerun()
-    with c4:
-        if st.button("Dropped", use_container_width=True, type="primary" if st.session_state.tv_tab == "DROPPED" else "secondary"): st.session_state.tv_tab = "DROPPED"; st.rerun()
+    tv_options = ["WATCHLIST", "UPCOMING", "WATCHED", "DROPPED"]
+    selected_tv_tab = st.radio("TV Collection Filter", tv_options, index=tv_options.index(st.session_state.tv_tab), horizontal=True, label_visibility="collapsed", key="tv_tab_radio")
+    
+    if selected_tv_tab != st.session_state.tv_tab:
+        st.session_state.tv_tab = selected_tv_tab
+        st.rerun()
         
     c_search, c_sort = st.columns([6, 4], gap="small")
     with c_search:
@@ -1389,18 +1240,14 @@ with t_tv:
 # ==========================================
 with t_movies:
     st.markdown("<h3 class='tab-title'>My Movies</h3>", unsafe_allow_html=True)
+    
     if "mov_tab" not in st.session_state: st.session_state.mov_tab = "WATCHLIST"
-        
-    c1, c2 = st.columns(2, gap="small")
-    with c1:
-        if st.button("Watchlist", use_container_width=True, type="primary" if st.session_state.mov_tab == "WATCHLIST" else "secondary", key="m_wl"): st.session_state.mov_tab = "WATCHLIST"; st.rerun()
-    with c2:
-        if st.button("Upcoming", use_container_width=True, type="primary" if st.session_state.mov_tab == "UPCOMING" else "secondary", key="m_up"): st.session_state.mov_tab = "UPCOMING"; st.rerun()
-    c3, c4 = st.columns(2, gap="small")
-    with c3:
-        if st.button("Watched", use_container_width=True, type="primary" if st.session_state.mov_tab == "WATCHED" else "secondary", key="m_wd"): st.session_state.mov_tab = "WATCHED"; st.rerun()
-    with c4:
-        if st.button("Dropped", use_container_width=True, type="primary" if st.session_state.mov_tab == "DROPPED" else "secondary", key="m_dr"): st.session_state.mov_tab = "DROPPED"; st.rerun()
+    mov_options = ["WATCHLIST", "UPCOMING", "WATCHED", "DROPPED"]
+    selected_mov_tab = st.radio("Movie Collection Filter", mov_options, index=mov_options.index(st.session_state.mov_tab), horizontal=True, label_visibility="collapsed", key="mov_tab_radio")
+    
+    if selected_mov_tab != st.session_state.mov_tab:
+        st.session_state.mov_tab = selected_mov_tab
+        st.rerun()
         
     c_search, c_sort = st.columns([6, 4], gap="small")
     with c_search:
@@ -1817,7 +1664,7 @@ with t_profile:
                             f'<div style="border-left: 2px solid rgba(255, 193, 7, 0.3); padding-left: 15px; margin-bottom: 5px; position: relative; padding-bottom: 5px;">'
                             f'<div style="position: absolute; left: -5px; top: 40px; width: 8px; height: 8px; border-radius: 50%; background: #FFC107; box-shadow: 0 0 8px #FFC107;"></div>'
                             f'<div style="position: relative; border-radius: 12px; overflow: hidden; padding: 12px; border: 1px solid rgba(255,255,255,0.05); background-color: rgba(15, 17, 22, 0.6);">'
-                            f'<div style="position: absolute; top: -20px; left: -20px; right: -20px; bottom: -20px; background-image: url(\'{poster_url}\'); background-size: cover; background-position: center; filter: blur(15px) brightness(0.3); z-index: 0;"></div>'
+                            f'<div style="position: absolute; top: -20px; left: -20px; right: -20px; bottom: -20px; background-image: url(\'{poster_url}\'); background-size: cover; background-position: center; filter: blur(12px) brightness(0.5); z-index: 0;"></div>'
                             f'<div style="position: relative; z-index: 1; display: flex; align-items: center;">'
                             f'<img src="{poster_url}" style="width: 55px; height: 82px; border-radius: 6px; box-shadow: 0 4px 10px rgba(0,0,0,0.6); margin-right: 15px; border: 1px solid rgba(255,255,255,0.1);">'
                             f'<div style="flex: 1; min-width: 0;">'
@@ -1874,7 +1721,7 @@ with t_profile:
                             f'<div style="border-left: 2px solid rgba(255, 193, 7, 0.3); padding-left: 15px; margin-bottom: 5px; position: relative; padding-bottom: 5px;">'
                             f'<div style="position: absolute; left: -5px; top: 40px; width: 8px; height: 8px; border-radius: 50%; background: #FFC107; box-shadow: 0 0 8px #FFC107;"></div>'
                             f'<div style="position: relative; border-radius: 12px; overflow: hidden; padding: 12px; border: 1px solid rgba(255,255,255,0.05); background-color: rgba(15, 17, 22, 0.6);">'
-                            f'<div style="position: absolute; top: -20px; left: -20px; right: -20px; bottom: -20px; background-image: url(\'{poster_url}\'); background-size: cover; background-position: center; filter: blur(15px) brightness(0.3); z-index: 0;"></div>'
+                            f'<div style="position: absolute; top: -20px; left: -20px; right: -20px; bottom: -20px; background-image: url(\'{poster_url}\'); background-size: cover; background-position: center; filter: blur(12px) brightness(0.5); z-index: 0;"></div>'
                             f'<div style="position: relative; z-index: 1; display: flex; align-items: center;">'
                             f'<img src="{poster_url}" style="width: 55px; height: 82px; border-radius: 6px; box-shadow: 0 4px 10px rgba(0,0,0,0.6); margin-right: 15px; border: 1px solid rgba(255,255,255,0.1);">'
                             f'<div style="flex: 1; min-width: 0;">'
