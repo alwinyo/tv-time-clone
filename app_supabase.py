@@ -64,7 +64,7 @@ st.markdown("""
     div[data-testid="column"]:has(.poster-wrapper):hover img {
         transform: scale(1.06) !important;
     }
-    div[data-testid="column"]:has(.poster-wrapper) div.stButton {
+    div[data-testid="column"]:has(.poster-wrapper) div[data-testid="stButton"] {
         position: absolute !important;
         top: 0 !important;
         left: 0 !important;
@@ -73,7 +73,7 @@ st.markdown("""
         z-index: 20 !important;
         opacity: 0 !important;
     }
-    div[data-testid="column"]:has(.poster-wrapper) div.stButton > button {
+    div[data-testid="column"]:has(.poster-wrapper) div[data-testid="stButton"] > button {
         width: 100% !important;
         height: 100% !important;
         padding: 0 !important;
@@ -93,7 +93,7 @@ st.markdown("""
         gap: 0 !important;
         padding: 0 !important;
     }
-    div[data-testid="column"]:has(.history-wrapper) div.stButton {
+    div[data-testid="column"]:has(.history-wrapper) div[data-testid="stButton"] {
         position: absolute !important;
         top: 0 !important;
         left: 0 !important;
@@ -102,24 +102,25 @@ st.markdown("""
         z-index: 20 !important;
         opacity: 0 !important;
     }
-    div[data-testid="column"]:has(.history-wrapper) div.stButton > button {
+    div[data-testid="column"]:has(.history-wrapper) div[data-testid="stButton"] > button {
         width: 100% !important;
         height: 100% !important;
     }
     
-    /* --- PILL NAVIGATION (DISCOVER) --- */
+    /* --- SLEEK PILL NAVIGATION (FOR TABS & FILTERS) --- */
     div[role="radiogroup"] {
         display: flex !important; flex-direction: row !important; background-color: transparent !important; 
         border: none !important; box-shadow: none !important; padding: 0 !important; 
         width: 100% !important; overflow-x: auto !important; scrollbar-width: none; gap: 8px !important;
+        margin-bottom: 5px !important;
     }
     div[role="radiogroup"]::-webkit-scrollbar { display: none; }
     div[role="radiogroup"] > label {
         flex: 0 0 auto !important; background: rgba(255,255,255,0.05) !important; border: 1px solid rgba(255,255,255,0.1) !important;
-        border-radius: 20px !important; padding: 6px 16px !important; margin: 0 !important; transition: all 0.2s !important;
+        border-radius: 20px !important; padding: 8px 18px !important; margin: 0 !important; transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1) !important;
     }
     div[role="radiogroup"] > label > div:first-child { display: none !important; }
-    div[role="radiogroup"] > label:has(input:checked) { background: #FFC107 !important; border-color: #FFC107 !important; box-shadow: 0 4px 10px rgba(255, 193, 7, 0.3) !important; }
+    div[role="radiogroup"] > label:has(input:checked) { background: #FFC107 !important; border-color: #FFC107 !important; box-shadow: 0 4px 12px rgba(255, 193, 7, 0.4) !important; transform: scale(1.03); }
     div[role="radiogroup"] > label:has(input:checked) p { color: #000 !important; font-weight: 800 !important; }
     div[role="radiogroup"] > label p { font-size: 0.75rem !important; font-weight: 600 !important; margin: 0 !important; color: #EDEDED !important; white-space: nowrap !important; }
     
@@ -151,6 +152,10 @@ st.markdown("""
     .grid-title { font-size: 0.65rem; color: #ccc; text-align: center; margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 600; }
 
     @media (max-width: 992px) {
+        div[data-testid="stHorizontalBlock"]:has(.grid-3-col), div[data-testid="stColumns"]:has(.grid-3-col) { display: flex !important; flex-direction: row !important; flex-wrap: nowrap !important; gap: 3% !important; }
+        div[data-testid="column"]:has(.grid-3-col), div[data-testid="stColumn"]:has(.grid-3-col) { width: 31% !important; flex: 1 1 31% !important; min-width: 0 !important; padding: 0 !important; display: block !important; }
+        div[data-testid="stHorizontalBlock"]:has(.grid-2-col), div[data-testid="stColumns"]:has(.grid-2-col) { display: flex !important; flex-direction: row !important; flex-wrap: nowrap !important; gap: 4% !important; }
+        div[data-testid="column"]:has(.grid-2-col), div[data-testid="stColumn"]:has(.grid-2-col) { width: 48% !important; flex: 1 1 48% !important; min-width: 0 !important; padding: 0 !important; display: block !important; }
         div[role="dialog"] { width: 95vw !important; max-width: 95vw !important; margin: 0 auto !important; padding: 0 !important; background: rgba(15, 17, 22, 0.95) !important; backdrop-filter: blur(20px) !important; -webkit-backdrop-filter: blur(20px) !important; border: 1px solid rgba(255, 255, 255, 0.1) !important; overflow: hidden !important;}
         div[role="dialog"] > div:first-child { padding: 0 15px 20px 15px !important; }
     }
@@ -863,7 +868,7 @@ def manage_show_dialog(show_id, show_name, details):
                             st.markdown(html_watched, unsafe_allow_html=True)
                         except: pass
             with ep_col2:
-                if st.button("ℹ INFO", key=f"inf_btn_ep_{show_id}_{e_code}"): cb_toggle_ep_info(show_id, e_code)
+                if st.button("ℹ", key=f"inf_btn_ep_{show_id}_{e_code}"): cb_toggle_ep_info(show_id, e_code)
                     
             if st.session_state.get(f"view_info_{show_id}_{e_code}", False):
                 with st.container(border=True):
@@ -1231,7 +1236,7 @@ with t_search:
                     render_poster_card(i_title, item.get("poster_path"))
                     
                     st.markdown('<span class="poster-wrapper"></span>', unsafe_allow_html=True)
-                    if st.button("OPEN", key=f"c_inf_{safe_title}_{item_id}_{idx}", use_container_width=True):
+                    if st.button(" ", key=f"c_inf_{safe_title}_{item_id}_{idx}", use_container_width=True):
                         st.session_state.active_actor = None
                         details = fetch_api(f"https://api.themoviedb.org/3/{c_type}/{item_id}?api_key={TMDB_KEY}")
                         if c_type == "tv": manage_show_dialog(item_id, i_title, details)
@@ -1277,13 +1282,14 @@ with t_search:
 # ==========================================
 with t_tv:
     st.markdown("<h3 class='tab-title'>My TV Collection</h3>", unsafe_allow_html=True)
+    
     if "tv_tab" not in st.session_state: st.session_state.tv_tab = "WATCHLIST"
-        
-    c1, c2, c3, c4 = st.columns(4)
-    if c1.button("Watchlist", type="primary" if st.session_state.tv_tab == "WATCHLIST" else "secondary", use_container_width=True, key="tv_wl"): st.session_state.tv_tab = "WATCHLIST"; st.rerun()
-    if c2.button("Upcoming", type="primary" if st.session_state.tv_tab == "UPCOMING" else "secondary", use_container_width=True, key="tv_up"): st.session_state.tv_tab = "UPCOMING"; st.rerun()
-    if c3.button("Watched", type="primary" if st.session_state.tv_tab == "WATCHED" else "secondary", use_container_width=True, key="tv_wd"): st.session_state.tv_tab = "WATCHED"; st.rerun()
-    if c4.button("Dropped", type="primary" if st.session_state.tv_tab == "DROPPED" else "secondary", use_container_width=True, key="tv_dr"): st.session_state.tv_tab = "DROPPED"; st.rerun()
+    tv_options = ["WATCHLIST", "UPCOMING", "WATCHED", "DROPPED"]
+    selected_tv_tab = st.radio("TV Collection Filter", tv_options, index=tv_options.index(st.session_state.tv_tab), horizontal=True, label_visibility="collapsed", key="tv_tab_radio")
+    
+    if selected_tv_tab != st.session_state.tv_tab:
+        st.session_state.tv_tab = selected_tv_tab
+        st.rerun()
         
     c_search, c_sort = st.columns([6, 4])
     with c_search:
@@ -1342,13 +1348,14 @@ with t_tv:
 # ==========================================
 with t_movies:
     st.markdown("<h3 class='tab-title'>My Movies</h3>", unsafe_allow_html=True)
+    
     if "mov_tab" not in st.session_state: st.session_state.mov_tab = "WATCHLIST"
-        
-    c1, c2, c3, c4 = st.columns(4)
-    if c1.button("Watchlist", type="primary" if st.session_state.mov_tab == "WATCHLIST" else "secondary", use_container_width=True, key="m_wl"): st.session_state.mov_tab = "WATCHLIST"; st.rerun()
-    if c2.button("Upcoming", type="primary" if st.session_state.mov_tab == "UPCOMING" else "secondary", use_container_width=True, key="m_up"): st.session_state.mov_tab = "UPCOMING"; st.rerun()
-    if c3.button("Watched", type="primary" if st.session_state.mov_tab == "WATCHED" else "secondary", use_container_width=True, key="m_wd"): st.session_state.mov_tab = "WATCHED"; st.rerun()
-    if c4.button("Dropped", type="primary" if st.session_state.mov_tab == "DROPPED" else "secondary", use_container_width=True, key="m_dr"): st.session_state.mov_tab = "DROPPED"; st.rerun()
+    mov_options = ["WATCHLIST", "UPCOMING", "WATCHED", "DROPPED"]
+    selected_mov_tab = st.radio("Movie Collection Filter", mov_options, index=mov_options.index(st.session_state.mov_tab), horizontal=True, label_visibility="collapsed", key="mov_tab_radio")
+    
+    if selected_mov_tab != st.session_state.mov_tab:
+        st.session_state.mov_tab = selected_mov_tab
+        st.rerun()
         
     c_search, c_sort = st.columns([6, 4])
     with c_search:
@@ -1782,7 +1789,7 @@ with t_profile:
                         with c_col:
                             st.markdown(html_card, unsafe_allow_html=True)
                             st.markdown('<span class="history-wrapper"></span>', unsafe_allow_html=True)
-                            if st.button("OPEN", key=f"h_r_tv_{h['i']}_{ep_code}_{h_idx}", use_container_width=True): 
+                            if st.button(" ", key=f"h_r_tv_{h['i']}_{ep_code}_{h_idx}", use_container_width=True): 
                                 st.session_state.active_actor = None
                                 show_episode_details(h['i'], s_name, ep_code, ep_data=None, is_watched=True)
                 if len(tv_hist) > st.session_state.hist_tv_limit:
@@ -1839,7 +1846,7 @@ with t_profile:
                         with c_col:
                             st.markdown(html_card, unsafe_allow_html=True)
                             st.markdown('<span class="history-wrapper"></span>', unsafe_allow_html=True)
-                            if st.button("OPEN", key=f"h_r_mov_{h['i']}_{h_idx}", use_container_width=True): 
+                            if st.button(" ", key=f"h_r_mov_{h['i']}_{h_idx}", use_container_width=True): 
                                 st.session_state.active_actor = None
                                 show_movie_details(h['i'], m_name, details=None, is_watched=True)
                 if len(mov_hist) > st.session_state.hist_mov_limit:
