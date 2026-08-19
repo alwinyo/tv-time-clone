@@ -19,7 +19,28 @@ st.markdown("""
     #MainMenu {visibility: hidden !important;}
     header {visibility: hidden !important; background: transparent !important;}
     footer {visibility: hidden !important; display: none !important;}
-    [data-testid="stAppViewContainer"] ~ div { display: none !important; visibility: hidden !important; opacity: 0 !important; pointer-events: none !important; }
+    /* Targeted badge hiding.
+       This used to be `[data-testid="stAppViewContainer"] ~ div {display:none}`,
+       which hid EVERY sibling of the app container. Streamlit mounts dialogs
+       and toasts into a portal that sits exactly there, so that rule silently
+       swallowed every modal — rendered in the DOM, invisible on screen. */
+    [data-testid="stAppViewContainer"] ~ div:has(> .viewerBadge_container),
+    [data-testid="stAppViewContainer"] ~ div:has(> a[href*="streamlit.io"]) {
+        display: none !important;
+    }
+    /* Allow-list: overlays must never be hidden, whatever else is going on. */
+    div[role="dialog"],
+    div[data-baseweb="modal"],
+    div[data-baseweb="layer"],
+    div[data-testid="stDialog"],
+    div[data-testid="stToastContainer"],
+    div[data-baseweb="toast"],
+    div[data-testid="stToast"] {
+        display: block !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+        pointer-events: auto !important;
+    }
     .viewerBadge_container, .viewerBadge_link, div[class^="viewerBadge"] {display: none !important; visibility: hidden !important;}
     .stDeployButton {display: none !important;}
     [data-testid="stStatusWidget"] {visibility: hidden !important; display: none !important;}
@@ -1287,7 +1308,7 @@ DEBUG_DIALOG = True
 # Streamlit renders at most one dialog per script run. Everything now goes
 # through this guard, so a second attempt in the same run is dropped rather
 # than silently clobbering the first.
-DIALOG_GUARD = {"used": False}
+DIALOG_GUARD = {"used": False, "last": None}
 
 
 def show_dialog_once(fn, *args, **kwargs):
@@ -1295,8 +1316,7 @@ def show_dialog_once(fn, *args, **kwargs):
     if DIALOG_GUARD["used"]:
         return False
     DIALOG_GUARD["used"] = True
-    if DEBUG_DIALOG:
-        st.toast(f"opening {fn.__name__} {args}")
+    DIALOG_GUARD["last"] = f"{fn.__name__}{args}"
     fn(*args, **kwargs)
     return True
 
@@ -2497,3 +2517,18 @@ with t_profile:
                         stat_txt.text("🛑 Import finished, but the cloud save failed. See error above.")
                 else:
                     st.error("Please upload at least one JSON file first.")
+
+
+# ---------------------------------------------------------------------
+# DEBUG READOUT — rendered in the page body (NOT a toast), because toasts
+# share the same portal as dialogs. If a dialog is being hidden by CSS,
+# a toast would be hidden too and tell you nothing.
+# ---------------------------------------------------------------------
+if DEBUG_DIALOG:
+    st.divider()
+    if DIALOG_GUARD["used"]:
+        st.success(f"Python fired a dialog this run: {DIALOG_GUARD['last']}")
+        st.caption("If you see this line but no modal appeared, the dialog is rendering and being hidden by CSS.")
+    else:
+        st.info("No dialog was opened this run.")
+        st.caption("If you just clicked a poster and see this, the click did not reach Python.")
