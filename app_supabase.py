@@ -52,12 +52,12 @@ st.markdown("""
         color: #EDEDED !important;
     }
 
-    .block-container { padding: 1rem 0.5rem 5rem 0.5rem !important; max-width: 100vw !important; overflow-x: hidden !important; }
+    .block-container { padding: 0.5rem 0.5rem 3.5rem 0.5rem !important; max-width: 100vw !important; overflow-x: hidden !important; }
 
-    [data-testid="stVerticalBlock"] { gap: 0.6rem !important; }
-    hr { margin: 0.8rem 0 !important; border-color: rgba(255, 255, 255, 0.1) !important; }
-    h1, h2, h3 { padding-top: 0.6rem !important; padding-bottom: 0.3rem !important; margin-bottom: 0 !important; }
-    .stMarkdown p { margin-bottom: 0.5rem !important; }
+    [data-testid="stVerticalBlock"] { gap: 0.4rem !important; }
+    hr { margin: 0.5rem 0 !important; border-color: rgba(255, 255, 255, 0.1) !important; }
+    h1, h2, h3 { padding-top: 0.3rem !important; padding-bottom: 0.15rem !important; margin-bottom: 0 !important; }
+    .stMarkdown p { margin-bottom: 0.3rem !important; }
 
     h3 { color: #FFD54F !important; font-weight: 800 !important; letter-spacing: -0.5px !important; }
     h3.tab-title { margin-top: -0.8rem !important; padding-top: 0 !important; }
@@ -200,18 +200,19 @@ st.markdown("""
     div[role="radiogroup"] {
         display: flex !important; flex-direction: row !important; background-color: transparent !important;
         border: none !important; box-shadow: none !important; padding: 0 !important;
-        width: 100% !important; overflow-x: auto !important; scrollbar-width: none; gap: 8px !important;
+        width: 100% !important; overflow-x: hidden !important; scrollbar-width: none;
+        gap: 5px !important; flex-wrap: nowrap !important;
     }
     div[role="radiogroup"]::-webkit-scrollbar { display: none; }
     div[role="radiogroup"] > label {
-        /* fixed basis so every pill is the same width regardless of label length,
-           while the row still scrolls horizontally on narrow screens */
-        flex: 0 0 92px !important; width: 92px !important; min-width: 92px !important;
+        /* equal share of the row: every pill the same width AND the row ends
+           flush with the right edge, no leftover gap */
+        flex: 1 1 0 !important; width: auto !important; min-width: 0 !important;
         display: flex !important; align-items: center !important; justify-content: center !important;
         box-sizing: border-box !important;
         background: rgba(255,255,255,0.045) !important;
         border: 1px solid rgba(255,255,255,0.10) !important;
-        border-radius: 999px !important; padding: 8px 6px !important; margin: 0 !important;
+        border-radius: 999px !important; padding: 8px 2px !important; margin: 0 !important;
         transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease !important;
         touch-action: manipulation !important;
     }
@@ -223,9 +224,10 @@ st.markdown("""
     }
     div[role="radiogroup"] > label:has(input:checked) p { color: #000 !important; font-weight: 800 !important; }
     div[role="radiogroup"] > label p {
-        font-size: 0.66rem !important; font-weight: 700 !important; margin: 0 !important;
+        font-size: 0.56rem !important; font-weight: 700 !important; margin: 0 !important;
         color: #cfcfcf !important; white-space: nowrap !important;
-        text-transform: uppercase !important; letter-spacing: 0.7px !important; text-align: center !important;
+        text-transform: uppercase !important; letter-spacing: 0.2px !important; text-align: center !important;
+        overflow: hidden !important; text-overflow: ellipsis !important;
     }
 
     /* --- TABS OVERHAUL --- */
@@ -236,7 +238,7 @@ st.markdown("""
     div[data-testid="stTabs"] button[role="tab"][aria-selected="true"] p { color: #FFD54F !important; text-shadow: 0px 0px 10px rgba(255, 193, 7, 0.6) !important; }
 
     /* --- CAROUSEL HACKS --- */
-    div[data-testid="stHorizontalBlock"]:has(.carousel-marker), div[data-testid="stColumns"]:has(.carousel-marker) { display: flex !important; flex-direction: row !important; overflow-x: auto !important; flex-wrap: nowrap !important; scrollbar-width: none; padding-bottom: 15px !important; gap: 10px !important; }
+    div[data-testid="stHorizontalBlock"]:has(.carousel-marker), div[data-testid="stColumns"]:has(.carousel-marker) { display: flex !important; flex-direction: row !important; overflow-x: auto !important; flex-wrap: nowrap !important; scrollbar-width: none; padding-bottom: 8px !important; gap: 8px !important; }
     div[data-testid="stHorizontalBlock"]:has(.carousel-marker)::-webkit-scrollbar, div[data-testid="stColumns"]:has(.carousel-marker)::-webkit-scrollbar { display: none; }
     div[data-testid="column"]:has(.carousel-marker), div[data-testid="stColumn"]:has(.carousel-marker) { flex: 0 0 115px !important; width: 115px !important; min-width: 115px !important; padding: 0 !important; display: block !important; }
 
@@ -278,6 +280,18 @@ st.markdown("""
     div:has(> .clear-btn-hook) + div button:hover { background: rgba(255, 193, 7, 0.3) !important; color: #FFD54F !important; }
 
     /* --- 2x2 LIBRARY FILTER GRID --- */
+    /* Streamlit stacks columns vertically below its mobile breakpoint, which is
+       why these landed one per line on a phone. Force the row to stay 2-across. */
+    div[data-testid="stHorizontalBlock"]:has(.seg-nav),
+    div[data-testid="stColumns"]:has(.seg-nav) {
+        display: flex !important; flex-direction: row !important; flex-wrap: nowrap !important;
+        gap: 8px !important; margin-bottom: 0 !important;
+    }
+    div[data-testid="column"]:has(.seg-nav),
+    div[data-testid="stColumn"]:has(.seg-nav) {
+        flex: 1 1 50% !important; width: 50% !important; min-width: 0 !important;
+        padding: 0 !important; display: block !important;
+    }
     div[data-testid="column"]:has(.seg-nav) div[data-testid="stButton"] button,
     div[data-testid="stColumn"]:has(.seg-nav) div[data-testid="stButton"] button {
         height: 44px !important; min-height: 44px !important; width: 100% !important;
@@ -310,7 +324,7 @@ st.markdown("""
 
     @media (max-width: 992px) {
         div[data-testid="stHorizontalBlock"]:has(.grid-3-col), div[data-testid="stColumns"]:has(.grid-3-col) { display: flex !important; flex-direction: row !important; flex-wrap: nowrap !important; gap: 3% !important; }
-        div[data-testid="column"]:has(.grid-3-col), div[data-testid="stColumn"]:has(.grid-3-col) { width: 31% !important; flex: 1 1 31% !important; min-width: 0 !important; padding: 0 !important; display: block !important; }
+        div[data-testid="column"]:has(.grid-3-col), div[data-testid="stColumn"]:has(.grid-3-col) { width: 31% !important; flex: 1 1 31% !important; min-width: 0 !important; padding: 0 !important; display: block !important; margin-bottom: 4px !important; }
         div[data-testid="stHorizontalBlock"]:has(.grid-2-col), div[data-testid="stColumns"]:has(.grid-2-col) { display: flex !important; flex-direction: row !important; flex-wrap: nowrap !important; gap: 4% !important; }
         div[data-testid="column"]:has(.grid-2-col), div[data-testid="stColumn"]:has(.grid-2-col) { width: 48% !important; flex: 1 1 48% !important; min-width: 0 !important; padding: 0 !important; display: block !important; }
         div[role="dialog"] { width: 95vw !important; max-width: 95vw !important; margin: 0 auto !important; padding: 0 !important; background: rgba(15, 17, 22, 0.95) !important; backdrop-filter: blur(20px) !important; -webkit-backdrop-filter: blur(20px) !important; border: 1px solid rgba(255, 255, 255, 0.1) !important; overflow: hidden !important;}
@@ -1010,7 +1024,7 @@ def render_poster_card(title, poster_path, subtitle="", progress_pct=-1.0):
         f'<div style="position:absolute; bottom:0; left:0; right:0; height:55%; '
         f'background:linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.7) 45%, rgba(0,0,0,0) 100%); z-index:1;"></div>'
         f'{badge_html}'
-        f'<div style="position:absolute; bottom:0; left:0; right:0; z-index:2; padding:0 8px 8px 8px; box-sizing:border-box;">'
+        f'<div style="position:absolute; bottom:0; left:0; right:0; z-index:2; padding:0 8px 13px 8px; box-sizing:border-box;">'
         f'{title_html}'
         f'</div>'
         f'{prog_html}'
@@ -1071,20 +1085,21 @@ def show_cast_horizontal(cast_list, key_prefix, limit=15):
             st.markdown(
                 f'<a href="{imdb_url}" target="_blank" style="display:block;">'
                 f'<img src="{img_url}" style="width:85px; height:127px; border-radius:8px; object-fit:cover; '
-                f'box-shadow:0 4px 6px rgba(0,0,0,0.3); display:block; margin:0 auto 6px auto;">'
+                f'box-shadow:0 4px 6px rgba(0,0,0,0.3); display:block; margin:0 auto 5px auto;">'
                 f'</a>', unsafe_allow_html=True)
 
-            # actor name = the clickable element, fixed two-line box (CSS)
+            # character first, in a fixed one-line box so empty ones still hold
+            # the row and every card keeps the same vertical rhythm
+            st.markdown(
+                f'<div style="font-size:0.52rem; color:#FFC107; font-weight:700; line-height:1.15; '
+                f'height:1.15rem; margin:0 0 1px 0; text-align:center; white-space:nowrap; '
+                f'overflow:hidden; text-overflow:ellipsis;">{char_name or "&nbsp;"}</div>',
+                unsafe_allow_html=True)
+
+            # actor name underneath = the clickable element, fixed two-line box (CSS)
             st.button(actor.get('name', 'Unknown'), key=f"cast_{key_prefix}_{actor['id']}_{idx}",
                       on_click=cb_set_active_actor, args=(actor['id'],),
                       use_container_width=True, type="tertiary")
-
-            # character line always rendered so empty ones still hold the row
-            st.markdown(
-                f'<div style="font-size:0.52rem; color:#FFC107; font-weight:700; line-height:1.15; '
-                f'height:1.15rem; margin:2px 0 0 0; text-align:center; white-space:nowrap; '
-                f'overflow:hidden; text-overflow:ellipsis;">{char_name or "&nbsp;"}</div>',
-                unsafe_allow_html=True)
 
 
 def render_apple_tv_header(backdrop_path, poster_path, title, badges_html):
@@ -1925,7 +1940,7 @@ with t_tv:
     segmented_nav("tv_tab", [("Watchlist", "WATCHLIST"), ("Upcoming", "UPCOMING"),
                           ("Watched", "WATCHED"), ("Dropped", "DROPPED")], "tv_nav")
 
-    st.markdown("<div style='height: 5px;'></div>", unsafe_allow_html=True)
+    st.markdown("<div style='height: 8px;'></div>", unsafe_allow_html=True)
 
     with st.container():
         st.markdown('<span class="search-container-hook"></span>', unsafe_allow_html=True)
