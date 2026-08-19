@@ -1440,7 +1440,7 @@ def show_movie_details(m_id, m_name):
 # Set to True to trace dialog opens with a toast. If you click a poster and
 # see NO toast, the click never reached Python. If you see the toast but no
 # modal, Python fired and the modal is being lost on the frontend.
-DEBUG_DIALOG = True
+DEBUG_DIALOG = False
 
 # Streamlit renders at most one dialog per script run. Everything now goes
 # through this guard, so a second attempt in the same run is dropped rather
