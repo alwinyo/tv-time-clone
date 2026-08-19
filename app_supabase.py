@@ -41,8 +41,9 @@ st.markdown("""
     h3 { color: #FFD54F !important; font-weight: 800 !important; letter-spacing: -0.5px !important; }
     h3.tab-title { margin-top: -0.8rem !important; padding-top: 0 !important; }
     
-    /* --- BULLETPROOF INVISIBLE POSTER CLICK SYSTEM --- */
-    div[data-testid="column"]:has(.poster-wrapper) {
+    /* --- INVISIBLE POSTER CLICK SYSTEM (STREAMLIT 1.30+ FIX) --- */
+    div[data-testid="column"]:has(.poster-wrapper), 
+    div[data-testid="stColumn"]:has(.poster-wrapper) {
         position: relative !important;
         overflow: hidden !important;
         border-radius: 8px !important;
@@ -51,62 +52,85 @@ st.markdown("""
         transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1), box-shadow 0.3s ease !important;
         cursor: pointer !important;
     }
-    div[data-testid="column"]:has(.poster-wrapper):hover {
+    div[data-testid="column"]:has(.poster-wrapper):hover, 
+    div[data-testid="stColumn"]:has(.poster-wrapper):hover {
         transform: scale(1.03) !important;
         box-shadow: 0 10px 25px rgba(0,0,0,0.8) !important;
     }
-    div[data-testid="column"]:has(.poster-wrapper) > div {
+    div[data-testid="column"]:has(.poster-wrapper) > div, 
+    div[data-testid="stColumn"]:has(.poster-wrapper) > div {
         gap: 0 !important;
         padding: 0 !important;
     }
-    div[data-testid="column"]:has(.poster-wrapper) img {
+    
+    /* Cinematic Image Zoom */
+    div[data-testid="column"]:has(.poster-wrapper) img, 
+    div[data-testid="stColumn"]:has(.poster-wrapper) img {
         transition: transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1) !important;
     }
-    div[data-testid="column"]:has(.poster-wrapper):hover img {
+    div[data-testid="column"]:has(.poster-wrapper):hover img, 
+    div[data-testid="stColumn"]:has(.poster-wrapper):hover img {
         transform: scale(1.06) !important;
     }
 
-    div[data-testid="column"]:has(.poster-wrapper) div[data-testid="stButton"] {
+    /* The Invisible Overlay Button */
+    div[data-testid="column"]:has(.poster-wrapper) div.stButton,
+    div[data-testid="column"]:has(.poster-wrapper) div[data-testid="stButton"],
+    div[data-testid="stColumn"]:has(.poster-wrapper) div.stButton,
+    div[data-testid="stColumn"]:has(.poster-wrapper) div[data-testid="stButton"] {
         position: absolute !important;
-        top: 0 !important; left: 0 !important; right: 0 !important; bottom: 0 !important;
+        top: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        bottom: 0 !important;
         z-index: 20 !important;
         opacity: 0 !important;
-        height: 100% !important;
+    }
+    div[data-testid="column"]:has(.poster-wrapper) div.stButton > button,
+    div[data-testid="column"]:has(.poster-wrapper) div[data-testid="stButton"] > button,
+    div[data-testid="stColumn"]:has(.poster-wrapper) div.stButton > button,
+    div[data-testid="stColumn"]:has(.poster-wrapper) div[data-testid="stButton"] > button {
         width: 100% !important;
-    }
-    div[data-testid="column"]:has(.poster-wrapper) div[data-testid="stButton"] button {
-        width: 100% !important; height: 100% !important;
-        padding: 0 !important; margin: 0 !important;
-        background: transparent !important; color: transparent !important; border: none !important;
+        height: 100% !important;
+        padding: 0 !important;
+        margin: 0 !important;
         display: block !important;
-    }
-    div[data-testid="column"]:has(.poster-wrapper) div[data-testid="stButton"] button p {
-        display: none !important;
     }
     
     /* --- INVISIBLE HISTORY CLICK SYSTEM --- */
-    div[data-testid="column"]:has(.history-wrapper) {
+    div[data-testid="column"]:has(.history-wrapper),
+    div[data-testid="stColumn"]:has(.history-wrapper) {
         position: relative !important;
         transition: transform 0.2s cubic-bezier(0.25, 0.8, 0.25, 1) !important;
         cursor: pointer !important;
     }
-    div[data-testid="column"]:has(.history-wrapper):hover {
+    div[data-testid="column"]:has(.history-wrapper):hover,
+    div[data-testid="stColumn"]:has(.history-wrapper):hover {
         transform: translateX(5px) !important;
     }
-    div[data-testid="column"]:has(.history-wrapper) > div {
+    div[data-testid="column"]:has(.history-wrapper) > div,
+    div[data-testid="stColumn"]:has(.history-wrapper) > div {
         gap: 0 !important;
         padding: 0 !important;
     }
-    div[data-testid="column"]:has(.history-wrapper) div[data-testid="stButton"] {
+    div[data-testid="column"]:has(.history-wrapper) div.stButton,
+    div[data-testid="column"]:has(.history-wrapper) div[data-testid="stButton"],
+    div[data-testid="stColumn"]:has(.history-wrapper) div.stButton,
+    div[data-testid="stColumn"]:has(.history-wrapper) div[data-testid="stButton"] {
         position: absolute !important;
-        top: 0 !important; left: 0 !important; right: 0 !important; bottom: 0 !important;
+        top: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        bottom: 0 !important;
         z-index: 20 !important;
         opacity: 0 !important;
-        height: 100% !important;
-        width: 100% !important;
     }
-    div[data-testid="column"]:has(.history-wrapper) div[data-testid="stButton"] button {
-        width: 100% !important; height: 100% !important;
+    div[data-testid="column"]:has(.history-wrapper) div.stButton > button,
+    div[data-testid="column"]:has(.history-wrapper) div[data-testid="stButton"] > button,
+    div[data-testid="stColumn"]:has(.history-wrapper) div.stButton > button,
+    div[data-testid="stColumn"]:has(.history-wrapper) div[data-testid="stButton"] > button {
+        width: 100% !important;
+        height: 100% !important;
         display: block !important;
     }
     
@@ -143,15 +167,18 @@ st.markdown("""
     div[data-testid="stHorizontalBlock"]:has(.carousel-marker-cast)::-webkit-scrollbar, div[data-testid="stColumns"]:has(.carousel-marker-cast)::-webkit-scrollbar { display: none; }
     div[data-testid="column"]:has(.carousel-marker-cast), div[data-testid="stColumn"]:has(.carousel-marker-cast) { flex: 0 0 85px !important; width: 85px !important; min-width: 85px !important; padding: 0 !important; display: block !important; text-align: center !important; }
     
-    div[data-testid="column"]:has(.carousel-marker-cast) div[data-testid="stButton"] button[kind="tertiary"] { 
+    div[data-testid="column"]:has(.carousel-marker-cast) div[data-testid="stButton"] button[kind="tertiary"],
+    div[data-testid="stColumn"]:has(.carousel-marker-cast) div[data-testid="stButton"] button[kind="tertiary"] { 
         background: transparent !important; border: none !important; box-shadow: none !important; padding: 0 !important; margin: 0 !important; 
         height: auto !important; min-height: 0 !important; width: 100% !important; display: block !important; transform: none !important; 
     }
-    div[data-testid="column"]:has(.carousel-marker-cast) div[data-testid="stButton"] button[kind="tertiary"] p { 
+    div[data-testid="column"]:has(.carousel-marker-cast) div[data-testid="stButton"] button[kind="tertiary"] p,
+    div[data-testid="stColumn"]:has(.carousel-marker-cast) div[data-testid="stButton"] button[kind="tertiary"] p { 
         font-size: 0.55rem !important; font-weight: 500 !important; text-transform: none !important; letter-spacing: normal !important; 
         white-space: pre-wrap !important; line-height: 1.1 !important; color: #aaa !important; margin: 0 !important; 
     }
-    div[data-testid="column"]:has(.carousel-marker-cast) div[data-testid="stButton"] button[kind="tertiary"]:hover p { color: #FFC107 !important; text-decoration: underline !important;}
+    div[data-testid="column"]:has(.carousel-marker-cast) div[data-testid="stButton"] button[kind="tertiary"]:hover p,
+    div[data-testid="stColumn"]:has(.carousel-marker-cast) div[data-testid="stButton"] button[kind="tertiary"]:hover p { color: #FFC107 !important; text-decoration: underline !important;}
     
     /* --- INLINE SEARCH CLEAR BUTTON OVERRIDE --- */
     div[data-testid="stVerticalBlock"]:has(> div > div > .search-container-hook) { position: relative !important; }
@@ -192,7 +219,6 @@ if "prompt_review" not in st.session_state: st.session_state.prompt_review = Non
 if "search_reset_ctr" not in st.session_state: st.session_state.search_reset_ctr = 0
 if "lib_tv_reset_ctr" not in st.session_state: st.session_state.lib_tv_reset_ctr = 0
 if "lib_mov_reset_ctr" not in st.session_state: st.session_state.lib_mov_reset_ctr = 0
-if "open_dialog_trigger" not in st.session_state: st.session_state.open_dialog_trigger = None
 
 # --- DB PIPELINE ---
 TMDB_KEY = st.secrets["TMDB_KEY"]
@@ -459,7 +485,7 @@ def show_cast_horizontal(cast_list, key_prefix, limit=15):
         with cols[idx]:
             st.markdown('<span class="carousel-marker-cast"></span>', unsafe_allow_html=True)
             img_url = f"https://image.tmdb.org/t/p/w185{actor['profile_path']}" if actor.get("profile_path") else "https://via.placeholder.com/185x278/222222/888888?text=No+Photo"
-            encoded_name = requests.utils.quote(str(actor.get('name', '')))
+            encoded_name = str(actor.get('name', '')).replace(" ", "+")
             imdb_url = f"https://www.imdb.com/find/?q={encoded_name}"
             char_name = str(actor.get('character', '')).strip()
             
@@ -522,8 +548,12 @@ def render_inline_actor_pokedex(actor_id):
                     render_poster_card(item["title"], item.get("poster"))
                     st.markdown('<span class="poster-wrapper"></span>', unsafe_allow_html=True)
                     if st.button("OPEN", key=f"act_own_{actor_id}_{item['id']}_{idx}", use_container_width=True):
-                        st.session_state.open_dialog_trigger = {"t": item["type"], "id": item['id'], "title": item['title']}
-                        st.rerun()
+                        st.session_state.active_actor = None
+                        if item["type"] == "tv":
+                            s_details = fetch_api(f"https://api.themoviedb.org/3/tv/{item['id']}?api_key={TMDB_KEY}")
+                            manage_show_dialog(item['id'], item['title'], s_details)
+                        else:
+                            show_movie_details(item['id'], item['title'], details=None, is_watched=False)
         
         st.markdown("**🌟 Famous Roles**")
         top_credits = sorted(credits.get("cast", []), key=lambda x: x.get("popularity", 0), reverse=True)[:10]
@@ -536,9 +566,11 @@ def render_inline_actor_pokedex(actor_id):
                     render_poster_card(i_title, item.get("poster_path"))
                     st.markdown('<span class="poster-wrapper"></span>', unsafe_allow_html=True)
                     if st.button("OPEN", key=f"act_role_{actor_id}_{item['id']}_{idx}", use_container_width=True):
+                        st.session_state.active_actor = None
                         c_type = item.get("media_type", "movie")
-                        st.session_state.open_dialog_trigger = {"t": c_type, "id": item['id'], "title": i_title}
-                        st.rerun()
+                        c_details = fetch_api(f"https://api.themoviedb.org/3/{c_type}/{item['id']}?api_key={TMDB_KEY}")
+                        if c_type == "tv": manage_show_dialog(item['id'], i_title, c_details)
+                        else: show_movie_details(item['id'], i_title, c_details, is_watched=False)
 
 def render_poster_card(title, poster_path, subtitle="", progress_pct=-1.0):
     img_url = f"https://image.tmdb.org/t/p/w342{poster_path}" if poster_path else "https://via.placeholder.com/342x513/222222/555555?text=No+Poster"
@@ -948,21 +980,6 @@ def show_movie_details(m_id, m_name, details=None, is_watched=False):
             save_db()
             st.rerun()
 
-# --- GLOBAL DIALOG ROUTER ---
-if st.session_state.get("open_dialog_trigger"):
-    trig = st.session_state.open_dialog_trigger
-    st.session_state.open_dialog_trigger = None
-    details = fetch_api(f"https://api.themoviedb.org/3/{trig['t']}/{trig['id']}?api_key={TMDB_KEY}")
-    if trig['t'] == "tv": manage_show_dialog(trig['id'], trig['title'], details)
-    else: show_movie_details(trig['id'], trig['title'], details, is_watched=False)
-
-# --- IMMEDIATE REVIEW EVALUATOR ---
-if st.session_state.get("prompt_review"):
-    pr = st.session_state.prompt_review
-    st.session_state.prompt_review = None
-    if pr["t"] == "s": show_episode_details(pr["id"], pr["name"], pr["code"], ep_data=None, is_watched=True)
-    else: show_movie_details(pr["id"], pr["name"], details=None, is_watched=True)
-
 # --- APP NAVIGATION BAR ---
 t_next, t_soon, t_search, t_tv, t_movies, t_profile = st.tabs(["🔥 Next", "📅 Soon", "🔍 Search", "📺 TV", "🎬 Movies", "👤 Profile"])
 
@@ -1018,7 +1035,7 @@ with t_next:
                 s_data = fetch_api(f"https://api.themoviedb.org/3/tv/{show['id']}/season/{s_info['season_number']}?api_key={TMDB_KEY}")
                 for ep in s_data.get("episodes", []):
                     ep_code = f"S{s_info['season_number']}E{ep['episode_number']}"
-                    air_date = ep.get("air_date", "")
+                    air_date = str(ep.get("air_date") or "").strip()
                     if ep_code not in watched_set and air_date and air_date <= TODAY:
                         s_n, e_n = s_info['season_number'], ep['episode_number']
                         if s_n > highest_s or (s_n == highest_s and e_n > highest_e):
@@ -1032,7 +1049,7 @@ with t_next:
                 for s_info in [s for s in seasons if s["season_number"] < start_s]:
                     for ep in fetch_api(f"https://api.themoviedb.org/3/tv/{show['id']}/season/{s_info['season_number']}?api_key={TMDB_KEY}").get("episodes", []):
                         ep_code = f"S{s_info['season_number']}E{ep['episode_number']}"
-                        air_date = ep.get("air_date", "")
+                        air_date = str(ep.get("air_date") or "").strip()
                         if ep_code not in watched_set and air_date and air_date <= TODAY:
                             candidate_skipped = {"item": show, "details": details, "ep": ep, "code": ep_code, "date": air_date, "is_rec": False, "is_skipped": True}
                             break
@@ -1097,7 +1114,7 @@ with t_next:
         for m in st.session_state.db["movies"]:
             if m.get("dropped", False): continue
             if not m.get("watched"):
-                r_date = m.get("release_date", "")
+                r_date = str(m.get("release_date") or "").strip()
                 if r_date and r_date <= TODAY:
                     up_next_mov.append({"item": m, "date": r_date, "is_rec": ("m", str(m["id"])) in recent_active_ids})
 
@@ -1159,9 +1176,11 @@ with t_soon:
                 if found_next: break
                 for ep in fetch_api(f"https://api.themoviedb.org/3/tv/{show['id']}/season/{s_info['season_number']}?api_key={TMDB_KEY}").get("episodes", []):
                     ep_code = f"S{s_info['season_number']}E{ep['episode_number']}"
-                    air_date = ep.get("air_date", "")
-                    if ep_code not in watched_set and air_date and air_date > TODAY:
-                        soon_tv.append({"item": show, "details": details, "ep": ep, "code": ep_code, "date": air_date})
+                    
+                    e_air_date = str(ep.get("air_date") or "").strip()
+                    
+                    if ep_code not in watched_set and (e_air_date == "" or e_air_date > TODAY):
+                        soon_tv.append({"item": show, "details": details, "ep": ep, "code": ep_code, "date": e_air_date})
                         found_next = True; break
                         
         if needs_heal_soon: save_db()
@@ -1197,9 +1216,10 @@ with t_soon:
         soon_mov = []
         for m in st.session_state.db["movies"]:
             if m.get("dropped", False) or m.get("watched", False): continue
+            
             r_date = str(m.get("release_date") or "").strip()
             
-            # Logic Fixed: TBA (No release date) OR Future release date
+            # Logic: TBA (No release date) OR Future release date
             if not r_date or r_date > TODAY: 
                 soon_mov.append({"item": m, "date": r_date})
 
@@ -1247,7 +1267,7 @@ with t_search:
         endpoint = "tv" if search_type == "TV Shows" else "movie"
         
         # URL ENCODE QUERY TO FIX MULTI-WORD SEARCH BUGS
-        safe_query = requests.utils.quote(search_query)
+        safe_query = str(search_query).replace(" ", "+")
         results = fetch_api(f"https://api.themoviedb.org/3/search/{endpoint}?api_key={TMDB_KEY}&query={safe_query}").get("results", [])
         
         if results:
@@ -1370,7 +1390,7 @@ with t_tv:
             t_eps = show.get("total_episodes", 1) 
             w_eps = len(show.get("watched_episodes", []))
             
-            # Logic Fixed: TBA (no date) OR Future date = Upcoming
+            # Logic Fixed: No API hit here. Just local DB matching
             is_upcoming = bool(not air_date or air_date > TODAY)
             is_completed = (w_eps >= t_eps and t_eps > 0)
             is_dropped = show.get("dropped", False)
@@ -1872,7 +1892,6 @@ with t_profile:
                             st.markdown(html_card, unsafe_allow_html=True)
                             st.markdown('<span class="history-wrapper"></span>', unsafe_allow_html=True)
                             if st.button("INFO", key=f"h_r_tv_{h['i']}_{ep_code}_{h_idx}", use_container_width=True): 
-                                st.session_state.active_actor = None
                                 show_episode_details(h['i'], s_name, ep_code, ep_data=None, is_watched=True)
                 if len(tv_hist) > st.session_state.hist_tv_limit:
                     if st.button("Load More Series", use_container_width=True, key="load_more_tv_hist"):
@@ -1929,7 +1948,6 @@ with t_profile:
                             st.markdown(html_card, unsafe_allow_html=True)
                             st.markdown('<span class="history-wrapper"></span>', unsafe_allow_html=True)
                             if st.button("OPEN", key=f"h_r_mov_{h['i']}_{h_idx}", use_container_width=True): 
-                                st.session_state.active_actor = None
                                 show_movie_details(h['i'], m_name, details=None, is_watched=True)
                 if len(mov_hist) > st.session_state.hist_mov_limit:
                     if st.button("Load More Movies", use_container_width=True, key="load_more_mov_hist"):
@@ -1994,7 +2012,7 @@ with t_profile:
                                     res = fetch_robust(f"https://api.themoviedb.org/3/find/{imdb_id}?api_key={TMDB_KEY}&external_source=imdb_id") if imdb_id else {}
                                         
                                     if not res.get("movie_results") and raw_title:
-                                        title_query = raw_title.replace(" ", "+")
+                                        title_query = str(raw_title).replace(" ", "+")
                                         res = fetch_robust(f"https://api.themoviedb.org/3/search/movie?api_key={TMDB_KEY}&query={title_query}&year={m.get('year', '')}")
                                         if res.get("results"): res["movie_results"] = [res["results"][0]]
                                         
