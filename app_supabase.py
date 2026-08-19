@@ -60,7 +60,11 @@ st.markdown("""
     .stMarkdown p { margin-bottom: 0.3rem !important; }
 
     h3 { color: #FFD54F !important; font-weight: 800 !important; letter-spacing: -0.5px !important; }
-    h3.tab-title { margin-top: -0.8rem !important; padding-top: 0 !important; }
+    h3.tab-title {
+        margin-top: -0.8rem !important; padding-top: 0 !important;
+        font-size: 1.05rem !important; line-height: 1.25 !important;
+        white-space: nowrap !important; overflow: hidden !important; text-overflow: ellipsis !important;
+    }
 
     /* =========================================================
        CLICKABLE POSTER SYSTEM
@@ -238,7 +242,14 @@ st.markdown("""
        identical share of the row, so the labels can never leave a gap at the
        right edge. auto-flow column means it adapts to any number of tabs,
        which matters because the Profile sub-tabs reuse these rules. */
-    div[data-testid="stTabs"] > div[data-baseweb="tab-list"], div[data-testid="stTabs"] > div[role="tablist"] { display: grid !important; grid-auto-flow: column !important; grid-auto-columns: 1fr !important; width: 100% !important; max-width: 100% !important; margin-left: 0 !important; padding: 0 !important; gap: 0 !important; overflow-x: hidden !important; box-sizing: border-box !important; background-color: rgba(8, 9, 12, 0.85) !important; backdrop-filter: blur(12px) !important; -webkit-backdrop-filter: blur(12px) !important; border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important; }
+    /* Descendant selectors, NOT `>`: Streamlit nests the tab list inside a
+       wrapper in some versions, and a direct-child rule silently matched
+       nothing there - leaving default content-sized tabs and a gap at the right. */
+    div[data-testid="stTabs"] > div { width: 100% !important; max-width: 100% !important; }
+    div[data-testid="stTabs"] [data-baseweb="tab-list"],
+    div[data-testid="stTabs"] [role="tablist"] { display: grid !important; grid-auto-flow: column !important; grid-auto-columns: minmax(0, 1fr) !important; width: 100% !important; max-width: 100% !important; margin: 0 !important; padding: 0 !important; gap: 0 !important; overflow-x: hidden !important; box-sizing: border-box !important; background-color: rgba(8, 9, 12, 0.85) !important; backdrop-filter: blur(12px) !important; -webkit-backdrop-filter: blur(12px) !important; border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important; }
+    div[data-testid="stTabs"] [data-baseweb="tab-list"] > *,
+    div[data-testid="stTabs"] [role="tablist"] > * { min-width: 0 !important; width: 100% !important; }
     div[data-testid="stTabs"] button[role="tab"] { width: 100% !important; min-width: 0 !important; max-width: 100% !important; padding: 9px 0 !important; margin: 0 !important; border-radius: 0 !important; overflow: hidden !important; box-sizing: border-box !important; transition: all 0.3s ease !important; }
     div[data-testid="stTabs"] button[role="tab"] p { font-size: 0.58rem !important; font-weight: 700 !important; text-align: center !important; margin: 0 auto !important; white-space: nowrap !important; letter-spacing: 0 !important; text-transform: uppercase !important; overflow: hidden !important; text-overflow: clip !important; color: #8a8a8a !important; transition: all 0.3s ease !important; }
     div[data-testid="stTabs"] button[role="tab"][aria-selected="true"] { border-bottom: 3px solid #FFC107 !important; background: linear-gradient(to top, rgba(255, 193, 7, 0.15) 0%, transparent 100%) !important; box-shadow: inset 0px -10px 15px -10px rgba(255, 193, 7, 0.5) !important; }
