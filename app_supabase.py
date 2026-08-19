@@ -9,7 +9,6 @@ import random
 from datetime import datetime, timedelta
 from st_keyup import st_keyup
 import altair as alt
-from st_clickable_images import clickable_images
 
 # Mobile-friendly layout configuration
 st.set_page_config(page_title="My TV Time", layout="centered", initial_sidebar_state="collapsed")
@@ -42,7 +41,7 @@ st.markdown("""
     h3 { color: #FFD54F !important; font-weight: 800 !important; letter-spacing: -0.5px !important; }
     h3.tab-title { margin-top: -0.8rem !important; padding-top: 0 !important; }
     
-    /* --- INVISIBLE POSTER CLICK SYSTEM --- */
+    /* --- BULLETPROOF INVISIBLE POSTER CLICK SYSTEM --- */
     div[data-testid="column"]:has(.poster-wrapper) {
         position: relative !important;
         overflow: hidden !important;
@@ -60,8 +59,6 @@ st.markdown("""
         gap: 0 !important;
         padding: 0 !important;
     }
-    
-    /* Cinematic Image Zoom */
     div[data-testid="column"]:has(.poster-wrapper) img {
         transition: transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1) !important;
     }
@@ -69,30 +66,21 @@ st.markdown("""
         transform: scale(1.06) !important;
     }
 
-    /* The Invisible Overlay Button */
-    div[data-testid="column"]:has(.poster-wrapper) div.stButton,
     div[data-testid="column"]:has(.poster-wrapper) div[data-testid="stButton"] {
         position: absolute !important;
-        top: 0 !important;
-        left: 0 !important;
-        right: 0 !important;
-        bottom: 0 !important;
+        top: 0 !important; left: 0 !important; right: 0 !important; bottom: 0 !important;
         z-index: 20 !important;
         opacity: 0 !important;
-    }
-    div[data-testid="column"]:has(.poster-wrapper) div.stButton > button,
-    div[data-testid="column"]:has(.poster-wrapper) div[data-testid="stButton"] > button {
-        width: 100% !important;
         height: 100% !important;
-        padding: 0 !important;
-        margin: 0 !important;
-        background: transparent !important;
-        border: none !important;
-        color: transparent !important;
+        width: 100% !important;
+    }
+    div[data-testid="column"]:has(.poster-wrapper) div[data-testid="stButton"] button {
+        width: 100% !important; height: 100% !important;
+        padding: 0 !important; margin: 0 !important;
+        background: transparent !important; color: transparent !important; border: none !important;
         display: block !important;
     }
-    div[data-testid="column"]:has(.poster-wrapper) div.stButton > button *,
-    div[data-testid="column"]:has(.poster-wrapper) div[data-testid="stButton"] > button * {
+    div[data-testid="column"]:has(.poster-wrapper) div[data-testid="stButton"] button p {
         display: none !important;
     }
     
@@ -109,20 +97,16 @@ st.markdown("""
         gap: 0 !important;
         padding: 0 !important;
     }
-    div[data-testid="column"]:has(.history-wrapper) div.stButton,
     div[data-testid="column"]:has(.history-wrapper) div[data-testid="stButton"] {
         position: absolute !important;
-        top: 0 !important;
-        left: 0 !important;
-        right: 0 !important;
-        bottom: 0 !important;
+        top: 0 !important; left: 0 !important; right: 0 !important; bottom: 0 !important;
         z-index: 20 !important;
         opacity: 0 !important;
-    }
-    div[data-testid="column"]:has(.history-wrapper) div.stButton > button,
-    div[data-testid="column"]:has(.history-wrapper) div[data-testid="stButton"] > button {
-        width: 100% !important;
         height: 100% !important;
+        width: 100% !important;
+    }
+    div[data-testid="column"]:has(.history-wrapper) div[data-testid="stButton"] button {
+        width: 100% !important; height: 100% !important;
         display: block !important;
     }
     
@@ -222,16 +206,14 @@ PREMIUM_EMOTIONS = ["None", "🤯 Mind Blown", "😂 Hilarious", "😭 Emotional
 @st.cache_data(ttl=43200)
 def fetch_api(url):
     try:
-        safe_url = requests.utils.requote_uri(url)
-        r = requests.get(safe_url, timeout=5)
+        r = requests.get(url, timeout=5)
         return r.json() if r.status_code == 200 else {}
     except: return {}
 
 def fetch_robust(url):
-    safe_url = requests.utils.requote_uri(url)
     for _ in range(3):
         try:
-            r = requests.get(safe_url, timeout=5)
+            r = requests.get(url, timeout=5)
             if r.status_code == 429: time.sleep(1.5); continue
             if r.status_code == 200: return r.json()
             return {}
@@ -459,6 +441,17 @@ def render_badges(items, is_gold=False):
     html = "".join([f'<span class="{css_class}">{item}</span>' for item in items])
     st.markdown(html, unsafe_allow_html=True)
 
+def display_poster(path, width=185):
+    if path and str(path).lower() not in ["none", "null", ""]: 
+        st.image(f"https://image.tmdb.org/t/p/w{width}{path}", use_container_width=True)
+    else: 
+        html = (
+            f'<div style="background-color: rgba(255,255,255,0.05); border-radius:8px; width:100%; '
+            f'aspect-ratio: 2/3; display:flex; align-items:center; justify-content:center; color:#555; '
+            f'font-size:0.8rem; text-align:center; margin-bottom:5px;">No Image</div>'
+        )
+        st.markdown(html, unsafe_allow_html=True)
+
 def show_cast_horizontal(cast_list, key_prefix, limit=15):
     if not cast_list: return
     cols = st.columns(len(cast_list[:limit]))
@@ -466,7 +459,7 @@ def show_cast_horizontal(cast_list, key_prefix, limit=15):
         with cols[idx]:
             st.markdown('<span class="carousel-marker-cast"></span>', unsafe_allow_html=True)
             img_url = f"https://image.tmdb.org/t/p/w185{actor['profile_path']}" if actor.get("profile_path") else "https://via.placeholder.com/185x278/222222/888888?text=No+Photo"
-            encoded_name = str(actor.get('name', '')).replace(" ", "+")
+            encoded_name = requests.utils.quote(str(actor.get('name', '')))
             imdb_url = f"https://www.imdb.com/find/?q={encoded_name}"
             char_name = str(actor.get('character', '')).strip()
             
@@ -481,7 +474,7 @@ def show_cast_horizontal(cast_list, key_prefix, limit=15):
                 html_char = f'<div style="font-size: 0.55rem; color: #FFC107; font-weight: 700; line-height: 1.1; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{char_name}</div>'
                 st.markdown(html_char, unsafe_allow_html=True)
             
-            st.button(actor.get('name', 'Unknown').title(), key=f"cast_{key_prefix}_{actor['id']}_{idx}", on_click=cb_set_active_actor, args=(actor['id'],), use_container_width=True, type="tertiary")
+            st.button(actor.get('name', 'Unknown'), key=f"cast_{key_prefix}_{actor['id']}_{idx}", on_click=cb_set_active_actor, args=(actor['id'],), use_container_width=True, type="tertiary")
 
 def render_inline_actor_pokedex(actor_id):
     details = fetch_api(f"https://api.themoviedb.org/3/person/{actor_id}?api_key={TMDB_KEY}")
@@ -495,10 +488,10 @@ def render_inline_actor_pokedex(actor_id):
     for c in credits.get("cast", []):
         cid = str(c["id"])
         if c["media_type"] == "tv" and cid in db_shows and cid not in seen_ids:
-            owned_items.append({"id": cid, "title": db_shows[cid]["name"], "type": "tv", "poster_path": db_shows[cid].get("poster_path")})
+            owned_items.append({"id": cid, "title": db_shows[cid]["name"], "type": "tv", "poster": db_shows[cid].get("poster_path")})
             seen_ids.add(cid)
         elif c["media_type"] == "movie" and cid in db_movies and cid not in seen_ids:
-            owned_items.append({"id": cid, "title": db_movies[cid]["name"], "type": "movie", "poster_path": db_movies[cid].get("poster_path")})
+            owned_items.append({"id": cid, "title": db_movies[cid]["name"], "type": "movie", "poster": db_movies[cid].get("poster_path")})
             seen_ids.add(cid)
             
     st.markdown("<hr style='margin: 0.5rem 0; border-color: #FFC107;'>", unsafe_allow_html=True)
@@ -526,7 +519,7 @@ def render_inline_actor_pokedex(actor_id):
             for idx, item in enumerate(owned_items):
                 with cols[idx]:
                     st.markdown('<span class="carousel-marker"></span>', unsafe_allow_html=True)
-                    render_poster_card(item["title"], item.get("poster_path"))
+                    render_poster_card(item["title"], item.get("poster"))
                     st.markdown('<span class="poster-wrapper"></span>', unsafe_allow_html=True)
                     if st.button("OPEN", key=f"act_own_{actor_id}_{item['id']}_{idx}", use_container_width=True):
                         st.session_state.open_dialog_trigger = {"t": item["type"], "id": item['id'], "title": item['title']}
@@ -665,7 +658,7 @@ def show_yearly_recap_dialog(year, y_tv, y_mov, recap_id):
         date_counts[d_only] = date_counts.get(d_only, 0) + 1
         if h.get("p") and h.get("p") != "None": plat_counts[h["p"]] = plat_counts.get(h["p"], 0) + 1
         if h.get("f") and h.get("f") != "None": feel_counts[h["f"]] = feel_counts.get(h["f"], 0) + 1
-        if h.get("t") == "s": show_counts[h["i"]] = show_counts.get(h["i"], 0) + 1
+        if h["t"] == "s": show_counts[h["i"]] = show_counts.get(h["i"], 0) + 1
         if h.get("r", 0) > 0: ratings.append(h["r"])
         
     st.divider()
@@ -1059,7 +1052,7 @@ with t_next:
             h_bg = f"https://image.tmdb.org/t/p/w780{h_details.get('backdrop_path')}" if h_details.get('backdrop_path') else f"https://image.tmdb.org/t/p/w342{h_show.get('poster_path')}"
             
             html_hero = (
-                f'<div style="position: relative; border-radius: 12px; overflow: hidden; margin-bottom: 5px; box-shadow: 0 8px 24px rgba(0,0,0,0.6); height: 220px;">'
+                f'<div style="position: relative; border-radius: 12px; overflow: hidden; margin-bottom: 5px; box-shadow: 0 8px 24px rgba(0,0,0,0.6); height: 220px; margin-top: 10px;">'
                 f'<div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background-image: url(\'{h_bg}\'); background-size: cover; background-position: center; filter: brightness(0.6);"></div>'
                 f'<div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: linear-gradient(to top, rgba(15,17,22,1) 0%, rgba(15,17,22,0.2) 60%, rgba(15,17,22,0) 100%);"></div>'
                 f'<div style="position: absolute; bottom: 20px; left: 20px; right: 20px;">'
@@ -1104,7 +1097,7 @@ with t_next:
         for m in st.session_state.db["movies"]:
             if m.get("dropped", False): continue
             if not m.get("watched"):
-                r_date = str(m.get("release_date") or "").strip()
+                r_date = m.get("release_date", "")
                 if r_date and r_date <= TODAY:
                     up_next_mov.append({"item": m, "date": r_date, "is_rec": ("m", str(m["id"])) in recent_active_ids})
 
@@ -1206,7 +1199,7 @@ with t_soon:
             if m.get("dropped", False) or m.get("watched", False): continue
             r_date = str(m.get("release_date") or "").strip()
             
-            # Logic: TBA / No Date OR Future Date = Upcoming Movie
+            # Logic Fixed: TBA (No release date) OR Future release date
             if not r_date or r_date > TODAY: 
                 soon_mov.append({"item": m, "date": r_date})
 
@@ -1252,7 +1245,11 @@ with t_search:
     if search_query:
         search_type = st.selectbox("Search in:", ["TV Shows", "Movies"], label_visibility="collapsed", key="search_filter_box")
         endpoint = "tv" if search_type == "TV Shows" else "movie"
-        results = fetch_api(f"https://api.themoviedb.org/3/search/{endpoint}?api_key={TMDB_KEY}&query={search_query}").get("results", [])
+        
+        # URL ENCODE QUERY TO FIX MULTI-WORD SEARCH BUGS
+        safe_query = requests.utils.quote(search_query)
+        results = fetch_api(f"https://api.themoviedb.org/3/search/{endpoint}?api_key={TMDB_KEY}&query={safe_query}").get("results", [])
+        
         if results:
             search_results = results[:30]
             for i in range(0, len(search_results), 3):
@@ -1279,7 +1276,7 @@ with t_search:
 
         def render_carousel(title, items, c_type):
             if not items: return
-            html_title = f"<h5 style='margin-bottom:5px; margin-top:10px;'>{title}</h5>"
+            html_title = f"<h5 style='margin-bottom:5px;'>{title}</h5>"
             st.markdown(html_title, unsafe_allow_html=True)
             limit = st.session_state.c_limits.get(title, 10)
             render_items, show_load_more = items[:limit], limit < len(items)
@@ -1327,7 +1324,7 @@ with t_search:
             k_tv = fetch_api(f"https://api.themoviedb.org/3/discover/tv?api_key={TMDB_KEY}&with_original_language=ko&first_air_date.gte={start_month}&first_air_date.lte={end_month_str}&sort_by=popularity.desc")
             if k_tv.get("results"): render_carousel(f"🇰🇷 K-Dramas ({current_date.strftime('%B %Y')})", k_tv["results"], "tv")
             k_mov = fetch_api(f"https://api.themoviedb.org/3/discover/movie?api_key={TMDB_KEY}&with_original_language=ko&primary_release_date.gte={start_month}&primary_release_date.lte={end_month_str}&sort_by=popularity.desc")
-            if k_mov.get("results"): render_carousel(f"🇰🇷 K-Movies ({current_date.strftime('%B %Y')})", valid_k_mov, "movie")
+            if k_mov.get("results"): render_carousel(f"🇰🇷 K-Movies ({current_date.strftime('%B %Y')})", k_mov["results"], "movie")
         else:
             genre_map_tv = {"🤣 Comedy": 35, "💥 Action": 10759, "🐉 Sci-Fi": 10765, "🔪 Thriller": 9648, "👻 Horror": 9648} 
             genre_map_mov = {"🤣 Comedy": 35, "💥 Action": 28, "🐉 Sci-Fi": 878, "🔪 Thriller": 53, "👻 Horror": 27}
@@ -1373,6 +1370,7 @@ with t_tv:
             t_eps = show.get("total_episodes", 1) 
             w_eps = len(show.get("watched_episodes", []))
             
+            # Logic Fixed: TBA (no date) OR Future date = Upcoming
             is_upcoming = bool(not air_date or air_date > TODAY)
             is_completed = (w_eps >= t_eps and t_eps > 0)
             is_dropped = show.get("dropped", False)
@@ -1451,7 +1449,7 @@ with t_movies:
             is_watched = bool(m.get("watched", False))
             is_dropped = bool(m.get("dropped", False))
             
-            # Logic: No Date/TBA OR Future Date = Upcoming
+            # Logic Fixed: TBA (no date) OR Future date = Upcoming
             is_upcoming = bool(not r_date or r_date > TODAY)
             
             if st.session_state.mov_tab == "DROPPED" and is_dropped: display_movies.append((m, is_watched))
@@ -1874,6 +1872,7 @@ with t_profile:
                             st.markdown(html_card, unsafe_allow_html=True)
                             st.markdown('<span class="history-wrapper"></span>', unsafe_allow_html=True)
                             if st.button("INFO", key=f"h_r_tv_{h['i']}_{ep_code}_{h_idx}", use_container_width=True): 
+                                st.session_state.active_actor = None
                                 show_episode_details(h['i'], s_name, ep_code, ep_data=None, is_watched=True)
                 if len(tv_hist) > st.session_state.hist_tv_limit:
                     if st.button("Load More Series", use_container_width=True, key="load_more_tv_hist"):
@@ -1930,6 +1929,7 @@ with t_profile:
                             st.markdown(html_card, unsafe_allow_html=True)
                             st.markdown('<span class="history-wrapper"></span>', unsafe_allow_html=True)
                             if st.button("OPEN", key=f"h_r_mov_{h['i']}_{h_idx}", use_container_width=True): 
+                                st.session_state.active_actor = None
                                 show_movie_details(h['i'], m_name, details=None, is_watched=True)
                 if len(mov_hist) > st.session_state.hist_mov_limit:
                     if st.button("Load More Movies", use_container_width=True, key="load_more_mov_hist"):
