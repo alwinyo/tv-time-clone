@@ -205,37 +205,42 @@ st.markdown("""
     }
     div[role="radiogroup"]::-webkit-scrollbar { display: none; }
     div[role="radiogroup"] > label {
-        /* equal share of the row: every pill the same width AND the row ends
-           flush with the right edge, no leftover gap */
+        /* plain text, no pill: the chip padding was squeezing longer labels.
+           Even flex share keeps them evenly spaced across the full width. */
         flex: 1 1 0 !important; width: auto !important; min-width: 0 !important;
         display: flex !important; align-items: center !important; justify-content: center !important;
         box-sizing: border-box !important;
-        background: rgba(255,255,255,0.045) !important;
-        border: 1px solid rgba(255,255,255,0.10) !important;
-        border-radius: 999px !important; padding: 8px 2px !important; margin: 0 !important;
-        transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease !important;
+        background: transparent !important;
+        border: none !important; border-bottom: 2px solid transparent !important;
+        border-radius: 0 !important; padding: 6px 1px !important; margin: 0 !important;
+        transition: color 0.2s ease, border-color 0.2s ease !important;
         touch-action: manipulation !important;
     }
     div[role="radiogroup"] > label > div:first-child { display: none !important; }
     div[role="radiogroup"] > label:has(input:checked) {
-        background: linear-gradient(135deg, #FFD54F 0%, #FFC107 100%) !important;
-        border-color: transparent !important;
-        box-shadow: 0 4px 12px rgba(255, 193, 7, 0.30) !important;
+        background: transparent !important;
+        border-bottom: 2px solid #FFC107 !important;
+        box-shadow: none !important;
     }
-    div[role="radiogroup"] > label:has(input:checked) p { color: #000 !important; font-weight: 800 !important; }
+    div[role="radiogroup"] > label:has(input:checked) p {
+        color: #FFD54F !important; font-weight: 800 !important;
+        text-shadow: 0 0 10px rgba(255, 193, 7, 0.45) !important;
+    }
     div[role="radiogroup"] > label p {
-        font-size: 0.56rem !important; font-weight: 700 !important; margin: 0 !important;
-        color: #cfcfcf !important; white-space: nowrap !important;
-        text-transform: uppercase !important; letter-spacing: 0.2px !important; text-align: center !important;
-        overflow: hidden !important; text-overflow: ellipsis !important;
+        font-size: 0.63rem !important; font-weight: 700 !important; margin: 0 !important;
+        color: #9a9a9a !important; white-space: nowrap !important;
+        text-transform: uppercase !important; letter-spacing: 0 !important; text-align: center !important;
     }
 
     /* --- TABS OVERHAUL --- */
-    div[data-testid="stTabs"] > div[data-baseweb="tab-list"], div[data-testid="stTabs"] > div[role="tablist"] { display: flex !important; width: calc(100% + 1rem) !important; max-width: calc(100% + 1rem) !important; margin-left: -0.5rem !important; padding: 0 0 4px 0 !important; gap: 0 !important; overflow-x: hidden !important; justify-content: space-between !important; background-color: rgba(8, 9, 12, 0.85) !important; backdrop-filter: blur(12px) !important; -webkit-backdrop-filter: blur(12px) !important; border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important; }
+    div[data-testid="stTabs"] > div[data-baseweb="tab-list"], div[data-testid="stTabs"] > div[role="tablist"] { display: flex !important; width: 100% !important; max-width: 100% !important; margin-left: 0 !important; padding: 0 !important; gap: 0 !important; overflow-x: hidden !important; box-sizing: border-box !important; background-color: rgba(8, 9, 12, 0.85) !important; backdrop-filter: blur(12px) !important; -webkit-backdrop-filter: blur(12px) !important; border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important; }
     div[data-testid="stTabs"] button[role="tab"] { flex: 1 1 0px !important; min-width: 0 !important; width: auto !important; padding: 9px 1px !important; margin: 0 !important; border-radius: 0 !important; overflow: hidden !important; transition: all 0.3s ease !important; }
     div[data-testid="stTabs"] button[role="tab"] p { font-size: 0.6rem !important; font-weight: 700 !important; text-align: center !important; margin: 0 auto !important; white-space: nowrap !important; letter-spacing: 0 !important; text-transform: uppercase !important; overflow: hidden !important; text-overflow: clip !important; color: #8a8a8a !important; transition: all 0.3s ease !important; }
     div[data-testid="stTabs"] button[role="tab"][aria-selected="true"] { border-bottom: 3px solid #FFC107 !important; background: linear-gradient(to top, rgba(255, 193, 7, 0.15) 0%, transparent 100%) !important; box-shadow: inset 0px -10px 15px -10px rgba(255, 193, 7, 0.5) !important; }
     div[data-testid="stTabs"] button[role="tab"][aria-selected="true"] p { color: #FFD54F !important; text-shadow: 0px 0px 10px rgba(255, 193, 7, 0.6) !important; }
+
+    div[data-testid="stTabs"] [data-baseweb="tab-highlight"],
+    div[data-testid="stTabs"] [data-baseweb="tab-border"] { display: none !important; }
 
     /* --- DIALOG CLOSE BUTTON ---
        The Apple-TV header pulls its backdrop up with a negative margin, which
@@ -260,10 +265,18 @@ st.markdown("""
     div[role="dialog"] [aria-label="Close"] svg {
         fill: #fff !important; color: #fff !important; width: 15px !important; height: 15px !important;
     }
-    /* keep the dialog title clear of the close chip */
-    div[role="dialog"] h2, div[data-testid="stDialog"] h2 {
-        padding-right: 40px !important; font-size: 1rem !important;
+    /* Hide the dialog's own title ("Manage Show" / "Episode Details") so the
+       header artwork starts at the top. Headings the app writes INSIDE the
+       dialog body (recap titles) live in stMarkdown and are re-shown below. */
+    div[role="dialog"] h2,
+    div[data-testid="stDialog"] h2 { display: none !important; }
+    div[role="dialog"] [data-testid="stMarkdown"] h2,
+    div[data-testid="stDialog"] [data-testid="stMarkdown"] h2 {
+        display: block !important; padding-right: 36px !important;
     }
+    /* reclaim the space the title left behind */
+    div[role="dialog"] > div:first-child,
+    div[data-testid="stDialog"] > div:first-child { padding-top: 0 !important; }
 
     /* --- CAROUSEL HACKS --- */
     div[data-testid="stHorizontalBlock"]:has(.carousel-marker), div[data-testid="stColumns"]:has(.carousel-marker) { display: flex !important; flex-direction: row !important; overflow-x: auto !important; flex-wrap: nowrap !important; scrollbar-width: none; padding-bottom: 8px !important; gap: 8px !important; }
@@ -1116,17 +1129,18 @@ def show_cast_horizontal(cast_list, key_prefix, limit=15):
                 f'box-shadow:0 4px 6px rgba(0,0,0,0.3); display:block; margin:0 auto 5px auto;">'
                 f'</a>', unsafe_allow_html=True)
 
-            # clickable actor name sits directly under the photo, fixed two-line box (CSS)
+            # character name directly under the photo, fixed one-line box so empty
+            # ones still hold the row and every card keeps the same rhythm
+            st.markdown(
+                f'<div style="font-size:0.52rem; color:#FFC107; font-weight:700; line-height:1.15; '
+                f'height:1.15rem; margin:0 0 1px 0; text-align:center; white-space:nowrap; '
+                f'overflow:hidden; text-overflow:ellipsis;">{char_name or "&nbsp;"}</div>',
+                unsafe_allow_html=True)
+
+            # actor name beneath = still the clickable element, fixed two-line box (CSS)
             st.button(actor.get('name', 'Unknown'), key=f"cast_{key_prefix}_{actor['id']}_{idx}",
                       on_click=cb_set_active_actor, args=(actor['id'],),
                       use_container_width=True, type="tertiary")
-
-            # character underneath, fixed one-line box so empty ones still hold the row
-            st.markdown(
-                f'<div style="font-size:0.52rem; color:#FFC107; font-weight:700; line-height:1.15; '
-                f'height:1.15rem; margin:1px 0 0 0; text-align:center; white-space:nowrap; '
-                f'overflow:hidden; text-overflow:ellipsis;">{char_name or "&nbsp;"}</div>',
-                unsafe_allow_html=True)
 
 
 def render_apple_tv_header(backdrop_path, poster_path, title, badges_html):
