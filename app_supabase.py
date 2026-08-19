@@ -42,90 +42,6 @@ st.markdown("""
     h3 { color: #FFD54F !important; font-weight: 800 !important; letter-spacing: -0.5px !important; }
     h3.tab-title { margin-top: -0.8rem !important; padding-top: 0 !important; }
     
-    /* --- INVISIBLE POSTER CLICK SYSTEM --- */
-    div[data-testid="column"]:has(.poster-wrapper) {
-        position: relative !important;
-        overflow: hidden !important;
-        border-radius: 8px !important;
-        box-shadow: 0 4px 10px rgba(0,0,0,0.5) !important;
-        background: #111 !important;
-        transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1), box-shadow 0.3s ease !important;
-        cursor: pointer !important;
-    }
-    div[data-testid="column"]:has(.poster-wrapper):hover {
-        transform: scale(1.03) !important;
-        box-shadow: 0 10px 25px rgba(0,0,0,0.8) !important;
-    }
-    div[data-testid="column"]:has(.poster-wrapper) > div {
-        gap: 0 !important;
-        padding: 0 !important;
-    }
-    
-    /* Cinematic Image Zoom */
-    div[data-testid="column"]:has(.poster-wrapper) img {
-        transition: transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1) !important;
-    }
-    div[data-testid="column"]:has(.poster-wrapper):hover img {
-        transform: scale(1.06) !important;
-    }
-
-    /* The Invisible Overlay Button */
-    div[data-testid="column"]:has(.poster-wrapper) div.stButton,
-    div[data-testid="column"]:has(.poster-wrapper) div[data-testid="stButton"] {
-        position: absolute !important;
-        top: 0 !important;
-        left: 0 !important;
-        right: 0 !important;
-        bottom: 0 !important;
-        z-index: 20 !important;
-        opacity: 0 !important;
-    }
-    div[data-testid="column"]:has(.poster-wrapper) div.stButton > button,
-    div[data-testid="column"]:has(.poster-wrapper) div[data-testid="stButton"] > button {
-        width: 100% !important;
-        height: 100% !important;
-        padding: 0 !important;
-        margin: 0 !important;
-        background: transparent !important;
-        border: none !important;
-        color: transparent !important;
-        display: block !important;
-    }
-    div[data-testid="column"]:has(.poster-wrapper) div.stButton > button *,
-    div[data-testid="column"]:has(.poster-wrapper) div[data-testid="stButton"] > button * {
-        display: none !important;
-    }
-    
-    /* --- INVISIBLE HISTORY CLICK SYSTEM --- */
-    div[data-testid="column"]:has(.history-wrapper) {
-        position: relative !important;
-        transition: transform 0.2s cubic-bezier(0.25, 0.8, 0.25, 1) !important;
-        cursor: pointer !important;
-    }
-    div[data-testid="column"]:has(.history-wrapper):hover {
-        transform: translateX(5px) !important;
-    }
-    div[data-testid="column"]:has(.history-wrapper) > div {
-        gap: 0 !important;
-        padding: 0 !important;
-    }
-    div[data-testid="column"]:has(.history-wrapper) div.stButton,
-    div[data-testid="column"]:has(.history-wrapper) div[data-testid="stButton"] {
-        position: absolute !important;
-        top: 0 !important;
-        left: 0 !important;
-        right: 0 !important;
-        bottom: 0 !important;
-        z-index: 20 !important;
-        opacity: 0 !important;
-    }
-    div[data-testid="column"]:has(.history-wrapper) div.stButton > button,
-    div[data-testid="column"]:has(.history-wrapper) div[data-testid="stButton"] > button {
-        width: 100% !important;
-        height: 100% !important;
-        display: block !important;
-    }
-    
     /* --- PILL NAVIGATION (DISCOVER) --- */
     div[role="radiogroup"] {
         display: flex !important; flex-direction: row !important; background-color: transparent !important; 
@@ -478,7 +394,7 @@ def show_cast_horizontal(cast_list, key_prefix, limit=15):
                 html_char = f'<div style="font-size: 0.55rem; color: #FFC107; font-weight: 700; line-height: 1.1; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{char_name}</div>'
                 st.markdown(html_char, unsafe_allow_html=True)
             
-            st.button(actor.get('name', 'Unknown').title(), key=f"cast_{key_prefix}_{actor['id']}_{idx}", on_click=cb_set_active_actor, args=(actor['id'],), use_container_width=True, type="tertiary")
+            st.button(actor.get('name', 'Unknown'), key=f"cast_{key_prefix}_{actor['id']}_{idx}", on_click=cb_set_active_actor, args=(actor['id'],), use_container_width=True, type="tertiary")
 
 def render_clickable_grid(data_list, key_prefix, layout="grid", is_nested=False):
     if not data_list: return None
@@ -1217,7 +1133,7 @@ with t_search:
                 title = clicked_search["name"]
                 details = fetch_api(f"https://api.themoviedb.org/3/{'tv' if search_type == 'TV Shows' else 'movie'}/{item_id}?api_key={TMDB_KEY}")
                 if search_type == "TV Shows": manage_show_dialog(item_id, title, details)
-                else: show_movie_details(item_id, title, details)
+                else: show_movie_details(item_id, title, details, is_watched=False)
     else:
         genre_options = ["🔥 Trending", "🤣 Comedy", "💥 Action", "🐉 Sci-Fi", "🔪 Thriller", "👻 Horror"]
         selected_genre = st.radio("Filters", genre_options, label_visibility="collapsed", horizontal=True)
@@ -1285,7 +1201,7 @@ with t_tv:
     if c3.button("Watched", type="primary" if st.session_state.tv_tab == "WATCHED" else "secondary", use_container_width=True, key="tv_wd"): st.session_state.tv_tab = "WATCHED"; st.rerun()
     if c4.button("Dropped", type="primary" if st.session_state.tv_tab == "DROPPED" else "secondary", use_container_width=True, key="tv_dr"): st.session_state.tv_tab = "DROPPED"; st.rerun()
         
-    st.markdown("<div style='margin-top: -45px;'></div>", unsafe_allow_html=True)
+    st.markdown("<div style='height: 5px;'></div>", unsafe_allow_html=True)
     
     with st.container():
         st.markdown('<span class="search-container-hook"></span>', unsafe_allow_html=True)
@@ -1359,7 +1275,7 @@ with t_movies:
     if c3.button("Watched", type="primary" if st.session_state.mov_tab == "WATCHED" else "secondary", use_container_width=True, key="m_wd"): st.session_state.mov_tab = "WATCHED"; st.rerun()
     if c4.button("Dropped", type="primary" if st.session_state.mov_tab == "DROPPED" else "secondary", use_container_width=True, key="m_dr"): st.session_state.mov_tab = "DROPPED"; st.rerun()
         
-    st.markdown("<div style='margin-top: -45px;'></div>", unsafe_allow_html=True)
+    st.markdown("<div style='height: 5px;'></div>", unsafe_allow_html=True)
     with st.container():
         st.markdown('<span class="search-container-hook"></span>', unsafe_allow_html=True)
         lib_search_mov = st_keyup("Search Library", debounce=500, key=f"lib_sq_mov_{st.session_state.lib_mov_reset_ctr}", placeholder="Filter movies...", label_visibility="collapsed")
