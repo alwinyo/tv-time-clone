@@ -233,9 +233,14 @@ st.markdown("""
     }
 
     /* --- TABS OVERHAUL --- */
-    div[data-testid="stTabs"] > div[data-baseweb="tab-list"], div[data-testid="stTabs"] > div[role="tablist"] { display: flex !important; width: 100% !important; max-width: 100% !important; margin-left: 0 !important; padding: 0 !important; gap: 0 !important; overflow-x: hidden !important; box-sizing: border-box !important; background-color: rgba(8, 9, 12, 0.85) !important; backdrop-filter: blur(12px) !important; -webkit-backdrop-filter: blur(12px) !important; border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important; }
-    div[data-testid="stTabs"] button[role="tab"] { flex: 1 1 0px !important; min-width: 0 !important; width: auto !important; padding: 9px 1px !important; margin: 0 !important; border-radius: 0 !important; overflow: hidden !important; transition: all 0.3s ease !important; }
-    div[data-testid="stTabs"] button[role="tab"] p { font-size: 0.6rem !important; font-weight: 700 !important; text-align: center !important; margin: 0 auto !important; white-space: nowrap !important; letter-spacing: 0 !important; text-transform: uppercase !important; overflow: hidden !important; text-overflow: clip !important; color: #8a8a8a !important; transition: all 0.3s ease !important; }
+    div[data-testid="stTabs"] { width: 100% !important; }
+    /* Grid beats flex here: `grid-auto-columns: 1fr` forces every tab to an
+       identical share of the row, so the labels can never leave a gap at the
+       right edge. auto-flow column means it adapts to any number of tabs,
+       which matters because the Profile sub-tabs reuse these rules. */
+    div[data-testid="stTabs"] > div[data-baseweb="tab-list"], div[data-testid="stTabs"] > div[role="tablist"] { display: grid !important; grid-auto-flow: column !important; grid-auto-columns: 1fr !important; width: 100% !important; max-width: 100% !important; margin-left: 0 !important; padding: 0 !important; gap: 0 !important; overflow-x: hidden !important; box-sizing: border-box !important; background-color: rgba(8, 9, 12, 0.85) !important; backdrop-filter: blur(12px) !important; -webkit-backdrop-filter: blur(12px) !important; border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important; }
+    div[data-testid="stTabs"] button[role="tab"] { width: 100% !important; min-width: 0 !important; max-width: 100% !important; padding: 9px 0 !important; margin: 0 !important; border-radius: 0 !important; overflow: hidden !important; box-sizing: border-box !important; transition: all 0.3s ease !important; }
+    div[data-testid="stTabs"] button[role="tab"] p { font-size: 0.58rem !important; font-weight: 700 !important; text-align: center !important; margin: 0 auto !important; white-space: nowrap !important; letter-spacing: 0 !important; text-transform: uppercase !important; overflow: hidden !important; text-overflow: clip !important; color: #8a8a8a !important; transition: all 0.3s ease !important; }
     div[data-testid="stTabs"] button[role="tab"][aria-selected="true"] { border-bottom: 3px solid #FFC107 !important; background: linear-gradient(to top, rgba(255, 193, 7, 0.15) 0%, transparent 100%) !important; box-shadow: inset 0px -10px 15px -10px rgba(255, 193, 7, 0.5) !important; }
     div[data-testid="stTabs"] button[role="tab"][aria-selected="true"] p { color: #FFD54F !important; text-shadow: 0px 0px 10px rgba(255, 193, 7, 0.6) !important; }
 
@@ -305,6 +310,7 @@ st.markdown("""
         overflow: hidden !important;
         height: 1.3rem !important;
         text-align: center !important;
+        margin-top: 4px !important;
     }
     /* top-align cards so a short name cannot float its card vertically */
     div[data-testid="stHorizontalBlock"]:has(.carousel-marker-cast),
@@ -1074,12 +1080,12 @@ def render_poster_card(title, poster_path, subtitle="", progress_pct=-1.0):
     st.markdown(html, unsafe_allow_html=True)
 
 
-def segmented_nav(state_key, options, key_prefix):
-    """Four library filters as an even 2x2 grid instead of a cramped 1x4 row."""
+def segmented_nav(state_key, options, key_prefix, per_row=2):
+    """Filter buttons as an even grid. Shared by the library tabs and Discover."""
     current = st.session_state[state_key]
-    for row_start in range(0, len(options), 2):
-        cols = st.columns(2)
-        for offset, (label, value) in enumerate(options[row_start:row_start + 2]):
+    for row_start in range(0, len(options), per_row):
+        cols = st.columns(per_row)
+        for offset, (label, value) in enumerate(options[row_start:row_start + per_row]):
             with cols[offset]:
                 st.markdown('<span class="seg-nav"></span>', unsafe_allow_html=True)
                 if st.button(label, key=f"{key_prefix}_{value}",
@@ -1133,7 +1139,7 @@ def show_cast_horizontal(cast_list, key_prefix, limit=15):
             # ones still hold the row and every card keeps the same rhythm
             st.markdown(
                 f'<div style="font-size:0.52rem; color:#FFC107; font-weight:700; line-height:1.15; '
-                f'height:1.15rem; margin:0 0 1px 0; text-align:center; white-space:nowrap; '
+                f'height:1.15rem; margin:0 0 6px 0; text-align:center; white-space:nowrap; '
                 f'overflow:hidden; text-overflow:ellipsis;">{char_name or "&nbsp;"}</div>',
                 unsafe_allow_html=True)
 
@@ -1908,7 +1914,10 @@ with t_search:
                             st.markdown('<span class="grid-3-col"></span>', unsafe_allow_html=True)
     else:
         genre_options = ["Trending", "Comedy", "Action", "Sci-Fi", "Thriller", "Horror"]
-        selected_genre = st.radio("Filters", genre_options, label_visibility="collapsed", horizontal=True)
+        if "discover_genre" not in st.session_state:
+            st.session_state.discover_genre = "Trending"
+        segmented_nav("discover_genre", [(g, g) for g in genre_options], "genre_nav", per_row=3)
+        selected_genre = st.session_state.discover_genre
         st.divider()
 
         def render_carousel(title, items, c_type):
