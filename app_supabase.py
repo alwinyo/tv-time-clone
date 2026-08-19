@@ -752,7 +752,7 @@ def log_watch(item_type, item_id, detail=""):
     else:
         db["analytics"][m_key]["movie"] += 1
     db.setdefault("history", []).insert(0, {"t": "s" if item_type == "tv" else "m", "i": item_id, "e": detail, "d": now_str, "r": 0, "f": "", "p": ""})
-    db["history"] = [h for h in db["history"] if h.get("t") == "s"][:100] + [h for h in db["history"] if h.get("t") == "m"][:100]
+    db["history"] = [h for h in db["history"] if h.get("t") == "s"][:50000] + [h for h in db["history"] if h.get("t") == "m"][:50000]
     save_db()
 
 
