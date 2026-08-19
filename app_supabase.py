@@ -77,26 +77,36 @@ st.markdown("""
     div[data-testid="stColumn"]:has(.poster-wrapper):hover img {
         transform: scale(1.06) !important;
     }
-    /* the hit area itself */
+    /* the hit area itself.
+       Every layer is stretched with inset:0 (top/right/bottom/left all zero)
+       rather than a percentage height. A percentage height only resolves when
+       the parent has a DEFINITE height, so `height:100%` inside an
+       `aspect-ratio` box collapses the button to zero and the poster looks
+       clickable (the hover lives on the column) while eating no clicks. */
+    div[data-testid="column"]:has(.poster-wrapper) [data-testid="stElementContainer"]:has(div[data-testid="stButton"]),
+    div[data-testid="stColumn"]:has(.poster-wrapper) [data-testid="stElementContainer"]:has(div[data-testid="stButton"]),
     div[data-testid="column"]:has(.poster-wrapper) div[data-testid="stButton"],
     div[data-testid="stColumn"]:has(.poster-wrapper) div[data-testid="stButton"] {
         position: absolute !important;
-        top: 0 !important; left: 0 !important;
-        width: 100% !important;
-        aspect-ratio: 2 / 3 !important;
-        height: auto !important;
+        top: 0 !important; right: 0 !important; bottom: 0 !important; left: 0 !important;
+        width: 100% !important; height: 100% !important;
+        min-height: 0 !important;
         z-index: 20 !important;
         opacity: 0 !important;
         margin: 0 !important; padding: 0 !important;
+        pointer-events: auto !important;
     }
     div[data-testid="column"]:has(.poster-wrapper) div[data-testid="stButton"] button,
     div[data-testid="stColumn"]:has(.poster-wrapper) div[data-testid="stButton"] button {
+        position: absolute !important;
+        top: 0 !important; right: 0 !important; bottom: 0 !important; left: 0 !important;
         width: 100% !important; height: 100% !important;
         min-height: 0 !important;
         padding: 0 !important; margin: 0 !important;
         background: transparent !important; color: transparent !important; border: none !important;
         box-shadow: none !important;
         display: block !important;
+        cursor: pointer !important;
     }
     div[data-testid="column"]:has(.poster-wrapper) div[data-testid="stButton"] button p,
     div[data-testid="stColumn"]:has(.poster-wrapper) div[data-testid="stButton"] button p {
@@ -281,6 +291,47 @@ def fetch_robust(url):
         except Exception:
             time.sleep(1)
     return {}
+
+
+@st.cache_data(ttl=43200)
+def fetch_show_bundle(show_id):
+    """
+    One show + all of its seasons in as few HTTP calls as possible.
+
+    TMDB's append_to_response folds sub-resources into the parent response,
+    so a 6-season show costs 2 requests instead of 7. It caps at 20 appended
+    items, so longer shows are fetched in chunks of 20. The result is shaped
+    exactly like the plain /tv/{id} response with extra "season/N" keys, so
+    every existing details.get(...) call keeps working unchanged.
+    """
+    base = fetch_api(f"https://api.themoviedb.org/3/tv/{show_id}?api_key={TMDB_KEY}")
+    if not base:
+        return {}
+
+    nums = [s["season_number"] for s in base.get("seasons", []) if s.get("season_number", 0) > 0]
+    if not nums:
+        return base
+
+    bundle = dict(base)
+    for start in range(0, len(nums), 20):
+        chunk = nums[start:start + 20]
+        appended = ",".join(f"season/{n}" for n in chunk)
+        data = fetch_api(f"https://api.themoviedb.org/3/tv/{show_id}?api_key={TMDB_KEY}&append_to_response={appended}")
+        if not data:
+            continue
+        for n in chunk:
+            key = f"season/{n}"
+            if key in data:
+                bundle[key] = data[key]
+    return bundle
+
+
+def season_episodes(bundle, show_id, season_number):
+    """Read a season out of a bundle, falling back to a direct call if absent."""
+    key = f"season/{season_number}"
+    if isinstance(bundle, dict) and key in bundle:
+        return bundle[key].get("episodes") or []
+    return fetch_api(f"https://api.themoviedb.org/3/tv/{show_id}/season/{season_number}?api_key={TMDB_KEY}").get("episodes") or []
 
 
 def encode_eps(eps):
@@ -976,7 +1027,7 @@ def show_episode_details(show_id, show_name, ep_code):
     except Exception:
         ep_data = {}
 
-    s_details = fetch_api(f"https://api.themoviedb.org/3/tv/{show_id}?api_key={TMDB_KEY}")
+    s_details = fetch_show_bundle(show_id)
     is_watched = is_episode_watched(show_id, ep_code)
 
     badges = f'<span class="badge badge-gold">{ep_code}</span><span class="badge">⭐ {ep_data.get("vote_average", 0.0)}</span>'
@@ -1028,7 +1079,7 @@ def show_episode_details(show_id, show_name, ep_code):
 
 @st.dialog("Manage Show")
 def manage_show_dialog(show_id, show_name):
-    details = fetch_api(f"https://api.themoviedb.org/3/tv/{show_id}?api_key={TMDB_KEY}")
+    details = fetch_show_bundle(show_id)
     current_show = get_show(show_id)
 
     watched_list = current_show.get("watched_episodes", []) if current_show else []
@@ -1081,7 +1132,7 @@ def manage_show_dialog(show_id, show_name):
     s_nums = [s["season_number"] for s in details.get("seasons", []) if s["season_number"] > 0]
     if s_nums:
         sel_s = st.selectbox("Select Season", s_nums, key=f"dlg_s_{show_id}")
-        for ep in fetch_api(f"https://api.themoviedb.org/3/tv/{show_id}/season/{sel_s}?api_key={TMDB_KEY}").get("episodes", []):
+        for ep in season_episodes(details, show_id, sel_s):
             e_code = f"S{sel_s}E{ep['episode_number']}"
             ep_watched = is_episode_watched(show_id, e_code)
             ep_col1, ep_col2 = st.columns([6, 1])
@@ -1234,7 +1285,7 @@ with t_next:
             w_eps = len(show.get("watched_episodes", []))
             t_eps = show.get("total_episodes", 1)
 
-            details = fetch_api(f"https://api.themoviedb.org/3/tv/{show['id']}?api_key={TMDB_KEY}")
+            details = fetch_show_bundle(show['id'])
             tmdb_total = details.get("number_of_episodes", t_eps)
 
             if tmdb_total != t_eps and tmdb_total > 0:
@@ -1259,8 +1310,7 @@ with t_next:
 
             candidate_after_max = None
             for s_info in [s for s in seasons if s["season_number"] >= start_s]:
-                s_data = fetch_api(f"https://api.themoviedb.org/3/tv/{show['id']}/season/{s_info['season_number']}?api_key={TMDB_KEY}")
-                for ep in s_data.get("episodes", []):
+                for ep in season_episodes(details, show['id'], s_info['season_number']):
                     ep_code = f"S{s_info['season_number']}E{ep['episode_number']}"
                     air_date = str(ep.get("air_date") or "").strip()
                     if ep_code not in watched_set and air_date and air_date <= TODAY:
@@ -1276,7 +1326,7 @@ with t_next:
             else:
                 candidate_skipped = None
                 for s_info in [s for s in seasons if s["season_number"] < start_s]:
-                    for ep in fetch_api(f"https://api.themoviedb.org/3/tv/{show['id']}/season/{s_info['season_number']}?api_key={TMDB_KEY}").get("episodes", []):
+                    for ep in season_episodes(details, show['id'], s_info['season_number']):
                         ep_code = f"S{s_info['season_number']}E{ep['episode_number']}"
                         air_date = str(ep.get("air_date") or "").strip()
                         if ep_code not in watched_set and air_date and air_date <= TODAY:
@@ -1406,7 +1456,7 @@ with t_soon:
             w_eps = len(show.get("watched_episodes", []))
             t_eps = show.get("total_episodes", 1)
 
-            details = fetch_api(f"https://api.themoviedb.org/3/tv/{show['id']}?api_key={TMDB_KEY}")
+            details = fetch_show_bundle(show['id'])
             tmdb_total = details.get("number_of_episodes", t_eps)
 
             if tmdb_total != t_eps and tmdb_total > 0:
@@ -1418,7 +1468,7 @@ with t_soon:
             for s_info in [s for s in details.get("seasons", []) if s["season_number"] > 0]:
                 if found_next:
                     break
-                for ep in fetch_api(f"https://api.themoviedb.org/3/tv/{show['id']}/season/{s_info['season_number']}?api_key={TMDB_KEY}").get("episodes", []):
+                for ep in season_episodes(details, show['id'], s_info['season_number']):
                     ep_code = f"S{s_info['season_number']}E{ep['episode_number']}"
                     e_air_date = str(ep.get("air_date") or "").strip()
                     if ep_code not in watched_set and e_air_date and e_air_date > TODAY:
