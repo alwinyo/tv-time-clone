@@ -9,6 +9,7 @@ import random
 from datetime import datetime, timedelta
 from st_keyup import st_keyup
 import altair as alt
+from st_clickable_images import clickable_images
 
 # Mobile-friendly layout configuration
 st.set_page_config(page_title="My TV Time", layout="centered", initial_sidebar_state="collapsed")
@@ -40,99 +41,6 @@ st.markdown("""
     
     h3 { color: #FFD54F !important; font-weight: 800 !important; letter-spacing: -0.5px !important; }
     h3.tab-title { margin-top: -0.8rem !important; padding-top: 0 !important; }
-    
-    /* --- INVISIBLE POSTER CLICK SYSTEM (STREAMLIT 1.30+ FIX) --- */
-    div[data-testid="column"]:has(.poster-wrapper), 
-    div[data-testid="stColumn"]:has(.poster-wrapper) {
-        position: relative !important;
-        overflow: hidden !important;
-        border-radius: 8px !important;
-        box-shadow: 0 4px 10px rgba(0,0,0,0.5) !important;
-        background: #111 !important;
-        transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1), box-shadow 0.3s ease !important;
-        cursor: pointer !important;
-    }
-    div[data-testid="column"]:has(.poster-wrapper):hover, 
-    div[data-testid="stColumn"]:has(.poster-wrapper):hover {
-        transform: scale(1.03) !important;
-        box-shadow: 0 10px 25px rgba(0,0,0,0.8) !important;
-    }
-    div[data-testid="column"]:has(.poster-wrapper) > div, 
-    div[data-testid="stColumn"]:has(.poster-wrapper) > div {
-        gap: 0 !important;
-        padding: 0 !important;
-    }
-    
-    /* Cinematic Image Zoom */
-    div[data-testid="column"]:has(.poster-wrapper) img, 
-    div[data-testid="stColumn"]:has(.poster-wrapper) img {
-        transition: transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1) !important;
-    }
-    div[data-testid="column"]:has(.poster-wrapper):hover img, 
-    div[data-testid="stColumn"]:has(.poster-wrapper):hover img {
-        transform: scale(1.06) !important;
-    }
-
-    /* The Invisible Overlay Button */
-    div[data-testid="column"]:has(.poster-wrapper) div.stButton,
-    div[data-testid="column"]:has(.poster-wrapper) div[data-testid="stButton"],
-    div[data-testid="stColumn"]:has(.poster-wrapper) div.stButton,
-    div[data-testid="stColumn"]:has(.poster-wrapper) div[data-testid="stButton"] {
-        position: absolute !important;
-        top: 0 !important;
-        left: 0 !important;
-        right: 0 !important;
-        bottom: 0 !important;
-        z-index: 20 !important;
-        opacity: 0 !important;
-    }
-    div[data-testid="column"]:has(.poster-wrapper) div.stButton > button,
-    div[data-testid="column"]:has(.poster-wrapper) div[data-testid="stButton"] > button,
-    div[data-testid="stColumn"]:has(.poster-wrapper) div.stButton > button,
-    div[data-testid="stColumn"]:has(.poster-wrapper) div[data-testid="stButton"] > button {
-        width: 100% !important;
-        height: 100% !important;
-        padding: 0 !important;
-        margin: 0 !important;
-        display: block !important;
-    }
-    
-    /* --- INVISIBLE HISTORY CLICK SYSTEM --- */
-    div[data-testid="column"]:has(.history-wrapper),
-    div[data-testid="stColumn"]:has(.history-wrapper) {
-        position: relative !important;
-        transition: transform 0.2s cubic-bezier(0.25, 0.8, 0.25, 1) !important;
-        cursor: pointer !important;
-    }
-    div[data-testid="column"]:has(.history-wrapper):hover,
-    div[data-testid="stColumn"]:has(.history-wrapper):hover {
-        transform: translateX(5px) !important;
-    }
-    div[data-testid="column"]:has(.history-wrapper) > div,
-    div[data-testid="stColumn"]:has(.history-wrapper) > div {
-        gap: 0 !important;
-        padding: 0 !important;
-    }
-    div[data-testid="column"]:has(.history-wrapper) div.stButton,
-    div[data-testid="column"]:has(.history-wrapper) div[data-testid="stButton"],
-    div[data-testid="stColumn"]:has(.history-wrapper) div.stButton,
-    div[data-testid="stColumn"]:has(.history-wrapper) div[data-testid="stButton"] {
-        position: absolute !important;
-        top: 0 !important;
-        left: 0 !important;
-        right: 0 !important;
-        bottom: 0 !important;
-        z-index: 20 !important;
-        opacity: 0 !important;
-    }
-    div[data-testid="column"]:has(.history-wrapper) div.stButton > button,
-    div[data-testid="column"]:has(.history-wrapper) div[data-testid="stButton"] > button,
-    div[data-testid="stColumn"]:has(.history-wrapper) div.stButton > button,
-    div[data-testid="stColumn"]:has(.history-wrapper) div[data-testid="stButton"] > button {
-        width: 100% !important;
-        height: 100% !important;
-        display: block !important;
-    }
     
     /* --- PILL NAVIGATION (DISCOVER) --- */
     div[role="radiogroup"] {
@@ -186,13 +94,7 @@ st.markdown("""
     div:has(> .clear-btn-hook) + div button { background: rgba(255,255,255,0.08) !important; border: none !important; box-shadow: none !important; color: #aaa !important; padding: 0 !important; min-height: 26px !important; height: 26px !important; width: 26px !important; border-radius: 50% !important; font-size: 0.7rem !important; display: flex !important; align-items: center !important; justify-content: center !important; margin: 0 !important; line-height: 1 !important; }
     div:has(> .clear-btn-hook) + div button:hover { background: rgba(255, 193, 7, 0.3) !important; color: #FFD54F !important; }
 
-    .grid-title { font-size: 0.65rem; color: #ccc; text-align: center; margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 600; }
-
     @media (max-width: 992px) {
-        div[data-testid="stHorizontalBlock"]:has(.grid-3-col), div[data-testid="stColumns"]:has(.grid-3-col) { display: flex !important; flex-direction: row !important; flex-wrap: nowrap !important; gap: 3% !important; }
-        div[data-testid="column"]:has(.grid-3-col), div[data-testid="stColumn"]:has(.grid-3-col) { width: 31% !important; flex: 1 1 31% !important; min-width: 0 !important; padding: 0 !important; display: block !important; }
-        div[data-testid="stHorizontalBlock"]:has(.grid-2-col), div[data-testid="stColumns"]:has(.grid-2-col) { display: flex !important; flex-direction: row !important; flex-wrap: nowrap !important; gap: 4% !important; }
-        div[data-testid="column"]:has(.grid-2-col), div[data-testid="stColumn"]:has(.grid-2-col) { width: 48% !important; flex: 1 1 48% !important; min-width: 0 !important; padding: 0 !important; display: block !important; }
         div[role="dialog"] { width: 95vw !important; max-width: 95vw !important; margin: 0 auto !important; padding: 0 !important; background: rgba(15, 17, 22, 0.95) !important; backdrop-filter: blur(20px) !important; -webkit-backdrop-filter: blur(20px) !important; border: 1px solid rgba(255, 255, 255, 0.1) !important; overflow: hidden !important;}
         div[role="dialog"] > div:first-child { padding: 0 15px 20px 15px !important; }
     }
@@ -219,6 +121,7 @@ if "prompt_review" not in st.session_state: st.session_state.prompt_review = Non
 if "search_reset_ctr" not in st.session_state: st.session_state.search_reset_ctr = 0
 if "lib_tv_reset_ctr" not in st.session_state: st.session_state.lib_tv_reset_ctr = 0
 if "lib_mov_reset_ctr" not in st.session_state: st.session_state.lib_mov_reset_ctr = 0
+if "open_dialog_trigger" not in st.session_state: st.session_state.open_dialog_trigger = None
 
 # --- DB PIPELINE ---
 TMDB_KEY = st.secrets["TMDB_KEY"]
@@ -467,17 +370,6 @@ def render_badges(items, is_gold=False):
     html = "".join([f'<span class="{css_class}">{item}</span>' for item in items])
     st.markdown(html, unsafe_allow_html=True)
 
-def display_poster(path, width=185):
-    if path and str(path).lower() not in ["none", "null", ""]: 
-        st.image(f"https://image.tmdb.org/t/p/w{width}{path}", use_container_width=True)
-    else: 
-        html = (
-            f'<div style="background-color: rgba(255,255,255,0.05); border-radius:8px; width:100%; '
-            f'aspect-ratio: 2/3; display:flex; align-items:center; justify-content:center; color:#555; '
-            f'font-size:0.8rem; text-align:center; margin-bottom:5px;">No Image</div>'
-        )
-        st.markdown(html, unsafe_allow_html=True)
-
 def show_cast_horizontal(cast_list, key_prefix, limit=15):
     if not cast_list: return
     cols = st.columns(len(cast_list[:limit]))
@@ -485,7 +377,7 @@ def show_cast_horizontal(cast_list, key_prefix, limit=15):
         with cols[idx]:
             st.markdown('<span class="carousel-marker-cast"></span>', unsafe_allow_html=True)
             img_url = f"https://image.tmdb.org/t/p/w185{actor['profile_path']}" if actor.get("profile_path") else "https://via.placeholder.com/185x278/222222/888888?text=No+Photo"
-            encoded_name = str(actor.get('name', '')).replace(" ", "+")
+            encoded_name = requests.utils.quote(str(actor.get('name', '')))
             imdb_url = f"https://www.imdb.com/find/?q={encoded_name}"
             char_name = str(actor.get('character', '')).strip()
             
@@ -500,7 +392,32 @@ def show_cast_horizontal(cast_list, key_prefix, limit=15):
                 html_char = f'<div style="font-size: 0.55rem; color: #FFC107; font-weight: 700; line-height: 1.1; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{char_name}</div>'
                 st.markdown(html_char, unsafe_allow_html=True)
             
-            st.button(actor.get('name', 'Unknown'), key=f"cast_{key_prefix}_{actor['id']}_{idx}", on_click=cb_set_active_actor, args=(actor['id'],), use_container_width=True, type="tertiary")
+            st.button(actor.get('name', 'Unknown').title(), key=f"cast_{key_prefix}_{actor['id']}_{idx}", on_click=cb_set_active_actor, args=(actor['id'],), use_container_width=True, type="tertiary")
+
+def render_clickable_grid(data_list, key_prefix, layout="grid", is_nested=False):
+    if not data_list: return None
+    paths, titles = [], []
+    for d in data_list:
+        if is_nested:
+            poster = d["item"].get("poster_path") or d.get("details", {}).get("poster_path")
+            name = d["item"].get("name") or d["item"].get("title") or "Unknown"
+        else:
+            poster = d.get("poster_path") or d.get("poster")
+            name = d.get("name") or d.get("title") or "Unknown"
+        
+        paths.append(f"https://image.tmdb.org/t/p/w342{poster}" if poster else "https://via.placeholder.com/342x513/222222/555555?text=No+Poster")
+        titles.append(name)
+
+    div_style = {"display": "flex", "flex-wrap": "wrap", "gap": "10px", "justify-content": "center"} if layout == "grid" else {"display": "flex", "overflow-x": "auto", "gap": "10px", "padding-bottom": "15px", "scrollbar-width": "none"}
+    img_style = {"width": "110px", "border-radius": "8px", "box-shadow": "0 6px 15px rgba(0,0,0,0.5)", "cursor": "pointer", "transition": "transform 0.2s cubic-bezier(0.25, 0.8, 0.25, 1)", "object-fit": "cover", "aspect-ratio": "2/3"}
+    
+    clicked = clickable_images(paths, titles=titles, div_style=div_style, img_style=img_style, key=key_prefix)
+    
+    session_key = f"clk_{key_prefix}"
+    if clicked > -1 and st.session_state.get(session_key) != clicked:
+        st.session_state[session_key] = clicked
+        return data_list[clicked]
+    return None
 
 def render_inline_actor_pokedex(actor_id):
     details = fetch_api(f"https://api.themoviedb.org/3/person/{actor_id}?api_key={TMDB_KEY}")
@@ -541,55 +458,20 @@ def render_inline_actor_pokedex(actor_id):
             
         if owned_items:
             st.markdown(f"**📚 In Your Library ({len(owned_items)})**")
-            cols = st.columns(len(owned_items))
-            for idx, item in enumerate(owned_items):
-                with cols[idx]:
-                    st.markdown('<span class="carousel-marker"></span>', unsafe_allow_html=True)
-                    render_poster_card(item["title"], item.get("poster"))
-                    st.markdown('<span class="poster-wrapper"></span>', unsafe_allow_html=True)
-                    if st.button("OPEN", key=f"act_own_{actor_id}_{item['id']}_{idx}", use_container_width=True):
-                        st.session_state.active_actor = None
-                        if item["type"] == "tv":
-                            s_details = fetch_api(f"https://api.themoviedb.org/3/tv/{item['id']}?api_key={TMDB_KEY}")
-                            manage_show_dialog(item['id'], item['title'], s_details)
-                        else:
-                            show_movie_details(item['id'], item['title'], details=None, is_watched=False)
+            clicked_own = render_clickable_grid(owned_items, f"act_own_{actor_id}", layout="carousel")
+            if clicked_own:
+                st.session_state.open_dialog_trigger = {"t": clicked_own["type"], "id": clicked_own['id'], "title": clicked_own['title']}
+                st.rerun()
         
         st.markdown("**🌟 Famous Roles**")
-        top_credits = sorted(credits.get("cast", []), key=lambda x: x.get("popularity", 0), reverse=True)[:10]
+        top_credits = sorted(credits.get("cast", []), key=lambda x: x.get("popularity", 0), reverse=True)[:15]
         if top_credits:
-            cols = st.columns(len(top_credits))
-            for idx, item in enumerate(top_credits):
-                with cols[idx]:
-                    st.markdown('<span class="carousel-marker"></span>', unsafe_allow_html=True)
-                    i_title = item.get("name") if item.get("media_type") == "tv" else item.get("title")
-                    render_poster_card(i_title, item.get("poster_path"))
-                    st.markdown('<span class="poster-wrapper"></span>', unsafe_allow_html=True)
-                    if st.button("OPEN", key=f"act_role_{actor_id}_{item['id']}_{idx}", use_container_width=True):
-                        st.session_state.active_actor = None
-                        c_type = item.get("media_type", "movie")
-                        c_details = fetch_api(f"https://api.themoviedb.org/3/{c_type}/{item['id']}?api_key={TMDB_KEY}")
-                        if c_type == "tv": manage_show_dialog(item['id'], i_title, c_details)
-                        else: show_movie_details(item['id'], i_title, c_details, is_watched=False)
-
-def render_poster_card(title, poster_path, subtitle="", progress_pct=-1.0):
-    img_url = f"https://image.tmdb.org/t/p/w342{poster_path}" if poster_path else "https://via.placeholder.com/342x513/222222/555555?text=No+Poster"
-    prog_width = min(progress_pct, 1.0) * 100
-    prog_html = f'<div style="position: absolute; bottom: 0; left: 0; height: 4px; width: {prog_width}%; background: #FFC107; box-shadow: 0 0 8px #FFC107; z-index: 30;"></div>' if progress_pct >= 0 else ''
-    sub_html = f'<div style="color: #FFC107; font-weight: 700; font-size: 0.6rem; margin-top: 2px;">{subtitle}</div>' if subtitle else ''
-    
-    html = (
-        f'<div style="position: relative; aspect-ratio: 2/3; background-color: #111; border-radius: 8px; overflow: hidden;">'
-        f'<img src="{img_url}" style="width: 100%; height: 100%; object-fit: cover; display: block;">'
-        f'<div style="position: absolute; bottom: 0; left: 0; right: 0; height: 60%; background: linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0) 100%); z-index: 1;"></div>'
-        f'<div class="poster-text" style="position: absolute; bottom: 10px; left: 10px; right: 10px; z-index: 2;">'
-        f'<div style="color: white; font-weight: 800; font-size: 0.75rem; line-height: 1.2; text-shadow: 0 2px 4px rgba(0,0,0,0.8); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">{title}</div>'
-        f'{sub_html}'
-        f'</div>'
-        f'{prog_html}'
-        f'</div>'
-    )
-    st.markdown(html, unsafe_allow_html=True)
+            clicked_role = render_clickable_grid(top_credits, f"act_roles_{actor_id}", layout="carousel")
+            if clicked_role:
+                c_type = clicked_role.get("media_type", "movie")
+                i_title = clicked_role.get("name") if c_type == "tv" else clicked_role.get("title")
+                st.session_state.open_dialog_trigger = {"t": c_type, "id": clicked_role['id'], "title": i_title}
+                st.rerun()
 
 def render_apple_tv_header(backdrop_path, poster_path, title, badges_html):
     bg = f"https://image.tmdb.org/t/p/w780{backdrop_path}" if backdrop_path else f"https://image.tmdb.org/t/p/w342{poster_path}"
@@ -980,6 +862,21 @@ def show_movie_details(m_id, m_name, details=None, is_watched=False):
             save_db()
             st.rerun()
 
+# --- GLOBAL DIALOG ROUTER ---
+if st.session_state.get("open_dialog_trigger"):
+    trig = st.session_state.open_dialog_trigger
+    st.session_state.open_dialog_trigger = None
+    details = fetch_api(f"https://api.themoviedb.org/3/{trig['t']}/{trig['id']}?api_key={TMDB_KEY}")
+    if trig['t'] == "tv": manage_show_dialog(trig['id'], trig['title'], details)
+    else: show_movie_details(trig['id'], trig['title'], details, is_watched=False)
+
+# --- IMMEDIATE REVIEW EVALUATOR ---
+if st.session_state.get("prompt_review"):
+    pr = st.session_state.prompt_review
+    st.session_state.prompt_review = None
+    if pr["t"] == "s": show_episode_details(pr["id"], pr["name"], pr["code"], ep_data=None, is_watched=True)
+    else: show_movie_details(pr["id"], pr["name"], details=None, is_watched=True)
+
 # --- APP NAVIGATION BAR ---
 t_next, t_soon, t_search, t_tv, t_movies, t_profile = st.tabs(["🔥 Next", "📅 Soon", "🔍 Search", "📺 TV", "🎬 Movies", "👤 Profile"])
 
@@ -1088,22 +985,11 @@ with t_next:
             
             st.markdown("<div style='height: 15px;'></div>", unsafe_allow_html=True)
             
-            limit = st.session_state.next_tv_limit
-            for i in range(1, len(up_next_tv[:limit]), 3):
-                cols = st.columns(3)
-                for j in range(3):
-                    idx = i + j
-                    with cols[j]:
-                        st.markdown('<span class="grid-3-col"></span>', unsafe_allow_html=True)
-                        if idx < len(up_next_tv[:limit]):
-                            item = up_next_tv[idx]
-                            show, details, ep, ep_code = item["item"], item["details"], item["ep"], item["code"]
-                            
-                            render_poster_card(show["name"], show.get("poster_path") or details.get('poster_path'), subtitle=ep_code)
-                            
-                            st.markdown('<span class="poster-wrapper"></span>', unsafe_allow_html=True)
-                            if st.button("OPEN", key=f"n_i_tv_{show['id']}_{ep_code}_{idx}", use_container_width=True):
-                                show_episode_details(show['id'], show['name'], ep_code, ep, is_watched=False)
+            rest_next = up_next_tv[1:st.session_state.next_tv_limit]
+            if rest_next:
+                clicked_next = render_clickable_grid(rest_next, "next_tv_grid", is_nested=True)
+                if clicked_next:
+                    show_episode_details(clicked_next["item"]["id"], clicked_next["item"]["name"], clicked_next["code"], clicked_next["ep"], is_watched=False)
                                 
             if len(up_next_tv) > st.session_state.next_tv_limit:
                 if st.button("Load More Series", use_container_width=True, key="load_more_next_tv"):
@@ -1125,19 +1011,9 @@ with t_next:
         if not up_next_mov: st.info("You have no unwatched movies left! 🎉")
         else:
             limit = st.session_state.next_mov_limit
-            for i in range(0, len(up_next_mov[:limit]), 3):
-                cols = st.columns(3)
-                for j in range(3):
-                    idx = i + j
-                    with cols[j]:
-                        st.markdown('<span class="grid-3-col"></span>', unsafe_allow_html=True)
-                        if idx < len(up_next_mov[:limit]):
-                            m = up_next_mov[idx]["item"]
-                            render_poster_card(m["name"], m.get('poster_path'))
-                            
-                            st.markdown('<span class="poster-wrapper"></span>', unsafe_allow_html=True)
-                            if st.button("OPEN", key=f"n_i_mov_{m['id']}_{idx}", use_container_width=True):
-                                show_movie_details(m['id'], m['name'], details=None, is_watched=False)
+            clicked_next_m = render_clickable_grid(up_next_mov[:limit], "next_mov_grid", is_nested=True)
+            if clicked_next_m:
+                show_movie_details(clicked_next_m['item']['id'], clicked_next_m['item']['name'], details=None, is_watched=False)
                         
             if len(up_next_mov) > st.session_state.next_mov_limit:
                 if st.button("Load More Movies", use_container_width=True, key="load_more_next_mov"):
@@ -1176,10 +1052,9 @@ with t_soon:
                 if found_next: break
                 for ep in fetch_api(f"https://api.themoviedb.org/3/tv/{show['id']}/season/{s_info['season_number']}?api_key={TMDB_KEY}").get("episodes", []):
                     ep_code = f"S{s_info['season_number']}E{ep['episode_number']}"
-                    
                     e_air_date = str(ep.get("air_date") or "").strip()
                     
-                    if ep_code not in watched_set and (e_air_date == "" or e_air_date > TODAY):
+                    if ep_code not in watched_set and (not e_air_date or e_air_date > TODAY):
                         soon_tv.append({"item": show, "details": details, "ep": ep, "code": ep_code, "date": e_air_date})
                         found_next = True; break
                         
@@ -1192,21 +1067,9 @@ with t_soon:
         if not soon_tv: st.info("No upcoming episodes scheduled yet.")
         else:
             limit = st.session_state.soon_tv_limit
-            for i in range(0, len(soon_tv[:limit]), 3):
-                cols = st.columns(3)
-                for j in range(3):
-                    idx = i + j
-                    with cols[j]:
-                        st.markdown('<span class="grid-3-col"></span>', unsafe_allow_html=True)
-                        if idx < len(soon_tv[:limit]):
-                            item = soon_tv[idx]
-                            show, details, ep, ep_code = item["item"], item["details"], item["ep"], item["code"]
-                            
-                            render_poster_card(show["name"], show.get("poster_path") or details.get('poster_path'), subtitle=f"{ep_code} • {calc_time_remaining(item['date'])}")
-                            
-                            st.markdown('<span class="poster-wrapper"></span>', unsafe_allow_html=True)
-                            if st.button("OPEN", key=f"s_i_tv_{show['id']}_{ep_code}_{idx}", use_container_width=True):
-                                show_episode_details(show['id'], show['name'], ep_code, ep, is_watched=False)
+            clicked_soon = render_clickable_grid(soon_tv[:limit], f"soon_tv_grid_{soon_sort}", is_nested=True)
+            if clicked_soon:
+                show_episode_details(clicked_soon['item']['id'], clicked_soon['item']['name'], clicked_soon['code'], clicked_soon['ep'], is_watched=False)
 
             if len(soon_tv) > st.session_state.soon_tv_limit:
                 if st.button("Load More Upcoming Series", use_container_width=True, key="load_more_soon_tv"):
@@ -1218,8 +1081,6 @@ with t_soon:
             if m.get("dropped", False) or m.get("watched", False): continue
             
             r_date = str(m.get("release_date") or "").strip()
-            
-            # Logic: TBA (No release date) OR Future release date
             if not r_date or r_date > TODAY: 
                 soon_mov.append({"item": m, "date": r_date})
 
@@ -1230,21 +1091,9 @@ with t_soon:
         if not soon_mov: st.info("No upcoming movies scheduled yet.")
         else:
             limit = st.session_state.soon_mov_limit
-            for i in range(0, len(soon_mov[:limit]), 3):
-                cols = st.columns(3)
-                for j in range(3):
-                    idx = i + j
-                    with cols[j]:
-                        st.markdown('<span class="grid-3-col"></span>', unsafe_allow_html=True)
-                        if idx < len(soon_mov[:limit]):
-                            item = soon_mov[idx]
-                            m = item["item"]
-                            
-                            render_poster_card(m["name"], m.get('poster_path'), subtitle=calc_time_remaining(item["date"]))
-                            
-                            st.markdown('<span class="poster-wrapper"></span>', unsafe_allow_html=True)
-                            if st.button("OPEN", key=f"s_i_mov_{m['id']}_{idx}", use_container_width=True):
-                                show_movie_details(m['id'], m['name'], details=None, is_watched=False)
+            clicked_soon_m = render_clickable_grid(soon_mov[:limit], f"soon_mov_grid_{soon_sort}", is_nested=True)
+            if clicked_soon_m:
+                show_movie_details(clicked_soon_m['item']['id'], clicked_soon_m['item']['name'], details=None, is_watched=False)
 
             if len(soon_mov) > st.session_state.soon_mov_limit:
                 if st.button("Load More Upcoming Movies", use_container_width=True, key="load_more_soon_mov"):
@@ -1266,29 +1115,18 @@ with t_search:
         search_type = st.selectbox("Search in:", ["TV Shows", "Movies"], label_visibility="collapsed", key="search_filter_box")
         endpoint = "tv" if search_type == "TV Shows" else "movie"
         
-        # URL ENCODE QUERY TO FIX MULTI-WORD SEARCH BUGS
-        safe_query = str(search_query).replace(" ", "+")
+        safe_query = requests.utils.quote(str(search_query))
         results = fetch_api(f"https://api.themoviedb.org/3/search/{endpoint}?api_key={TMDB_KEY}&query={safe_query}").get("results", [])
         
         if results:
-            search_results = results[:30]
-            for i in range(0, len(search_results), 3):
-                cols = st.columns(3)
-                for j in range(3):
-                    with cols[j]:
-                        st.markdown('<span class="grid-3-col"></span>', unsafe_allow_html=True)
-                        if i + j < len(search_results):
-                            item = search_results[i + j]
-                            item_id = item["id"]
-                            title = item.get("name") if search_type == "TV Shows" else item.get("title")
-                            
-                            render_poster_card(title, item.get("poster_path"))
-                            
-                            st.markdown('<span class="poster-wrapper"></span>', unsafe_allow_html=True)
-                            if st.button("OPEN", key=f"inf_{item_id}_{i+j}", use_container_width=True):
-                                details = fetch_api(f"https://api.themoviedb.org/3/{'tv' if search_type == 'TV Shows' else 'movie'}/{item_id}?api_key={TMDB_KEY}")
-                                if search_type == "TV Shows": manage_show_dialog(item_id, title, details)
-                                else: show_movie_details(item_id, title, details, is_watched=False)
+            clean_search = [{"id": r["id"], "name": r.get("name") if search_type == "TV Shows" else r.get("title"), "poster_path": r.get("poster_path")} for r in results[:30]]
+            clicked_search = render_clickable_grid(clean_search, f"search_grid_{search_type}_{st.session_state.search_reset_ctr}_{safe_query}")
+            if clicked_search:
+                item_id = clicked_search["id"]
+                title = clicked_search["name"]
+                details = fetch_api(f"https://api.themoviedb.org/3/{'tv' if search_type == 'TV Shows' else 'movie'}/{item_id}?api_key={TMDB_KEY}")
+                if search_type == "TV Shows": manage_show_dialog(item_id, title, details)
+                else: show_movie_details(item_id, title, details, is_watched=False)
     else:
         genre_options = ["🔥 Trending", "🤣 Comedy", "💥 Action", "🐉 Sci-Fi", "🔪 Thriller", "👻 Horror"]
         selected_genre = st.radio("Filters", genre_options, label_visibility="collapsed", horizontal=True)
@@ -1299,30 +1137,19 @@ with t_search:
             html_title = f"<h5 style='margin-bottom:5px;'>{title}</h5>"
             st.markdown(html_title, unsafe_allow_html=True)
             limit = st.session_state.c_limits.get(title, 10)
-            render_items, show_load_more = items[:limit], limit < len(items)
-            cols = st.columns(len(render_items) + (1 if show_load_more else 0))
             
             safe_title = "".join(e for e in title if e.isalnum())
+            clicked_car = render_clickable_grid(items[:limit], f"car_{safe_title}", layout="carousel")
+            if clicked_car:
+                item_id = clicked_car["id"]
+                i_title = clicked_car.get("name") if c_type == "tv" else clicked_car.get("title")
+                details = fetch_api(f"https://api.themoviedb.org/3/{c_type}/{item_id}?api_key={TMDB_KEY}")
+                if c_type == "tv": manage_show_dialog(item_id, i_title, details)
+                else: show_movie_details(item_id, i_title, details, is_watched=False)
             
-            for idx, item in enumerate(render_items):
-                with cols[idx]:
-                    st.markdown('<span class="carousel-marker"></span>', unsafe_allow_html=True)
-                    i_title = item.get("name") if c_type == "tv" else item.get("title")
-                    item_id = item["id"]
-                    
-                    render_poster_card(i_title, item.get("poster_path"))
-                    
-                    st.markdown('<span class="poster-wrapper"></span>', unsafe_allow_html=True)
-                    if st.button("OPEN", key=f"c_inf_{safe_title}_{item_id}_{idx}", use_container_width=True):
-                        details = fetch_api(f"https://api.themoviedb.org/3/{c_type}/{item_id}?api_key={TMDB_KEY}")
-                        if c_type == "tv": manage_show_dialog(item_id, i_title, details)
-                        else: show_movie_details(item_id, i_title, details, is_watched=False)
-            
-            if show_load_more:
-                with cols[-1]:
-                    st.markdown('<span class="carousel-marker"></span><div style="height: 60px;"></div>', unsafe_allow_html=True)
-                    if st.button("＋ More", key=f"c_more_{safe_title}", use_container_width=True):
-                        st.session_state.c_limits[title] = limit + 10; st.rerun()
+            if limit < len(items):
+                if st.button("＋ Load More", key=f"more_{safe_title}", use_container_width=True):
+                    st.session_state.c_limits[title] = limit + 10; st.rerun()
 
         if selected_genre == "🔥 Trending":
             if not st.session_state.rec_show:
@@ -1390,7 +1217,6 @@ with t_tv:
             t_eps = show.get("total_episodes", 1) 
             w_eps = len(show.get("watched_episodes", []))
             
-            # Logic Fixed: No API hit here. Just local DB matching
             is_upcoming = bool(not air_date or air_date > TODAY)
             is_completed = (w_eps >= t_eps and t_eps > 0)
             is_dropped = show.get("dropped", False)
@@ -1411,25 +1237,13 @@ with t_tv:
             if lib_search_tv: st.info(f"No shows match '{lib_search_tv}' in this tab.")
             else: st.info(f"Your {st.session_state.tv_tab.lower()} is currently empty.")
         else:
-            total_tv_display = len(display_shows)
-            paginated_shows = display_shows[:st.session_state.tv_lib_limit]
+            clean_tv = [{"id": s["id"], "name": s["name"], "poster_path": s.get("poster_path")} for s, t_eps, w_eps in display_shows[:st.session_state.tv_lib_limit]]
+            clicked_lib_tv = render_clickable_grid(clean_tv, f"lib_tv_{st.session_state.tv_tab}_{st.session_state.lib_tv_reset_ctr}")
             
-            for i in range(0, len(paginated_shows), 3):
-                cols = st.columns(3)
-                for j in range(3):
-                    with cols[j]:
-                        st.markdown('<span class="grid-3-col"></span>', unsafe_allow_html=True)
-                        if i + j < len(paginated_shows):
-                            show, t_eps, w_eps = paginated_shows[i + j]
-                            prog_val = min(w_eps / t_eps, 1.0) if t_eps > 0 else 0.0
-                            
-                            render_poster_card(show["name"], show.get("poster_path"), progress_pct=prog_val)
-                            
-                            st.markdown('<span class="poster-wrapper"></span>', unsafe_allow_html=True)
-                            if st.button("OPEN", key=f"s_mgr_{show['id']}_{i+j}", use_container_width=True):
-                                manage_show_dialog(show['id'], show['name'], fetch_api(f"https://api.themoviedb.org/3/tv/{show['id']}?api_key={TMDB_KEY}"))
+            if clicked_lib_tv:
+                manage_show_dialog(clicked_lib_tv['id'], clicked_lib_tv['name'], fetch_api(f"https://api.themoviedb.org/3/tv/{clicked_lib_tv['id']}?api_key={TMDB_KEY}"))
 
-            if total_tv_display > st.session_state.tv_lib_limit:
+            if len(display_shows) > st.session_state.tv_lib_limit:
                 if st.button("Load 50 More", use_container_width=True, key="load_more_tv_lib"):
                     st.session_state.tv_lib_limit += 50; st.rerun()
 
@@ -1469,7 +1283,6 @@ with t_movies:
             is_watched = bool(m.get("watched", False))
             is_dropped = bool(m.get("dropped", False))
             
-            # Logic Fixed: TBA (no date) OR Future date = Upcoming
             is_upcoming = bool(not r_date or r_date > TODAY)
             
             if st.session_state.mov_tab == "DROPPED" and is_dropped: display_movies.append((m, is_watched))
@@ -1488,24 +1301,13 @@ with t_movies:
             if lib_search_mov: st.info(f"No movies match '{lib_search_mov}' in this tab.")
             else: st.info(f"Your {st.session_state.mov_tab.lower()} is currently empty.")
         else:
-            total_mov_display = len(display_movies)
-            paginated_movies = display_movies[:st.session_state.mov_lib_limit]
+            clean_mov = [{"id": m["id"], "name": m["name"], "poster_path": m.get("poster_path"), "is_w": w} for m, w in display_movies[:st.session_state.mov_lib_limit]]
+            clicked_lib_mov = render_clickable_grid(clean_mov, f"lib_mov_{st.session_state.mov_tab}_{st.session_state.lib_mov_reset_ctr}")
             
-            for i in range(0, len(paginated_movies), 3):
-                cols = st.columns(3)
-                for j in range(3):
-                    with cols[j]:
-                        st.markdown('<span class="grid-3-col"></span>', unsafe_allow_html=True)
-                        if i + j < len(paginated_movies):
-                            m, is_watched = paginated_movies[i + j]
-                            
-                            render_poster_card(m["name"], m.get("poster_path"))
-                            
-                            st.markdown('<span class="poster-wrapper"></span>', unsafe_allow_html=True)
-                            if st.button("OPEN", key=f"m_mgr_{m['id']}_{i+j}", use_container_width=True):
-                                show_movie_details(m['id'], m['name'], details=None, is_watched=is_watched)
+            if clicked_lib_mov:
+                show_movie_details(clicked_lib_mov['id'], clicked_lib_mov['name'], details=None, is_watched=clicked_lib_mov["is_w"])
                                 
-            if total_mov_display > st.session_state.mov_lib_limit:
+            if len(display_movies) > st.session_state.mov_lib_limit:
                 if st.button("Load 50 More", use_container_width=True, key="load_more_mov_lib"):
                     st.session_state.mov_lib_limit += 50; st.rerun()
 
@@ -2012,7 +1814,7 @@ with t_profile:
                                     res = fetch_robust(f"https://api.themoviedb.org/3/find/{imdb_id}?api_key={TMDB_KEY}&external_source=imdb_id") if imdb_id else {}
                                         
                                     if not res.get("movie_results") and raw_title:
-                                        title_query = str(raw_title).replace(" ", "+")
+                                        title_query = requests.utils.quote(str(raw_title))
                                         res = fetch_robust(f"https://api.themoviedb.org/3/search/movie?api_key={TMDB_KEY}&query={title_query}&year={m.get('year', '')}")
                                         if res.get("results"): res["movie_results"] = [res["results"][0]]
                                         
@@ -2050,7 +1852,7 @@ with t_profile:
                                     res = fetch_robust(f"https://api.themoviedb.org/3/find/{tvdb_id}?api_key={TMDB_KEY}&external_source=tvdb_id") if tvdb_id else {}
                                     
                                     if not res.get("tv_results") and raw_title:
-                                        title_query = re.sub(r'\(\d{4}\)', '', raw_title).strip().replace(" ", "+")
+                                        title_query = requests.utils.quote(str(raw_title))
                                         res = fetch_robust(f"https://api.themoviedb.org/3/search/tv?api_key={TMDB_KEY}&query={title_query}")
                                         if res.get("results"): res["tv_results"] = [res["results"][0]]
                                         
