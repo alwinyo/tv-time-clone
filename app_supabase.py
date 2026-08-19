@@ -305,7 +305,7 @@ PLATFORMS = ["None", "Stremio", "Netflix", "OSN+", "Amazon Prime", "Apple TV+", 
 PREMIUM_EMOTIONS = ["None", "🤯 Mind Blown", "😂 Hilarious", "😭 Emotional", "😍 Loved it", "😡 Frustrated", "😴 Bored", "🍿 Pure Hype", "🧠 Genius Plot", "💔 Heartbroken", "🤬 Trash", "🫣 Edge of Seat", "📈 Peak Cinema"]
 
 
-@st.cache_data(ttl=43200, max_entries=800, show_spinner=False)
+@st.cache_data(ttl=43200, show_spinner=False)
 def fetch_api(url):
     try:
         safe_url = requests.utils.requote_uri(url)
@@ -341,7 +341,7 @@ def _fetch_uncached(url):
     is enough to OOM the container on a library of any size.
     """
     try:
-        r = requests.get(requests.utils.requote_uri(url), timeout=8)
+        r = requests.get(requests.utils.requote_uri(url), timeout=5)
         return r.json() if r.status_code == 200 else {}
     except Exception:
         return {}
@@ -367,7 +367,7 @@ def _trim_show(base):
     return out
 
 
-@st.cache_data(ttl=43200, max_entries=400, show_spinner=False)
+@st.cache_data(ttl=43200, show_spinner=False)
 def fetch_show_bundle(show_id):
     """
     One show + all of its seasons in as few HTTP calls as possible.
@@ -695,6 +695,130 @@ def close_dialog():
 
 def cb_open_dialog(kind, **payload):
     open_dialog(kind, **payload)
+
+
+# =====================================================================
+# MEMOISED LIBRARY SCANS
+# Streamlit re-runs EVERY tab body on EVERY interaction, so tapping a
+# poster used to rescan the whole library for both the Next and Soon
+# tabs before the dialog could render. These are keyed on a signature of
+# the library, so they recompute only when something actually changed --
+# a watch, a drop, an import -- and are a dict lookup otherwise.
+# =====================================================================
+def shows_payload():
+    """Hashable snapshot of the library. Changing any of this invalidates the scan."""
+    return tuple(
+        (
+            str(s["id"]),
+            s.get("name", "") or "",
+            s.get("poster_path", "") or "",
+            encode_eps(s.get("watched_episodes", [])),
+            int(s.get("total_episodes", 1) or 1),
+            bool(s.get("dropped", False)),
+        )
+        for s in st.session_state.db.get("shows", [])
+    )
+
+
+@st.cache_data(ttl=3600, show_spinner=False)
+def compute_up_next_tv(payload, today):
+    """Returns (rows, heal) -- heal maps show id -> corrected episode total."""
+    rows, heal = [], {}
+    for sid, name, poster, eps_enc, total, dropped in payload:
+        if dropped:
+            continue
+        watched = set(decode_eps(eps_enc))
+        details = fetch_show_bundle(sid)
+        tmdb_total = details.get("number_of_episodes", total) or total
+        if tmdb_total != total and tmdb_total > 0:
+            heal[sid] = tmdb_total
+        if len(watched) >= tmdb_total and tmdb_total > 0:
+            continue
+
+        highest_s, highest_e = -1, -1
+        for code in watched:
+            try:
+                sn, en = int(code.split('E')[0].replace('S', '')), int(code.split('E')[1])
+                if sn > highest_s or (sn == highest_s and en > highest_e):
+                    highest_s, highest_e = sn, en
+            except Exception:
+                pass
+
+        seasons = [x for x in details.get("seasons", []) if (x.get("season_number") or 0) > 0]
+        start_s = max(1, highest_s)
+        base = {"id": sid, "name": name, "poster": poster or details.get("poster_path", ""),
+                "backdrop": details.get("backdrop_path", "")}
+
+        found = None
+        for s_info in [x for x in seasons if x["season_number"] >= start_s]:
+            for ep in season_episodes(details, sid, s_info["season_number"]):
+                code = f"S{s_info['season_number']}E{ep['episode_number']}"
+                air = str(ep.get("air_date") or "").strip()
+                if code in watched or not air or air > today:
+                    continue
+                sn, en = s_info["season_number"], ep["episode_number"]
+                if sn > highest_s or (sn == highest_s and en > highest_e):
+                    found = dict(base, code=code, ep_name=ep.get("name", "Episode"), date=air, is_skipped=False)
+                    break
+            if found:
+                break
+
+        if not found:
+            for s_info in [x for x in seasons if x["season_number"] < start_s]:
+                for ep in season_episodes(details, sid, s_info["season_number"]):
+                    code = f"S{s_info['season_number']}E{ep['episode_number']}"
+                    air = str(ep.get("air_date") or "").strip()
+                    if code not in watched and air and air <= today:
+                        found = dict(base, code=code, ep_name=ep.get("name", "Episode"), date=air, is_skipped=True)
+                        break
+                if found:
+                    break
+
+        if found:
+            rows.append(found)
+    return rows, heal
+
+
+@st.cache_data(ttl=3600, show_spinner=False)
+def compute_soon_tv(payload, today):
+    rows, heal = [], {}
+    for sid, name, poster, eps_enc, total, dropped in payload:
+        if dropped:
+            continue
+        watched = set(decode_eps(eps_enc))
+        details = fetch_show_bundle(sid)
+        tmdb_total = details.get("number_of_episodes", total) or total
+        if tmdb_total != total and tmdb_total > 0:
+            heal[sid] = tmdb_total
+
+        for s_info in [x for x in details.get("seasons", []) if (x.get("season_number") or 0) > 0]:
+            hit = None
+            for ep in season_episodes(details, sid, s_info["season_number"]):
+                code = f"S{s_info['season_number']}E{ep['episode_number']}"
+                air = str(ep.get("air_date") or "").strip()
+                if code not in watched and air and air > today:
+                    hit = {"id": sid, "name": name, "poster": poster or details.get("poster_path", ""),
+                           "backdrop": details.get("backdrop_path", ""), "code": code,
+                           "ep_name": ep.get("name", "Episode"), "date": air}
+                    break
+            if hit:
+                rows.append(hit)
+                break
+    return rows, heal
+
+
+def apply_heal(heal):
+    """Write back corrected episode totals discovered during a scan."""
+    if not heal:
+        return
+    changed = False
+    for s in st.session_state.db.get("shows", []):
+        new_total = heal.get(str(s["id"]))
+        if new_total and s.get("total_episodes") != new_total:
+            s["total_episodes"] = new_total
+            changed = True
+    if changed:
+        save_db()
 
 
 # --- SMALL CALLBACKS ---
@@ -1377,82 +1501,22 @@ with t_next:
             pass
 
     if next_filter == "📺 Series":
-        needs_heal_next = False
-        up_next_tv = []
-        for show in st.session_state.db["shows"]:
-            if show.get("dropped", False):
-                continue
-            w_eps = len(show.get("watched_episodes", []))
-            t_eps = show.get("total_episodes", 1)
-
-            details = fetch_show_bundle(show['id'])
-            tmdb_total = details.get("number_of_episodes", t_eps)
-
-            if tmdb_total != t_eps and tmdb_total > 0:
-                show["total_episodes"] = tmdb_total
-                needs_heal_next = True
-
-            if w_eps >= tmdb_total and tmdb_total > 0:
-                continue
-
-            watched_set = set(show.get("watched_episodes", []))
-            highest_s, highest_e = -1, -1
-            for code in watched_set:
-                try:
-                    s_num, e_num = int(code.split('E')[0].replace('S', '')), int(code.split('E')[1])
-                    if s_num > highest_s or (s_num == highest_s and e_num > highest_e):
-                        highest_s, highest_e = s_num, e_num
-                except Exception:
-                    pass
-
-            seasons = [s for s in details.get("seasons", []) if s["season_number"] > 0]
-            start_s = max(1, highest_s)
-
-            candidate_after_max = None
-            for s_info in [s for s in seasons if s["season_number"] >= start_s]:
-                for ep in season_episodes(details, show['id'], s_info['season_number']):
-                    ep_code = f"S{s_info['season_number']}E{ep['episode_number']}"
-                    air_date = str(ep.get("air_date") or "").strip()
-                    if ep_code not in watched_set and air_date and air_date <= TODAY:
-                        s_n, e_n = s_info['season_number'], ep['episode_number']
-                        if s_n > highest_s or (s_n == highest_s and e_n > highest_e):
-                            candidate_after_max = {"item": show, "details": details, "ep": ep, "code": ep_code, "date": air_date, "is_rec": ("s", str(show["id"])) in recent_active_ids, "is_skipped": False}
-                            break
-                if candidate_after_max:
-                    break
-
-            if candidate_after_max:
-                up_next_tv.append(candidate_after_max)
-            else:
-                candidate_skipped = None
-                for s_info in [s for s in seasons if s["season_number"] < start_s]:
-                    for ep in season_episodes(details, show['id'], s_info['season_number']):
-                        ep_code = f"S{s_info['season_number']}E{ep['episode_number']}"
-                        air_date = str(ep.get("air_date") or "").strip()
-                        if ep_code not in watched_set and air_date and air_date <= TODAY:
-                            candidate_skipped = {"item": show, "details": details, "ep": ep, "code": ep_code, "date": air_date, "is_rec": False, "is_skipped": True}
-                            break
-                    if candidate_skipped:
-                        break
-                if candidate_skipped:
-                    up_next_tv.append(candidate_skipped)
-
-        if needs_heal_next:
-            save_db()
+        up_next_tv, heal = compute_up_next_tv(shows_payload(), TODAY)
+        apply_heal(heal)
+        up_next_tv = [dict(r, is_rec=("s", str(r["id"])) in recent_active_ids) for r in up_next_tv]
 
         if next_sort == "Alphabetical":
-            up_next_tv.sort(key=lambda x: x["item"]["name"].lower())
+            up_next_tv.sort(key=lambda x: x["name"].lower())
         elif next_sort == "Release Date":
             up_next_tv.sort(key=lambda x: x["date"] or "1900-01-01", reverse=True)
         elif next_sort == "Smart Priority":
-            up_next_tv.sort(key=lambda x: (not x.get("is_skipped", False), x["is_rec"], x["date"] or "1900-01-01"), reverse=True)
+            up_next_tv.sort(key=lambda x: (not x["is_skipped"], x["is_rec"], x["date"] or "1900-01-01"), reverse=True)
 
         if not up_next_tv:
             st.info("You are completely caught up on series! 🎉")
         else:
             hero = up_next_tv[0]
-            h_show, h_details, h_ep, h_code = hero["item"], hero["details"], hero["ep"], hero["code"]
-            h_bg = f"https://image.tmdb.org/t/p/w780{h_details.get('backdrop_path')}" if h_details.get('backdrop_path') else f"https://image.tmdb.org/t/p/w342{h_show.get('poster_path')}"
+            h_bg = f"https://image.tmdb.org/t/p/w780{hero['backdrop']}" if hero.get('backdrop') else f"https://image.tmdb.org/t/p/w342{hero.get('poster')}"
 
             st.markdown(
                 f'<div style="position: relative; border-radius: 12px; overflow: hidden; margin-bottom: 5px; box-shadow: 0 8px 24px rgba(0,0,0,0.6); height: 220px; margin-top: 10px;">'
@@ -1460,22 +1524,21 @@ with t_next:
                 f'<div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: linear-gradient(to top, rgba(15,17,22,1) 0%, rgba(15,17,22,0.2) 60%, rgba(15,17,22,0) 100%);"></div>'
                 f'<div style="position: absolute; bottom: 20px; left: 20px; right: 20px;">'
                 f'<div style="color: #FFC107; font-weight: 800; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px;">Up Next</div>'
-                f'<div style="color: white; font-weight: 900; font-size: 1.8rem; line-height: 1.1; text-shadow: 0 2px 8px rgba(0,0,0,0.8); margin-bottom: 5px;">{h_show["name"]}</div>'
-                f'<div style="color: #ccc; font-weight: 600; font-size: 0.85rem;">{h_code} • {h_ep.get("name", "Episode")}</div>'
+                f'<div style="color: white; font-weight: 900; font-size: 1.8rem; line-height: 1.1; text-shadow: 0 2px 8px rgba(0,0,0,0.8); margin-bottom: 5px;">{hero["name"]}</div>'
+                f'<div style="color: #ccc; font-weight: 600; font-size: 0.85rem;">{hero["code"]} • {hero["ep_name"]}</div>'
                 f'</div>'
                 f'</div>', unsafe_allow_html=True)
 
             c_h1, c_h2 = st.columns([7, 3])
             with c_h1:
-                st.button("▶ Resume Watching", key=f"hero_w_tv_{h_show['id']}", on_click=cb_watch_tv_feed, args=(h_show['id'], h_show['name'], h_code), use_container_width=True, type="primary")
+                st.button("▶ Resume Watching", key=f"hero_w_tv_{hero['id']}", on_click=cb_watch_tv_feed, args=(hero['id'], hero['name'], hero['code']), use_container_width=True, type="primary")
             with c_h2:
-                if st.button("ℹ INFO", key=f"hero_i_tv_{h_show['id']}", use_container_width=True):
-                    show_dialog_once(show_episode_details, h_show['id'], h_show['name'], h_code)
+                if st.button("ℹ INFO", key=f"hero_i_tv_{hero['id']}", use_container_width=True):
+                    show_dialog_once(show_episode_details, hero['id'], hero['name'], hero['code'])
 
             st.markdown("<div style='height: 15px;'></div>", unsafe_allow_html=True)
 
-            limit = st.session_state.next_tv_limit
-            visible = up_next_tv[:limit]
+            visible = up_next_tv[:st.session_state.next_tv_limit]
             for i in range(1, len(visible), 3):
                 cols = st.columns(3)
                 for j in range(3):
@@ -1483,10 +1546,9 @@ with t_next:
                     with cols[j]:
                         if idx < len(visible):
                             item = visible[idx]
-                            show, details, ep_code = item["item"], item["details"], item["code"]
-                            if poster_button(show["name"], show.get("poster_path") or details.get('poster_path'),
-                                             key=f"n_i_tv_{show['id']}_{ep_code}_{idx}", subtitle=ep_code):
-                                show_dialog_once(show_episode_details, show['id'], show['name'], ep_code)
+                            if poster_button(item["name"], item["poster"],
+                                             key=f"n_i_tv_{item['id']}_{item['code']}_{idx}", subtitle=item["code"]):
+                                show_dialog_once(show_episode_details, item['id'], item['name'], item['code'])
                         else:
                             st.markdown('<span class="grid-3-col"></span>', unsafe_allow_html=True)
 
@@ -1545,39 +1607,12 @@ with t_soon:
     st.divider()
 
     if soon_filter == "📺 Series":
-        needs_heal_soon = False
-        soon_tv = []
-        for show in st.session_state.db["shows"]:
-            if show.get("dropped", False):
-                continue
-            w_eps = len(show.get("watched_episodes", []))
-            t_eps = show.get("total_episodes", 1)
-
-            details = fetch_show_bundle(show['id'])
-            tmdb_total = details.get("number_of_episodes", t_eps)
-
-            if tmdb_total != t_eps and tmdb_total > 0:
-                show["total_episodes"] = tmdb_total
-                needs_heal_soon = True
-
-            found_next = False
-            watched_set = set(show.get("watched_episodes", []))
-            for s_info in [s for s in details.get("seasons", []) if s["season_number"] > 0]:
-                if found_next:
-                    break
-                for ep in season_episodes(details, show['id'], s_info['season_number']):
-                    ep_code = f"S{s_info['season_number']}E{ep['episode_number']}"
-                    e_air_date = str(ep.get("air_date") or "").strip()
-                    if ep_code not in watched_set and e_air_date and e_air_date > TODAY:
-                        soon_tv.append({"item": show, "details": details, "ep": ep, "code": ep_code, "date": e_air_date})
-                        found_next = True
-                        break
-
-        if needs_heal_soon:
-            save_db()
+        soon_tv, heal = compute_soon_tv(shows_payload(), TODAY)
+        apply_heal(heal)
+        soon_tv = list(soon_tv)
 
         if soon_sort == "Alphabetical":
-            soon_tv.sort(key=lambda x: x["item"]["name"].lower())
+            soon_tv.sort(key=lambda x: x["name"].lower())
         else:
             soon_tv.sort(key=lambda x: x["date"] or "2099-01-01")
 
@@ -1585,8 +1620,7 @@ with t_soon:
         if not soon_tv:
             st.info("No upcoming episodes scheduled yet.")
         else:
-            limit = st.session_state.soon_tv_limit
-            visible = soon_tv[:limit]
+            visible = soon_tv[:st.session_state.soon_tv_limit]
             for i in range(0, len(visible), 3):
                 cols = st.columns(3)
                 for j in range(3):
@@ -1594,11 +1628,10 @@ with t_soon:
                     with cols[j]:
                         if idx < len(visible):
                             item = visible[idx]
-                            show, details, ep_code = item["item"], item["details"], item["code"]
-                            if poster_button(show["name"], show.get("poster_path") or details.get('poster_path'),
-                                             key=f"s_i_tv_{show['id']}_{ep_code}_{idx}",
-                                             subtitle=f"{ep_code} • {calc_time_remaining(item['date'])}"):
-                                show_dialog_once(show_episode_details, show['id'], show['name'], ep_code)
+                            if poster_button(item["name"], item["poster"],
+                                             key=f"s_i_tv_{item['id']}_{item['code']}_{idx}",
+                                             subtitle=f"{item['code']} • {calc_time_remaining(item['date'])}"):
+                                show_dialog_once(show_episode_details, item['id'], item['name'], item['code'])
                         else:
                             st.markdown('<span class="grid-3-col"></span>', unsafe_allow_html=True)
 
