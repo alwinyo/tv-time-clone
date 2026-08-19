@@ -163,19 +163,37 @@ st.markdown("""
         gap: 0 !important;
         padding: 0 !important;
     }
+    div[data-testid="column"]:has(.history-wrapper) [data-testid="stElementContainer"]:has(div[data-testid="stButton"]),
+    div[data-testid="stColumn"]:has(.history-wrapper) [data-testid="stElementContainer"]:has(div[data-testid="stButton"]),
     div[data-testid="column"]:has(.history-wrapper) div[data-testid="stButton"],
     div[data-testid="stColumn"]:has(.history-wrapper) div[data-testid="stButton"] {
         position: absolute !important;
-        top: 0 !important; left: 0 !important; right: 0 !important; bottom: 0 !important;
+        top: 0 !important; right: 0 !important; bottom: 0 !important; left: 0 !important;
+        width: 100% !important; height: 100% !important;
+        min-height: 0 !important;
         z-index: 20 !important;
         opacity: 0 !important;
-        height: 100% !important;
-        width: 100% !important;
+        margin: 0 !important; padding: 0 !important;
+        pointer-events: auto !important;
     }
     div[data-testid="column"]:has(.history-wrapper) div[data-testid="stButton"] button,
     div[data-testid="stColumn"]:has(.history-wrapper) div[data-testid="stButton"] button {
+        position: absolute !important;
+        top: 0 !important; right: 0 !important; bottom: 0 !important; left: 0 !important;
         width: 100% !important; height: 100% !important;
+        min-height: 0 !important;
+        margin: 0 !important; padding: 0 !important;
+        background: transparent !important; color: transparent !important; border: none !important;
+        box-shadow: none !important;
         display: block !important;
+        cursor: pointer !important;
+        touch-action: manipulation !important;
+        -webkit-tap-highlight-color: transparent !important;
+        -webkit-appearance: none !important;
+    }
+    div[data-testid="column"]:has(.history-wrapper) div[data-testid="stButton"] button p,
+    div[data-testid="stColumn"]:has(.history-wrapper) div[data-testid="stButton"] button p {
+        display: none !important;
     }
 
     /* --- PILL NAVIGATION (DISCOVER) --- */
@@ -219,8 +237,21 @@ st.markdown("""
     div[data-testid="column"]:has(.carousel-marker-cast) div[data-testid="stButton"] button[kind="tertiary"] p,
     div[data-testid="stColumn"]:has(.carousel-marker-cast) div[data-testid="stButton"] button[kind="tertiary"] p {
         font-size: 0.55rem !important; font-weight: 500 !important; text-transform: none !important; letter-spacing: normal !important;
-        white-space: pre-wrap !important; line-height: 1.1 !important; color: #aaa !important; margin: 0 !important;
+        white-space: normal !important; line-height: 1.15 !important; color: #aaa !important; margin: 0 !important;
+        /* fixed two-line box: one- and two-line names occupy the same height, so
+           the gold character line sits on the same baseline across the whole row */
+        display: -webkit-box !important;
+        -webkit-line-clamp: 2 !important;
+        -webkit-box-orient: vertical !important;
+        overflow: hidden !important;
+        height: 1.3rem !important;
+        text-align: center !important;
     }
+    /* top-align cards so a short name cannot float its card vertically */
+    div[data-testid="stHorizontalBlock"]:has(.carousel-marker-cast),
+    div[data-testid="stColumns"]:has(.carousel-marker-cast) { align-items: flex-start !important; }
+    div[data-testid="column"]:has(.carousel-marker-cast) > div,
+    div[data-testid="stColumn"]:has(.carousel-marker-cast) > div { gap: 0 !important; }
     div[data-testid="column"]:has(.carousel-marker-cast) div[data-testid="stButton"] button[kind="tertiary"]:hover p,
     div[data-testid="stColumn"]:has(.carousel-marker-cast) div[data-testid="stButton"] button[kind="tertiary"]:hover p { color: #FFC107 !important; text-decoration: underline !important;}
 
@@ -862,6 +893,9 @@ def cb_perm_delete_mov(mid):
 
 def cb_toggle_episode(sid, ecode):
     mark_episode(sid, ecode, st.session_state.get(f"chk_dlg_{sid}_{ecode}", False))
+    show = get_show(sid)
+    if show:
+        open_dialog("show", id=sid, name=show["name"])
 
 
 def cb_watch_tv_feed(sid, sname, ecode):
@@ -895,18 +929,35 @@ def cb_toggle_ep_info(sid, ecode):
 
 # --- VISUAL HELPERS ---
 def render_poster_card(title, poster_path, subtitle="", progress_pct=-1.0):
+    """
+    Poster with its caption laid out as a flex column pinned to the bottom.
+
+    The caption used to be an absolutely positioned block offset from the
+    bottom, so a two-line title plus a subtitle grew past the poster edge and
+    the subtitle got clipped. Anchoring the block at bottom:0 with its own
+    padding means it can never overflow the artwork.
+    """
     img_url = f"https://image.tmdb.org/t/p/w342{poster_path}" if poster_path else "https://via.placeholder.com/342x513/222222/555555?text=No+Poster"
     prog_width = min(progress_pct, 1.0) * 100
-    prog_html = f'<div style="position: absolute; bottom: 0; left: 0; height: 4px; width: {prog_width}%; background: #FFC107; box-shadow: 0 0 8px #FFC107; z-index: 3;"></div>' if progress_pct >= 0 else ''
-    sub_html = f'<div style="color: #FFC107; font-weight: 700; font-size: 0.6rem; margin-top: 2px;">{subtitle}</div>' if subtitle else ''
+    prog_html = (f'<div style="position:absolute; bottom:0; left:0; height:3px; width:{prog_width}%; '
+                 f'background:#FFC107; box-shadow:0 0 8px #FFC107; z-index:4;"></div>') if progress_pct >= 0 else ''
+    # One line, ellipsised — a wrapping subtitle is what pushed the block over.
+    sub_html = (f'<div style="color:#FFC107; font-weight:700; font-size:0.58rem; line-height:1.2; '
+                f'margin-top:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{subtitle}</div>') if subtitle else ''
+    # Two lines max, and clamp needs a matching max-height or tall glyphs spill.
+    clamp = 2 if not subtitle else 2
+    title_html = (f'<div style="color:#fff; font-weight:800; font-size:0.7rem; line-height:1.2; '
+                  f'max-height:1.68rem; text-shadow:0 2px 4px rgba(0,0,0,0.85); display:-webkit-box; '
+                  f'-webkit-line-clamp:{clamp}; -webkit-box-orient:vertical; overflow:hidden; '
+                  f'overflow-wrap:anywhere;">{title}</div>')
 
     html = (
-        f'<div style="position: relative; aspect-ratio: 2/3; background-color: #111; border-radius: 8px; overflow: hidden;">'
-        f'<img src="{img_url}" style="width: 100%; height: 100%; object-fit: cover; display: block;">'
-        f'<div style="position: absolute; bottom: 0; left: 0; right: 0; height: 60%; background: linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0) 100%); z-index: 1;"></div>'
-        f'<div class="poster-text" style="position: absolute; bottom: 10px; left: 10px; right: 10px; z-index: 2;">'
-        f'<div style="color: white; font-weight: 800; font-size: 0.75rem; line-height: 1.2; text-shadow: 0 2px 4px rgba(0,0,0,0.8); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">{title}</div>'
-        f'{sub_html}'
+        f'<div style="position:relative; aspect-ratio:2/3; background-color:#111; border-radius:8px; overflow:hidden;">'
+        f'<img src="{img_url}" style="width:100%; height:100%; object-fit:cover; display:block;">'
+        f'<div style="position:absolute; bottom:0; left:0; right:0; height:65%; '
+        f'background:linear-gradient(to top, rgba(0,0,0,0.96) 0%, rgba(0,0,0,0.75) 40%, rgba(0,0,0,0) 100%); z-index:1;"></div>'
+        f'<div class="poster-text" style="position:absolute; bottom:0; left:0; right:0; z-index:2; padding:0 8px 8px 8px; box-sizing:border-box;">'
+        f'{title_html}{sub_html}'
         f'</div>'
         f'{prog_html}'
         f'</div>'
@@ -947,9 +998,15 @@ def show_cast_horizontal(cast_list, key_prefix, limit=15):
             )
             st.markdown(html_img, unsafe_allow_html=True)
 
-            if char_name:
-                html_char = f'<div style="font-size: 0.55rem; color: #FFC107; font-weight: 700; line-height: 1.1; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{char_name}</div>'
-                st.markdown(html_char, unsafe_allow_html=True)
+            # Always render the character line, even when empty. Skipping it for
+            # cast with no listed character shifted that card's actor name up and
+            # broke the row alignment. A non-breaking space holds the line open.
+            html_char = (
+                f'<div style="font-size:0.55rem; color:#FFC107; font-weight:700; line-height:1.15; '
+                f'height:1.15rem; margin:0 0 2px 0; white-space:nowrap; overflow:hidden; '
+                f'text-overflow:ellipsis;">{char_name or "&nbsp;"}</div>'
+            )
+            st.markdown(html_char, unsafe_allow_html=True)
 
             st.button(actor.get('name', 'Unknown'), key=f"cast_{key_prefix}_{actor['id']}_{idx}", on_click=cb_set_active_actor, args=(actor['id'],), use_container_width=True, type="tertiary")
 
@@ -1273,6 +1330,9 @@ def show_episode_details(show_id, show_name, ep_code):
         with col_a:
             if st.button("❌ Unmark as Watched" if is_watched else "▶ Mark as Watched", use_container_width=True, type="secondary" if is_watched else "primary", key=f"ep_toggle_{show_id}_{ep_code}"):
                 mark_episode(show_id, ep_code, not is_watched)
+                # Re-queue the same dialog so it reopens with the journal editor
+                # showing, instead of just closing on the rerun.
+                open_dialog("episode", id=show_id, name=show_name, code=ep_code)
                 st.rerun()
         with col_b:
             if st.button("📺 Open Series", use_container_width=True, key=f"ep_open_show_{show_id}"):
@@ -1429,6 +1489,7 @@ def show_movie_details(m_id, m_name):
     if current_movie and not is_dropped:
         if st.button("❌ Unmark as Watched" if is_watched else "▶ Mark as Watched", use_container_width=True, type="secondary" if is_watched else "primary", key=f"mov_toggle_{m_id}"):
             mark_movie(m_id, not is_watched)
+            open_dialog("movie", id=m_id, name=m_name)
             st.rerun()
 
 
