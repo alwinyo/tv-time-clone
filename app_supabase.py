@@ -1279,21 +1279,43 @@ def show_movie_details(m_id, m_name):
 # Runs before the tabs so there is exactly one dialog per script run,
 # no matter which tab (or which poster) requested it.
 # =====================================================================
+# Set to True to trace dialog opens with a toast. If you click a poster and
+# see NO toast, the click never reached Python. If you see the toast but no
+# modal, Python fired and the modal is being lost on the frontend.
+DEBUG_DIALOG = False
+
+# Streamlit renders at most one dialog per script run. Everything now goes
+# through this guard, so a second attempt in the same run is dropped rather
+# than silently clobbering the first.
+DIALOG_GUARD = {"used": False}
+
+
+def show_dialog_once(fn, *args, **kwargs):
+    """Open a dialog immediately, unless one already opened this run."""
+    if DIALOG_GUARD["used"]:
+        return False
+    DIALOG_GUARD["used"] = True
+    if DEBUG_DIALOG:
+        st.toast(f"opening {fn.__name__} {args}")
+    fn(*args, **kwargs)
+    return True
+
+
 queue_pending_recaps()
 
 _d = st.session_state.dialog
 if _d:
     kind = _d.get("kind")
     if kind == "episode":
-        show_episode_details(_d["id"], _d["name"], _d["code"])
+        show_dialog_once(show_episode_details, _d["id"], _d["name"], _d["code"])
     elif kind == "show":
-        manage_show_dialog(_d["id"], _d["name"])
+        show_dialog_once(manage_show_dialog, _d["id"], _d["name"])
     elif kind == "movie":
-        show_movie_details(_d["id"], _d["name"])
+        show_dialog_once(show_movie_details, _d["id"], _d["name"])
     elif kind == "recap_month":
-        show_monthly_recap_dialog(_d["month_key"], _d["title"], _d["stats"], _d["recap_id"])
+        show_dialog_once(show_monthly_recap_dialog, _d["month_key"], _d["title"], _d["stats"], _d["recap_id"])
     elif kind == "recap_year":
-        show_yearly_recap_dialog(_d["year"], _d["y_tv"], _d["y_mov"], _d["recap_id"])
+        show_dialog_once(show_yearly_recap_dialog, _d["year"], _d["y_tv"], _d["y_mov"], _d["recap_id"])
     # cleared here so dismissing via the X does not re-open it next run
     st.session_state.dialog = None
 
@@ -1415,8 +1437,7 @@ with t_next:
                 st.button("▶ Resume Watching", key=f"hero_w_tv_{h_show['id']}", on_click=cb_watch_tv_feed, args=(h_show['id'], h_show['name'], h_code), use_container_width=True, type="primary")
             with c_h2:
                 if st.button("ℹ INFO", key=f"hero_i_tv_{h_show['id']}", use_container_width=True):
-                    open_dialog("episode", id=h_show['id'], name=h_show['name'], code=h_code)
-                    st.rerun()
+                    show_dialog_once(show_episode_details, h_show['id'], h_show['name'], h_code)
 
             st.markdown("<div style='height: 15px;'></div>", unsafe_allow_html=True)
 
@@ -1432,8 +1453,7 @@ with t_next:
                             show, details, ep_code = item["item"], item["details"], item["code"]
                             if poster_button(show["name"], show.get("poster_path") or details.get('poster_path'),
                                              key=f"n_i_tv_{show['id']}_{ep_code}_{idx}", subtitle=ep_code):
-                                open_dialog("episode", id=show['id'], name=show['name'], code=ep_code)
-                                st.rerun()
+                                show_dialog_once(show_episode_details, show['id'], show['name'], ep_code)
                         else:
                             st.markdown('<span class="grid-3-col"></span>', unsafe_allow_html=True)
 
@@ -1472,8 +1492,7 @@ with t_next:
                         if idx < len(visible):
                             m = visible[idx]["item"]
                             if poster_button(m["name"], m.get('poster_path'), key=f"n_i_mov_{m['id']}_{idx}"):
-                                open_dialog("movie", id=m['id'], name=m['name'])
-                                st.rerun()
+                                show_dialog_once(show_movie_details, m['id'], m['name'])
                         else:
                             st.markdown('<span class="grid-3-col"></span>', unsafe_allow_html=True)
 
@@ -1546,8 +1565,7 @@ with t_soon:
                             if poster_button(show["name"], show.get("poster_path") or details.get('poster_path'),
                                              key=f"s_i_tv_{show['id']}_{ep_code}_{idx}",
                                              subtitle=f"{ep_code} • {calc_time_remaining(item['date'])}"):
-                                open_dialog("episode", id=show['id'], name=show['name'], code=ep_code)
-                                st.rerun()
+                                show_dialog_once(show_episode_details, show['id'], show['name'], ep_code)
                         else:
                             st.markdown('<span class="grid-3-col"></span>', unsafe_allow_html=True)
 
@@ -1586,8 +1604,7 @@ with t_soon:
                             m = item["item"]
                             if poster_button(m["name"], m.get('poster_path'), key=f"s_i_mov_{m['id']}_{idx}",
                                              subtitle=calc_time_remaining(item["date"])):
-                                open_dialog("movie", id=m['id'], name=m['name'])
-                                st.rerun()
+                                show_dialog_once(show_movie_details, m['id'], m['name'])
                         else:
                             st.markdown('<span class="grid-3-col"></span>', unsafe_allow_html=True)
 
@@ -1627,8 +1644,7 @@ with t_search:
                             item_id = item["id"]
                             title = item.get("name") if search_type == "TV Shows" else item.get("title")
                             if poster_button(title, item.get("poster_path"), key=f"inf_{item_id}_{idx}"):
-                                open_dialog("show" if search_type == "TV Shows" else "movie", id=item_id, name=title)
-                                st.rerun()
+                                show_dialog_once(manage_show_dialog if search_type == "TV Shows" else show_movie_details, item_id, title)
                         else:
                             st.markdown('<span class="grid-3-col"></span>', unsafe_allow_html=True)
     else:
@@ -1651,8 +1667,7 @@ with t_search:
                     i_title = item.get("name") if c_type == "tv" else item.get("title")
                     item_id = item["id"]
                     if poster_button(i_title, item.get("poster_path"), key=f"c_inf_{safe_title}_{item_id}_{idx}", marker="carousel-marker"):
-                        open_dialog("show" if c_type == "tv" else "movie", id=item_id, name=i_title)
-                        st.rerun()
+                        show_dialog_once(manage_show_dialog if c_type == "tv" else show_movie_details, item_id, i_title)
 
             if show_load_more:
                 with cols[-1]:
@@ -1785,8 +1800,7 @@ with t_tv:
                             show, t_eps, w_eps = paginated_shows[idx]
                             prog_val = min(w_eps / t_eps, 1.0) if t_eps > 0 else 0.0
                             if poster_button(show["name"], show.get("poster_path"), key=f"s_mgr_{show['id']}_{idx}", progress_pct=prog_val):
-                                open_dialog("show", id=show['id'], name=show['name'])
-                                st.rerun()
+                                show_dialog_once(manage_show_dialog, show['id'], show['name'])
                         else:
                             st.markdown('<span class="grid-3-col"></span>', unsafe_allow_html=True)
 
@@ -1880,8 +1894,7 @@ with t_movies:
                             m, m_watched = paginated_movies[idx]
                             if poster_button(m["name"], m.get("poster_path"), key=f"m_mgr_{m['id']}_{idx}",
                                              progress_pct=1.0 if m_watched else -1.0):
-                                open_dialog("movie", id=m['id'], name=m['name'])
-                                st.rerun()
+                                show_dialog_once(show_movie_details, m['id'], m['name'])
                         else:
                             st.markdown('<span class="grid-3-col"></span>', unsafe_allow_html=True)
 
@@ -2281,8 +2294,7 @@ with t_profile:
                             st.markdown(history_card_html(s_name, poster_url, dt, badges), unsafe_allow_html=True)
                             st.markdown('<span class="history-wrapper"></span>', unsafe_allow_html=True)
                             if st.button("INFO", key=f"h_r_tv_{h['i']}_{ep_code}_{h_idx}", use_container_width=True):
-                                open_dialog("episode", id=h['i'], name=s_name, code=ep_code)
-                                st.rerun()
+                                show_dialog_once(show_episode_details, h['i'], s_name, ep_code)
                 if len(tv_hist) > st.session_state.hist_tv_limit:
                     if st.button("Load More Series", use_container_width=True, key="load_more_tv_hist"):
                         st.session_state.hist_tv_limit += 20
@@ -2321,8 +2333,7 @@ with t_profile:
                             st.markdown(history_card_html(m_name, poster_url, dt, badges), unsafe_allow_html=True)
                             st.markdown('<span class="history-wrapper"></span>', unsafe_allow_html=True)
                             if st.button("OPEN", key=f"h_r_mov_{h['i']}_{h_idx}", use_container_width=True):
-                                open_dialog("movie", id=h['i'], name=m_name)
-                                st.rerun()
+                                show_dialog_once(show_movie_details, h['i'], m_name)
                 if len(mov_hist) > st.session_state.hist_mov_limit:
                     if st.button("Load More Movies", use_container_width=True, key="load_more_mov_hist"):
                         st.session_state.hist_mov_limit += 20
@@ -2343,8 +2354,7 @@ with t_profile:
                         m_title = m_key
                     stats = st.session_state.db.get("analytics", {}).get(m_key, {"tv": 0, "movie": 0})
                     if st.button(f"📅 {m_title} Wrap-Up", key=f"btn_recap_{r_id}", use_container_width=True):
-                        open_dialog("recap_month", month_key=m_key, title=m_title, stats=stats, recap_id=r_id)
-                        st.rerun()
+                        show_dialog_once(show_monthly_recap_dialog, m_key, m_title, stats, r_id)
 
                 elif r_id.startswith("yearly-"):
                     year_str = r_id.replace("yearly-", "")
@@ -2354,8 +2364,7 @@ with t_profile:
                             y_tv += v.get("tv", 0)
                             y_mov += v.get("movie", 0)
                     if st.button(f"🏆 {year_str} YEAR IN REVIEW", key=f"btn_recap_{r_id}", use_container_width=True):
-                        open_dialog("recap_year", year=int(year_str), y_tv=y_tv, y_mov=y_mov, recap_id=r_id)
-                        st.rerun()
+                        show_dialog_once(show_yearly_recap_dialog, int(year_str), y_tv, y_mov, r_id)
 
     with t_prof_set:
         with st.expander("⚙️ Import TV Time Data", expanded=True):
