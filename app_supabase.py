@@ -80,10 +80,16 @@ st.markdown("""
         transition: transform 0.25s cubic-bezier(0.25, 0.8, 0.25, 1), box-shadow 0.25s ease !important;
         cursor: pointer !important;
     }
-    div[data-testid="column"]:has(.poster-wrapper):hover,
-    div[data-testid="stColumn"]:has(.poster-wrapper):hover {
-        transform: scale(1.03) !important;
-        box-shadow: 0 10px 25px rgba(0,0,0,0.8) !important;
+    /* Hover effects ONLY on devices with a real pointer.
+       On touch screens, a :hover rule makes the FIRST tap apply hover and
+       swallow the activation - you have to tap twice. Gating them here is
+       what makes a single tap open the poster on a phone. */
+    @media (hover: hover) and (pointer: fine) {
+        div[data-testid="column"]:has(.poster-wrapper):hover,
+        div[data-testid="stColumn"]:has(.poster-wrapper):hover {
+            transform: scale(1.03) !important;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.8) !important;
+        }
     }
     div[data-testid="column"]:has(.poster-wrapper) > div,
     div[data-testid="stColumn"]:has(.poster-wrapper) > div {
@@ -94,9 +100,11 @@ st.markdown("""
     div[data-testid="stColumn"]:has(.poster-wrapper) img {
         transition: transform 0.35s cubic-bezier(0.25, 0.8, 0.25, 1) !important;
     }
-    div[data-testid="column"]:has(.poster-wrapper):hover img,
-    div[data-testid="stColumn"]:has(.poster-wrapper):hover img {
-        transform: scale(1.06) !important;
+    @media (hover: hover) and (pointer: fine) {
+        div[data-testid="column"]:has(.poster-wrapper):hover img,
+        div[data-testid="stColumn"]:has(.poster-wrapper):hover img {
+            transform: scale(1.06) !important;
+        }
     }
     /* the hit area itself.
        Every layer is stretched with inset:0 (top/right/bottom/left all zero)
@@ -128,6 +136,9 @@ st.markdown("""
         box-shadow: none !important;
         display: block !important;
         cursor: pointer !important;
+        touch-action: manipulation !important;
+        -webkit-tap-highlight-color: transparent !important;
+        -webkit-appearance: none !important;
     }
     div[data-testid="column"]:has(.poster-wrapper) div[data-testid="stButton"] button p,
     div[data-testid="stColumn"]:has(.poster-wrapper) div[data-testid="stButton"] button p {
@@ -141,9 +152,11 @@ st.markdown("""
         transition: transform 0.2s cubic-bezier(0.25, 0.8, 0.25, 1) !important;
         cursor: pointer !important;
     }
-    div[data-testid="column"]:has(.history-wrapper):hover,
-    div[data-testid="stColumn"]:has(.history-wrapper):hover {
-        transform: translateX(5px) !important;
+    @media (hover: hover) and (pointer: fine) {
+        div[data-testid="column"]:has(.history-wrapper):hover,
+        div[data-testid="stColumn"]:has(.history-wrapper):hover {
+            transform: translateX(5px) !important;
+        }
     }
     div[data-testid="column"]:has(.history-wrapper) > div,
     div[data-testid="stColumn"]:has(.history-wrapper) > div {
@@ -1303,7 +1316,7 @@ def show_movie_details(m_id, m_name):
 # Set to True to trace dialog opens with a toast. If you click a poster and
 # see NO toast, the click never reached Python. If you see the toast but no
 # modal, Python fired and the modal is being lost on the frontend.
-DEBUG_DIALOG = True
+DEBUG_DIALOG = False
 
 # Streamlit renders at most one dialog per script run. Everything now goes
 # through this guard, so a second attempt in the same run is dropped rather
