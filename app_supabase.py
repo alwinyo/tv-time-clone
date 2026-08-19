@@ -204,13 +204,29 @@ st.markdown("""
     }
     div[role="radiogroup"]::-webkit-scrollbar { display: none; }
     div[role="radiogroup"] > label {
-        flex: 0 0 auto !important; background: rgba(255,255,255,0.05) !important; border: 1px solid rgba(255,255,255,0.1) !important;
-        border-radius: 20px !important; padding: 6px 16px !important; margin: 0 !important; transition: all 0.2s !important;
+        /* fixed basis so every pill is the same width regardless of label length,
+           while the row still scrolls horizontally on narrow screens */
+        flex: 0 0 92px !important; width: 92px !important; min-width: 92px !important;
+        display: flex !important; align-items: center !important; justify-content: center !important;
+        box-sizing: border-box !important;
+        background: rgba(255,255,255,0.045) !important;
+        border: 1px solid rgba(255,255,255,0.10) !important;
+        border-radius: 999px !important; padding: 8px 6px !important; margin: 0 !important;
+        transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease !important;
+        touch-action: manipulation !important;
     }
     div[role="radiogroup"] > label > div:first-child { display: none !important; }
-    div[role="radiogroup"] > label:has(input:checked) { background: #FFC107 !important; border-color: #FFC107 !important; box-shadow: 0 4px 10px rgba(255, 193, 7, 0.3) !important; }
+    div[role="radiogroup"] > label:has(input:checked) {
+        background: linear-gradient(135deg, #FFD54F 0%, #FFC107 100%) !important;
+        border-color: transparent !important;
+        box-shadow: 0 4px 12px rgba(255, 193, 7, 0.30) !important;
+    }
     div[role="radiogroup"] > label:has(input:checked) p { color: #000 !important; font-weight: 800 !important; }
-    div[role="radiogroup"] > label p { font-size: 0.75rem !important; font-weight: 600 !important; margin: 0 !important; color: #EDEDED !important; white-space: nowrap !important; }
+    div[role="radiogroup"] > label p {
+        font-size: 0.66rem !important; font-weight: 700 !important; margin: 0 !important;
+        color: #cfcfcf !important; white-space: nowrap !important;
+        text-transform: uppercase !important; letter-spacing: 0.7px !important; text-align: center !important;
+    }
 
     /* --- TABS OVERHAUL --- */
     div[data-testid="stTabs"] > div[data-baseweb="tab-list"], div[data-testid="stTabs"] > div[role="tablist"] { display: flex !important; width: 100vw !important; max-width: 100% !important; margin-left: -0.5rem !important; padding: 0 0 5px 0 !important; gap: 0 !important; overflow-x: hidden !important; background-color: rgba(8, 9, 12, 0.85) !important; backdrop-filter: blur(12px) !important; -webkit-backdrop-filter: blur(12px) !important; border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important; }
@@ -260,6 +276,35 @@ st.markdown("""
     div:has(> .clear-btn-hook) + div { position: absolute !important; right: 8px !important; top: 7px !important; width: 26px !important; z-index: 100 !important; }
     div:has(> .clear-btn-hook) + div button { background: rgba(255,255,255,0.08) !important; border: none !important; box-shadow: none !important; color: #aaa !important; padding: 0 !important; min-height: 26px !important; height: 26px !important; width: 26px !important; border-radius: 50% !important; font-size: 0.7rem !important; display: flex !important; align-items: center !important; justify-content: center !important; margin: 0 !important; line-height: 1 !important; }
     div:has(> .clear-btn-hook) + div button:hover { background: rgba(255, 193, 7, 0.3) !important; color: #FFD54F !important; }
+
+    /* --- 2x2 LIBRARY FILTER GRID --- */
+    div[data-testid="column"]:has(.seg-nav) div[data-testid="stButton"] button,
+    div[data-testid="stColumn"]:has(.seg-nav) div[data-testid="stButton"] button {
+        height: 44px !important; min-height: 44px !important; width: 100% !important;
+        border-radius: 10px !important;
+        background: rgba(255,255,255,0.045) !important;
+        border: 1px solid rgba(255,255,255,0.10) !important;
+        color: #cfcfcf !important;
+        box-shadow: none !important;
+        transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease !important;
+        touch-action: manipulation !important;
+        -webkit-tap-highlight-color: transparent !important;
+    }
+    div[data-testid="column"]:has(.seg-nav) div[data-testid="stButton"] button p,
+    div[data-testid="stColumn"]:has(.seg-nav) div[data-testid="stButton"] button p {
+        font-size: 0.68rem !important; font-weight: 700 !important; margin: 0 !important;
+        text-transform: uppercase !important; letter-spacing: 0.7px !important;
+    }
+    div[data-testid="column"]:has(.seg-nav) div[data-testid="stButton"] button[kind="primary"],
+    div[data-testid="stColumn"]:has(.seg-nav) div[data-testid="stButton"] button[kind="primary"] {
+        background: linear-gradient(135deg, #FFD54F 0%, #FFC107 100%) !important;
+        border-color: transparent !important;
+        box-shadow: 0 4px 12px rgba(255,193,7,0.28) !important;
+    }
+    div[data-testid="column"]:has(.seg-nav) div[data-testid="stButton"] button[kind="primary"] p,
+    div[data-testid="stColumn"]:has(.seg-nav) div[data-testid="stButton"] button[kind="primary"] p {
+        color: #000 !important; font-weight: 800 !important;
+    }
 
     .grid-title { font-size: 0.65rem; color: #ccc; text-align: center; margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 600; }
 
@@ -930,39 +975,63 @@ def cb_toggle_ep_info(sid, ecode):
 # --- VISUAL HELPERS ---
 def render_poster_card(title, poster_path, subtitle="", progress_pct=-1.0):
     """
-    Poster with its caption laid out as a flex column pinned to the bottom.
+    Poster with the title along the bottom and the episode/countdown badge as a
+    floating pill in the TOP-LEFT corner.
 
-    The caption used to be an absolutely positioned block offset from the
-    bottom, so a two-line title plus a subtitle grew past the poster edge and
-    the subtitle got clipped. Anchoring the block at bottom:0 with its own
-    padding means it can never overflow the artwork.
+    Stacking the badge under the title kept putting it on the very edge of the
+    artwork, where it got clipped. Moving it to the opposite corner removes the
+    collision entirely and reads better -- it is where streaming apps put it.
     """
     img_url = f"https://image.tmdb.org/t/p/w342{poster_path}" if poster_path else "https://via.placeholder.com/342x513/222222/555555?text=No+Poster"
     prog_width = min(progress_pct, 1.0) * 100
     prog_html = (f'<div style="position:absolute; bottom:0; left:0; height:3px; width:{prog_width}%; '
                  f'background:#FFC107; box-shadow:0 0 8px #FFC107; z-index:4;"></div>') if progress_pct >= 0 else ''
-    # One line, ellipsised — a wrapping subtitle is what pushed the block over.
-    sub_html = (f'<div style="color:#FFC107; font-weight:700; font-size:0.58rem; line-height:1.2; '
-                f'margin-top:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{subtitle}</div>') if subtitle else ''
-    # Two lines max, and clamp needs a matching max-height or tall glyphs spill.
-    clamp = 2 if not subtitle else 2
-    title_html = (f'<div style="color:#fff; font-weight:800; font-size:0.7rem; line-height:1.2; '
-                  f'max-height:1.68rem; text-shadow:0 2px 4px rgba(0,0,0,0.85); display:-webkit-box; '
-                  f'-webkit-line-clamp:{clamp}; -webkit-box-orient:vertical; overflow:hidden; '
-                  f'overflow-wrap:anywhere;">{title}</div>')
+
+    badge_html = ''
+    if subtitle:
+        badge_html = (
+            f'<div style="position:absolute; top:6px; left:6px; max-width:calc(100% - 12px); z-index:3; '
+            f'background:linear-gradient(135deg, rgba(255,213,79,0.96) 0%, rgba(255,193,7,0.96) 100%); '
+            f'color:#000; font-weight:800; font-size:0.55rem; letter-spacing:0.2px; '
+            f'padding:3px 7px; border-radius:6px; box-shadow:0 2px 6px rgba(0,0,0,0.45); '
+            f'white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{subtitle}</div>'
+        )
+
+    title_html = (
+        f'<div style="color:#fff; font-weight:800; font-size:0.7rem; line-height:1.2; '
+        f'max-height:1.68rem; text-shadow:0 2px 4px rgba(0,0,0,0.9); display:-webkit-box; '
+        f'-webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; '
+        f'overflow-wrap:anywhere;">{title}</div>'
+    )
 
     html = (
         f'<div style="position:relative; aspect-ratio:2/3; background-color:#111; border-radius:8px; overflow:hidden;">'
         f'<img src="{img_url}" style="width:100%; height:100%; object-fit:cover; display:block;">'
-        f'<div style="position:absolute; bottom:0; left:0; right:0; height:65%; '
-        f'background:linear-gradient(to top, rgba(0,0,0,0.96) 0%, rgba(0,0,0,0.75) 40%, rgba(0,0,0,0) 100%); z-index:1;"></div>'
-        f'<div class="poster-text" style="position:absolute; bottom:0; left:0; right:0; z-index:2; padding:0 8px 8px 8px; box-sizing:border-box;">'
-        f'{title_html}{sub_html}'
+        f'<div style="position:absolute; bottom:0; left:0; right:0; height:55%; '
+        f'background:linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.7) 45%, rgba(0,0,0,0) 100%); z-index:1;"></div>'
+        f'{badge_html}'
+        f'<div style="position:absolute; bottom:0; left:0; right:0; z-index:2; padding:0 8px 8px 8px; box-sizing:border-box;">'
+        f'{title_html}'
         f'</div>'
         f'{prog_html}'
         f'</div>'
     )
     st.markdown(html, unsafe_allow_html=True)
+
+
+def segmented_nav(state_key, options, key_prefix):
+    """Four library filters as an even 2x2 grid instead of a cramped 1x4 row."""
+    current = st.session_state[state_key]
+    for row_start in range(0, len(options), 2):
+        cols = st.columns(2)
+        for offset, (label, value) in enumerate(options[row_start:row_start + 2]):
+            with cols[offset]:
+                st.markdown('<span class="seg-nav"></span>', unsafe_allow_html=True)
+                if st.button(label, key=f"{key_prefix}_{value}",
+                             type="primary" if current == value else "secondary",
+                             use_container_width=True):
+                    st.session_state[state_key] = value
+                    st.rerun()
 
 
 def poster_button(title, poster_path, key, subtitle="", progress_pct=-1.0, marker="grid-3-col"):
@@ -980,6 +1049,14 @@ def poster_button(title, poster_path, key, subtitle="", progress_pct=-1.0, marke
 
 
 def show_cast_horizontal(cast_list, key_prefix, limit=15):
+    """
+    Cast strip: photo -> actor name (the clickable button) -> character name.
+
+    Character-above-name meant the gold line landed on a different baseline
+    depending on whether the actor's name wrapped. Name first, with the button
+    locked to a fixed two-line box and the character line to a fixed one-line
+    box, gives every card identical vertical rhythm.
+    """
     if not cast_list:
         return
     cols = st.columns(len(cast_list[:limit]))
@@ -991,24 +1068,23 @@ def show_cast_horizontal(cast_list, key_prefix, limit=15):
             imdb_url = f"https://www.imdb.com/find/?q={encoded_name}"
             char_name = str(actor.get('character', '')).strip()
 
-            html_img = (
-                f'<a href="{imdb_url}" target="_blank">'
-                f'<img src="{img_url}" style="width: 85px; height: 127px; border-radius: 8px; object-fit: cover; box-shadow: 0 4px 6px rgba(0,0,0,0.3); margin-bottom: 6px; transition: transform 0.2s;">'
-                f'</a>'
-            )
-            st.markdown(html_img, unsafe_allow_html=True)
+            st.markdown(
+                f'<a href="{imdb_url}" target="_blank" style="display:block;">'
+                f'<img src="{img_url}" style="width:85px; height:127px; border-radius:8px; object-fit:cover; '
+                f'box-shadow:0 4px 6px rgba(0,0,0,0.3); display:block; margin:0 auto 6px auto;">'
+                f'</a>', unsafe_allow_html=True)
 
-            # Always render the character line, even when empty. Skipping it for
-            # cast with no listed character shifted that card's actor name up and
-            # broke the row alignment. A non-breaking space holds the line open.
-            html_char = (
-                f'<div style="font-size:0.55rem; color:#FFC107; font-weight:700; line-height:1.15; '
-                f'height:1.15rem; margin:0 0 2px 0; white-space:nowrap; overflow:hidden; '
-                f'text-overflow:ellipsis;">{char_name or "&nbsp;"}</div>'
-            )
-            st.markdown(html_char, unsafe_allow_html=True)
+            # actor name = the clickable element, fixed two-line box (CSS)
+            st.button(actor.get('name', 'Unknown'), key=f"cast_{key_prefix}_{actor['id']}_{idx}",
+                      on_click=cb_set_active_actor, args=(actor['id'],),
+                      use_container_width=True, type="tertiary")
 
-            st.button(actor.get('name', 'Unknown'), key=f"cast_{key_prefix}_{actor['id']}_{idx}", on_click=cb_set_active_actor, args=(actor['id'],), use_container_width=True, type="tertiary")
+            # character line always rendered so empty ones still hold the row
+            st.markdown(
+                f'<div style="font-size:0.52rem; color:#FFC107; font-weight:700; line-height:1.15; '
+                f'height:1.15rem; margin:2px 0 0 0; text-align:center; white-space:nowrap; '
+                f'overflow:hidden; text-overflow:ellipsis;">{char_name or "&nbsp;"}</div>',
+                unsafe_allow_html=True)
 
 
 def render_apple_tv_header(backdrop_path, poster_path, title, badges_html):
@@ -1775,7 +1851,7 @@ with t_search:
                         else:
                             st.markdown('<span class="grid-3-col"></span>', unsafe_allow_html=True)
     else:
-        genre_options = ["🔥 Trending", "🤣 Comedy", "💥 Action", "🐉 Sci-Fi", "🔪 Thriller", "👻 Horror"]
+        genre_options = ["Trending", "Comedy", "Action", "Sci-Fi", "Thriller", "Horror"]
         selected_genre = st.radio("Filters", genre_options, label_visibility="collapsed", horizontal=True)
         st.divider()
 
@@ -1803,7 +1879,7 @@ with t_search:
                         st.session_state.c_limits[title] = limit + 10
                         st.rerun()
 
-        if selected_genre == "🔥 Trending":
+        if selected_genre == "Trending":
             if not st.session_state.rec_show:
                 watched_tv = [s for s in st.session_state.db.get("shows", []) if s.get("watched_episodes")]
                 if watched_tv:
@@ -1831,8 +1907,8 @@ with t_search:
             if k_mov.get("results"):
                 render_carousel(f"🇰🇷 K-Movies ({current_date.strftime('%B %Y')})", k_mov["results"], "movie")
         else:
-            genre_map_tv = {"🤣 Comedy": 35, "💥 Action": 10759, "🐉 Sci-Fi": 10765, "🔪 Thriller": 9648, "👻 Horror": 9648}
-            genre_map_mov = {"🤣 Comedy": 35, "💥 Action": 28, "🐉 Sci-Fi": 878, "🔪 Thriller": 53, "👻 Horror": 27}
+            genre_map_tv = {"Comedy": 35, "Action": 10759, "Sci-Fi": 10765, "Thriller": 9648, "Horror": 9648}
+            genre_map_mov = {"Comedy": 35, "Action": 28, "Sci-Fi": 878, "Thriller": 53, "Horror": 27}
             tv_g = fetch_api(f"https://api.themoviedb.org/3/discover/tv?api_key={TMDB_KEY}&with_genres={genre_map_tv[selected_genre]}&sort_by=popularity.desc")
             mov_g = fetch_api(f"https://api.themoviedb.org/3/discover/movie?api_key={TMDB_KEY}&with_genres={genre_map_mov[selected_genre]}&sort_by=popularity.desc")
             render_carousel(f"Top {selected_genre} Series", tv_g.get("results", []), "tv")
@@ -1846,19 +1922,8 @@ with t_tv:
     if "tv_tab" not in st.session_state:
         st.session_state.tv_tab = "WATCHLIST"
 
-    c1, c2, c3, c4 = st.columns(4)
-    if c1.button("Watchlist", type="primary" if st.session_state.tv_tab == "WATCHLIST" else "secondary", use_container_width=True, key="tv_wl"):
-        st.session_state.tv_tab = "WATCHLIST"
-        st.rerun()
-    if c2.button("Upcoming", type="primary" if st.session_state.tv_tab == "UPCOMING" else "secondary", use_container_width=True, key="tv_up"):
-        st.session_state.tv_tab = "UPCOMING"
-        st.rerun()
-    if c3.button("Watched", type="primary" if st.session_state.tv_tab == "WATCHED" else "secondary", use_container_width=True, key="tv_wd"):
-        st.session_state.tv_tab = "WATCHED"
-        st.rerun()
-    if c4.button("Dropped", type="primary" if st.session_state.tv_tab == "DROPPED" else "secondary", use_container_width=True, key="tv_dr"):
-        st.session_state.tv_tab = "DROPPED"
-        st.rerun()
+    segmented_nav("tv_tab", [("Watchlist", "WATCHLIST"), ("Upcoming", "UPCOMING"),
+                          ("Watched", "WATCHED"), ("Dropped", "DROPPED")], "tv_nav")
 
     st.markdown("<div style='height: 5px;'></div>", unsafe_allow_html=True)
 
@@ -1944,19 +2009,8 @@ with t_movies:
     if "mov_tab" not in st.session_state:
         st.session_state.mov_tab = "WATCHLIST"
 
-    c1, c2, c3, c4 = st.columns(4)
-    if c1.button("Watchlist", type="primary" if st.session_state.mov_tab == "WATCHLIST" else "secondary", use_container_width=True, key="m_wl"):
-        st.session_state.mov_tab = "WATCHLIST"
-        st.rerun()
-    if c2.button("Upcoming", type="primary" if st.session_state.mov_tab == "UPCOMING" else "secondary", use_container_width=True, key="m_up"):
-        st.session_state.mov_tab = "UPCOMING"
-        st.rerun()
-    if c3.button("Watched", type="primary" if st.session_state.mov_tab == "WATCHED" else "secondary", use_container_width=True, key="m_wd"):
-        st.session_state.mov_tab = "WATCHED"
-        st.rerun()
-    if c4.button("Dropped", type="primary" if st.session_state.mov_tab == "DROPPED" else "secondary", use_container_width=True, key="m_dr"):
-        st.session_state.mov_tab = "DROPPED"
-        st.rerun()
+    segmented_nav("mov_tab", [("Watchlist", "WATCHLIST"), ("Upcoming", "UPCOMING"),
+                          ("Watched", "WATCHED"), ("Dropped", "DROPPED")], "mov_nav")
 
     st.markdown("<div style='height: 5px;'></div>", unsafe_allow_html=True)
     with st.container():
