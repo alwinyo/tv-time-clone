@@ -262,12 +262,16 @@ SUPABASE_URL = st.secrets["SUPABASE_URL"].rstrip("/")
 SUPABASE_KEY = st.secrets["SUPABASE_KEY"]
 DB_ENDPOINT = f"{SUPABASE_URL}/rest/v1/tv_time_data?id=eq.1"
 HEADERS = {"apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}", "Content-Type": "application/json", "Prefer": "return=representation"}
+# Flip to False to fall back to the old one-request-per-season path.
+# Useful as a quick A/B if you ever suspect the bundling of a problem.
+USE_BUNDLED_FETCH = True
+
 TODAY = get_dubai_time().strftime('%Y-%m-%d')
 PLATFORMS = ["None", "Stremio", "Netflix", "OSN+", "Amazon Prime", "Apple TV+", "Disney+", "Starzplay", "Cinema", "Downloaded", "Other"]
 PREMIUM_EMOTIONS = ["None", "🤯 Mind Blown", "😂 Hilarious", "😭 Emotional", "😍 Loved it", "😡 Frustrated", "😴 Bored", "🍿 Pure Hype", "🧠 Genius Plot", "💔 Heartbroken", "🤬 Trash", "🫣 Edge of Seat", "📈 Peak Cinema"]
 
 
-@st.cache_data(ttl=43200)
+@st.cache_data(ttl=43200, max_entries=800, show_spinner=False)
 def fetch_api(url):
     try:
         safe_url = requests.utils.requote_uri(url)
@@ -293,7 +297,43 @@ def fetch_robust(url):
     return {}
 
 
-@st.cache_data(ttl=43200)
+def _fetch_uncached(url):
+    """
+    Plain fetch with NO st.cache_data wrapper.
+
+    Used for the append_to_response calls inside fetch_show_bundle. Routing
+    those through fetch_api would cache the raw mega-response AND the bundle
+    built from it, holding every show's season data in memory twice — which
+    is enough to OOM the container on a library of any size.
+    """
+    try:
+        r = requests.get(requests.utils.requote_uri(url), timeout=8)
+        return r.json() if r.status_code == 200 else {}
+    except Exception:
+        return {}
+
+
+# Only the episode fields this app actually reads. Full TMDB season payloads
+# carry crew, guest_stars and long overviews for every episode; keeping them
+# is what makes the cache balloon.
+_EP_KEYS = ("episode_number", "season_number", "air_date", "name", "still_path", "vote_average", "overview")
+# Known-heavy keys on the show object that nothing here renders.
+_SHOW_DROP = ("production_companies", "production_countries", "spoken_languages", "networks",
+              "created_by", "languages", "last_episode_to_air", "next_episode_to_air", "images")
+
+
+def _trim_episode(ep):
+    return {k: ep.get(k) for k in _EP_KEYS if k in ep}
+
+
+def _trim_show(base):
+    out = {k: v for k, v in base.items() if k not in _SHOW_DROP}
+    out["seasons"] = [{"season_number": s.get("season_number"), "name": s.get("name"), "episode_count": s.get("episode_count")}
+                      for s in base.get("seasons", [])]
+    return out
+
+
+@st.cache_data(ttl=43200, max_entries=400, show_spinner=False)
 def fetch_show_bundle(show_id):
     """
     One show + all of its seasons in as few HTTP calls as possible.
@@ -301,28 +341,33 @@ def fetch_show_bundle(show_id):
     TMDB's append_to_response folds sub-resources into the parent response,
     so a 6-season show costs 2 requests instead of 7. It caps at 20 appended
     items, so longer shows are fetched in chunks of 20. The result is shaped
-    exactly like the plain /tv/{id} response with extra "season/N" keys, so
-    every existing details.get(...) call keeps working unchanged.
+    like the plain /tv/{id} response with extra "season/N" keys, so existing
+    details.get(...) calls keep working — but trimmed to the fields this app
+    renders, so the cache stays small enough to live in a 1GB container.
     """
-    base = fetch_api(f"https://api.themoviedb.org/3/tv/{show_id}?api_key={TMDB_KEY}")
+    if not USE_BUNDLED_FETCH:
+        return fetch_api(f"https://api.themoviedb.org/3/tv/{show_id}?api_key={TMDB_KEY}")
+
+    base = _fetch_uncached(f"https://api.themoviedb.org/3/tv/{show_id}?api_key={TMDB_KEY}")
     if not base:
         return {}
 
     nums = [s["season_number"] for s in base.get("seasons", []) if s.get("season_number", 0) > 0]
+    bundle = _trim_show(base)
     if not nums:
-        return base
+        return bundle
 
-    bundle = dict(base)
     for start in range(0, len(nums), 20):
         chunk = nums[start:start + 20]
         appended = ",".join(f"season/{n}" for n in chunk)
-        data = fetch_api(f"https://api.themoviedb.org/3/tv/{show_id}?api_key={TMDB_KEY}&append_to_response={appended}")
+        data = _fetch_uncached(f"https://api.themoviedb.org/3/tv/{show_id}?api_key={TMDB_KEY}&append_to_response={appended}")
         if not data:
             continue
         for n in chunk:
             key = f"season/{n}"
             if key in data:
-                bundle[key] = data[key]
+                bundle[key] = {"episodes": [_trim_episode(e) for e in (data[key].get("episodes") or [])]}
+        del data
     return bundle
 
 
