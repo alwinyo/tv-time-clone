@@ -416,9 +416,16 @@ def parse_tvtime_date(date_str):
 for k in ["next_tv_limit", "next_mov_limit", "soon_tv_limit", "soon_mov_limit"]:
     if k not in st.session_state:
         st.session_state[k] = 30
+# Journal page size. Storage is uncapped -- this only controls how many cards
+# get rendered at once. Each entry is an HTML card plus a Streamlit button, and
+# Streamlit re-renders every one on every interaction, so a few hundred is the
+# practical ceiling before taps start lagging. "Show everything" is available
+# per tab for when you actually want the full scroll.
+HISTORY_PAGE_SIZE = 20
+
 for k in ["hist_tv_limit", "hist_mov_limit"]:
     if k not in st.session_state:
-        st.session_state[k] = 20
+        st.session_state[k] = HISTORY_PAGE_SIZE
 for k in ["tv_lib_limit", "mov_lib_limit"]:
     if k not in st.session_state:
         st.session_state[k] = 50
@@ -443,6 +450,8 @@ TMDB_KEY = st.secrets["TMDB_KEY"]
 SUPABASE_URL = st.secrets["SUPABASE_URL"].rstrip("/")
 SUPABASE_KEY = st.secrets["SUPABASE_KEY"]
 DB_ENDPOINT = f"{SUPABASE_URL}/rest/v1/tv_time_data?id=eq.1"
+HISTORY_ENDPOINT = f"{SUPABASE_URL}/rest/v1/watch_history"
+HISTORY_PAGE = 1000   # PostgREST returns at most 1000 rows per request
 HEADERS = {"apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}", "Content-Type": "application/json", "Prefer": "return=representation"}
 # Flip to False to fall back to the old one-request-per-season path.
 # Useful as a quick A/B if you ever suspect the bundling of a problem.
@@ -500,8 +509,8 @@ def _fetch_uncached(url):
 # is what makes the cache balloon.
 _EP_KEYS = ("episode_number", "season_number", "air_date", "name", "still_path", "vote_average", "overview")
 # Known-heavy keys on the show object that nothing here renders.
-_SHOW_DROP = ("production_companies", "production_countries", "spoken_languages", "networks",
-              "created_by", "languages", "last_episode_to_air", "next_episode_to_air", "images")
+_SHOW_DROP = ("production_companies", "production_countries", "spoken_languages",
+              "created_by", "languages", "images")
 
 
 def _trim_episode(ep):
@@ -605,13 +614,13 @@ def decode_eps(ep_str):
 
 
 def pack_db(db):
-    packed = {"m": [], "s": [], "h": [], "a": {}}
+    # NOTE: "h" (history) is deliberately absent. History now lives in its own
+    # watch_history table, so this payload stays small and every save is fast.
+    packed = {"m": [], "s": [], "a": {}}
     for m in db.get("movies", []):
         packed["m"].append([m["id"], m["name"], 1 if m["watched"] else 0, m.get("poster_path", ""), m.get("release_date", ""), m.get("runtime", 0), 1 if m.get("dropped") else 0])
     for s in db.get("shows", []):
         packed["s"].append([s["id"], s["name"], encode_eps(s.get("watched_episodes", [])), s.get("poster_path", ""), s.get("first_air_date", ""), s.get("total_episodes", 1), 1 if s.get("dropped") else 0])
-    for h in db.get("history", []):
-        packed["h"].append([1 if h.get("t") == "s" else 0, h.get("i"), h.get("e", ""), h.get("d"), h.get("r", 0), h.get("f", ""), h.get("p", "")])
     for k, v in db.get("analytics", {}).items():
         packed["a"][k] = [v.get("tv", 0), v.get("movie", 0)]
     packed["r"] = db.get("seen_recaps", [])
@@ -619,11 +628,13 @@ def pack_db(db):
 
 
 def unpack_db(packed):
-    db = {"movies": [], "shows": [], "history": [], "analytics": {}, "seen_recaps": []}
+    db = {"movies": [], "shows": [], "history": [], "legacy_history": [], "analytics": {}, "seen_recaps": []}
     for m in packed.get("m", []):
         db["movies"].append({"id": m[0], "name": m[1], "watched": bool(m[2]), "poster_path": m[3], "release_date": m[4], "runtime": m[5], "dropped": bool(m[6]) if len(m) > 6 else False})
     for s in packed.get("s", []):
         db["shows"].append({"id": s[0], "name": s[1], "watched_episodes": decode_eps(s[2]), "poster_path": s[3], "first_air_date": s[4], "total_episodes": s[5], "dropped": bool(s[6]) if len(s) > 6 else False})
+    # Old payloads still carry "h". Park it under legacy_history so the one-time
+    # migration can move it into the table; it is NOT used as live history.
     for h in packed.get("h", []):
         entry = {"t": "s" if h[0] == 1 else "m", "i": h[1], "e": h[2], "d": h[3]}
         if len(h) > 4:
@@ -632,7 +643,7 @@ def unpack_db(packed):
             entry["f"] = h[5]
         if len(h) > 6:
             entry["p"] = h[6]
-        db["history"].append(entry)
+        db["legacy_history"].append(entry)
     for k, v in packed.get("a", {}).items():
         db["analytics"][k] = {"tv": v[0], "movie": v[1]}
     db["seen_recaps"] = packed.get("r", [])
@@ -648,7 +659,7 @@ def load_db():
                 payload = data[0].get("payload", {})
                 if "m" in payload and "s" in payload:
                     return unpack_db(payload)
-            return {"shows": [], "movies": [], "history": [], "analytics": {}, "seen_recaps": []}
+            return {"shows": [], "movies": [], "history": [], "legacy_history": [], "analytics": {}, "seen_recaps": []}
         return None
     except Exception:
         return None
@@ -662,11 +673,181 @@ def save_db():
         return False
 
 
+# =====================================================================
+# WATCH HISTORY TABLE
+# History used to live inside the single JSON payload, which meant every
+# save re-uploaded the whole library -- so it was capped at 100 entries
+# per type to stop the payload growing forever. It now has its own table:
+# writes are one small row, reads are paginated, and there is no cap.
+# =====================================================================
+
+def _hist_headers(extra_prefer=None):
+    h = dict(HEADERS)
+    if extra_prefer:
+        h["Prefer"] = extra_prefer
+    return h
+
+
+def _row_to_entry(r):
+    """Table row -> the in-memory shape the rest of the app already expects."""
+    return {
+        "id": r.get("id"),
+        "t": "s" if r.get("media_type") == "tv" else "m",
+        "i": r.get("item_id"),
+        "e": r.get("episode_code") or "",
+        "d": r.get("watched_at") or "",
+        "r": r.get("rating") or 0,
+        "f": r.get("feeling") or "",
+        "p": r.get("platform") or "",
+    }
+
+
+def _entry_to_row(entry):
+    return {
+        "media_type": "tv" if entry.get("t") == "s" else "movie",
+        "item_id": str(entry.get("i")),
+        "episode_code": entry.get("e", "") or "",
+        "watched_at": entry.get("d") or get_dubai_time().strftime('%Y-%m-%d %H:%M:%S'),
+        "rating": int(entry.get("r", 0) or 0),
+        "feeling": entry.get("f", "") or "",
+        "platform": entry.get("p", "") or "",
+    }
+
+
+def load_history():
+    """Every row, newest first. Paginated because PostgREST caps at 1000."""
+    out, offset = [], 0
+    cols = "id,media_type,item_id,episode_code,watched_at,rating,feeling,platform"
+    while True:
+        url = (f"{HISTORY_ENDPOINT}?select={cols}&order=watched_at.desc"
+               f"&limit={HISTORY_PAGE}&offset={offset}")
+        try:
+            res = requests.get(url, headers=HEADERS, timeout=15)
+        except Exception:
+            return out
+        if res.status_code != 200:
+            return out
+        rows = res.json()
+        out.extend(_row_to_entry(r) for r in rows)
+        if len(rows) < HISTORY_PAGE:
+            return out
+        offset += HISTORY_PAGE
+
+
+def history_insert(entry):
+    """Upsert one row; returns its database id (or None). Re-marking the same
+    episode merges instead of creating a duplicate."""
+    url = f"{HISTORY_ENDPOINT}?on_conflict=media_type,item_id,episode_code"
+    headers = _hist_headers("resolution=merge-duplicates,return=representation")
+    try:
+        res = requests.post(url, json=_entry_to_row(entry), headers=headers, timeout=10)
+        if res.status_code in (200, 201):
+            data = res.json()
+            return data[0].get("id") if data else None
+    except Exception:
+        pass
+    return None
+
+
+def history_insert_many(entries, chunk=500, overwrite=True):
+    """Bulk path for the importer and the one-time migration.
+
+    overwrite=False uses ignore-duplicates, so rows already in the table are
+    left completely alone. That is what protects ratings, platforms and moods
+    you have added in the app from being blanked by a re-import.
+    """
+    url = f"{HISTORY_ENDPOINT}?on_conflict=media_type,item_id,episode_code"
+    resolution = "merge-duplicates" if overwrite else "ignore-duplicates"
+    headers = _hist_headers(f"resolution={resolution},return=minimal")
+    rows = [_entry_to_row(e) for e in entries]
+    for i in range(0, len(rows), chunk):
+        try:
+            res = requests.post(url, json=rows[i:i + chunk], headers=headers, timeout=60)
+            if res.status_code not in (200, 201, 204):
+                return False
+        except Exception:
+            return False
+    return True
+
+
+def history_update(row_id, fields):
+    if not row_id:
+        return False
+    try:
+        res = requests.patch(f"{HISTORY_ENDPOINT}?id=eq.{row_id}", json=fields,
+                             headers=_hist_headers("return=minimal"), timeout=10)
+        return res.status_code in (200, 204)
+    except Exception:
+        return False
+
+
+def history_delete(row_id):
+    if not row_id:
+        return False
+    try:
+        res = requests.delete(f"{HISTORY_ENDPOINT}?id=eq.{row_id}",
+                              headers=_hist_headers("return=minimal"), timeout=10)
+        return res.status_code in (200, 204)
+    except Exception:
+        return False
+
+
+def history_delete_all():
+    try:
+        res = requests.delete(f"{HISTORY_ENDPOINT}?id=gt.0",
+                              headers=_hist_headers("return=minimal"), timeout=30)
+        return res.status_code in (200, 204)
+    except Exception:
+        return False
+
+
+def rebuild_analytics_from_history():
+    """Recount the monthly totals straight from the history table.
+
+    The importer used to increment analytics as it went, so importing twice
+    counted everything twice. Deriving the numbers instead makes that
+    impossible -- the charts always match the history exactly.
+    """
+    analytics = {}
+    for h in st.session_state.db.get("history", []):
+        stamp = str(h.get("d") or "")
+        if len(stamp) < 7:
+            continue
+        bucket = analytics.setdefault(stamp[:7], {"tv": 0, "movie": 0})
+        if h.get("t") == "s":
+            bucket["tv"] += 1
+        else:
+            bucket["movie"] += 1
+    st.session_state.db["analytics"] = analytics
+    save_db()
+    return analytics
+
+
+def migrate_legacy_history():
+    """One-time move of whatever history survives in the old JSON payload.
+
+    Only clears the payload copy once every row is safely in the table, so a
+    failed migration leaves the original data untouched.
+    """
+    legacy = st.session_state.db.get("legacy_history") or []
+    if not legacy:
+        return
+    if history_insert_many(legacy):
+        st.session_state.db["legacy_history"] = []
+        save_db()                      # pack_db no longer writes "h", so it clears
+        st.session_state.db["history"] = load_history()
+    else:
+        st.warning("Couldn't move old history into the new table — it's still safe "
+                   "in the payload, and I'll retry next time you open the app.")
+
+
 if "db" not in st.session_state:
     db_data = load_db()
     if db_data is None:
         st.stop()
     st.session_state.db = db_data
+    st.session_state.db["history"] = load_history()
+    migrate_legacy_history()
 
 
 # =====================================================================
@@ -751,8 +932,11 @@ def log_watch(item_type, item_id, detail=""):
         db["analytics"][m_key]["tv"] += 1
     else:
         db["analytics"][m_key]["movie"] += 1
-    db.setdefault("history", []).insert(0, {"t": "s" if item_type == "tv" else "m", "i": item_id, "e": detail, "d": now_str, "r": 0, "f": "", "p": ""})
-    db["history"] = [h for h in db["history"] if h.get("t") == "s"][:50000] + [h for h in db["history"] if h.get("t") == "m"][:50000]
+    entry = {"t": "s" if item_type == "tv" else "m", "i": item_id, "e": detail,
+             "d": now_str, "r": 0, "f": "", "p": ""}
+    entry["id"] = history_insert(entry)          # its own row, not the payload
+    db.setdefault("history", []).insert(0, entry)
+    # NO CAP. History is unbounded now; the payload no longer carries it.
     save_db()
 
 
@@ -762,6 +946,7 @@ def remove_watch(item_type, item_id, detail=""):
     for idx, h in enumerate(db.get("history", [])):
         if h.get("t") == t_flag and str(h.get("i")) == str(item_id) and str(h.get("e", "")) == str(detail):
             removed = db["history"].pop(idx)
+            history_delete(removed.get("id"))
             try:
                 m_key = datetime.strptime(removed["d"], "%Y-%m-%d %H:%M:%S").strftime("%Y-%m")
                 if m_key in db.get("analytics", {}) and db["analytics"][m_key].get(item_type, 0) > 0:
@@ -1201,7 +1386,10 @@ def render_journal_editor(h_log, key_suffix):
         h_log["p"] = new_p if new_p != "None" else ""
         h_log["r"] = new_r
         h_log["f"] = new_f if new_f != "None" else ""
-        save_db()
+        # one tiny PATCH on one row, instead of re-uploading the whole library
+        history_update(h_log.get("id"), {
+            "platform": h_log["p"], "rating": h_log["r"], "feeling": h_log["f"],
+        })
 
 
 def render_inline_actor_pokedex(actor_id):
@@ -1489,36 +1677,215 @@ def show_episode_details(show_id, show_name, ep_code):
                 st.rerun()
 
 
+# =====================================================================
+# SHOW DIALOG HELPERS
+# =====================================================================
+
+def show_history_stats(show_id):
+    """Everything the journal knows about one series."""
+    logs = [h for h in st.session_state.db.get("history", [])
+            if h.get("t") == "s" and str(h.get("i")) == str(show_id)]
+    if not logs:
+        return None
+    dates = sorted([h.get("d", "") for h in logs if h.get("d")])
+    ratings = [h["r"] for h in logs if h.get("r", 0) > 0]
+    plats, feels = {}, {}
+    for h in logs:
+        if h.get("p"):
+            plats[h["p"]] = plats.get(h["p"], 0) + 1
+        if h.get("f"):
+            feels[h["f"]] = feels.get(h["f"], 0) + 1
+    return {
+        "count": len(logs),
+        "first": dates[0][:10] if dates else "",
+        "last": dates[-1][:10] if dates else "",
+        "avg": round(sum(ratings) / len(ratings), 1) if ratings else 0,
+        "rated": len(ratings),
+        "platform": max(plats, key=plats.get) if plats else "",
+        "mood": max(feels, key=feels.get) if feels else "",
+    }
+
+
+def season_progress(show_id, bundle, season_number):
+    """(watched, total_aired) for one season."""
+    eps = season_episodes(bundle, show_id, season_number)
+    aired = [e for e in eps if str(e.get("air_date") or "").strip() and str(e["air_date"]).strip() <= TODAY]
+    done = sum(1 for e in aired if is_episode_watched(show_id, f"S{season_number}E{e['episode_number']}"))
+    return done, len(aired), len(eps)
+
+
+def mark_season(show_id, season_number, episodes, watched):
+    """Bulk season toggle.
+
+    One save and one batched write instead of a full round trip per episode --
+    ticking 20 boxes by hand used to mean 20 full-library saves.
+    """
+    show = get_show(show_id)
+    if not show:
+        return 0
+    changed, new_entries = 0, []
+    now_str = get_dubai_time().strftime('%Y-%m-%d %H:%M:%S')
+    m_key = now_str[:7]
+
+    for ep in episodes:
+        code = f"S{season_number}E{ep['episode_number']}"
+        air = str(ep.get("air_date") or "").strip()
+        already = is_episode_watched(show_id, code)
+        if watched:
+            if already or not air or air > TODAY:
+                continue                       # never mark an unaired episode
+            show.setdefault("watched_episodes", []).append(code)
+            entry = {"t": "s", "i": show_id, "e": code, "d": now_str, "r": 0, "f": "", "p": ""}
+            new_entries.append(entry)
+            changed += 1
+        else:
+            if not already:
+                continue
+            if code in show.get("watched_episodes", []):
+                show["watched_episodes"].remove(code)
+            log = find_history("tv", show_id, code)
+            if log:
+                history_delete(log.get("id"))
+                st.session_state.db["history"].remove(log)
+            changed += 1
+
+    if changed:
+        db = st.session_state.db
+        db.setdefault("analytics", {}).setdefault(m_key, {"tv": 0, "movie": 0})
+        if watched and new_entries:
+            history_insert_many(new_entries)
+            db["history"] = load_history()
+            db["analytics"][m_key]["tv"] += len(new_entries)
+        elif not watched:
+            db["analytics"][m_key]["tv"] = max(0, db["analytics"][m_key]["tv"] - changed)
+        save_db()
+    return changed
+
+
+def render_providers(media_type, item_id):
+    """Streaming availability as logos rather than a wall of names."""
+    data = fetch_api(f"https://api.themoviedb.org/3/{media_type}/{item_id}/watch/providers?api_key={TMDB_KEY}")
+    region = data.get("results", {}).get("AE", {})
+    if not region:
+        return
+    groups = [("Stream", region.get("flatrate") or []),
+              ("Rent", region.get("rent") or []),
+              ("Buy", region.get("buy") or [])]
+    groups = [(label, items) for label, items in groups if items]
+    if not groups:
+        return
+
+    st.markdown("<div style='font-size:0.68rem; font-weight:800; text-transform:uppercase; "
+                "letter-spacing:0.1em; color:#9a9a9a; margin:14px 0 6px;'>Where to watch</div>",
+                unsafe_allow_html=True)
+    for label, items in groups:
+        logos = "".join(
+            f'<img src="https://image.tmdb.org/t/p/w92{p["logo_path"]}" title="{p["provider_name"]}" '
+            f'style="width:34px;height:34px;border-radius:8px;object-fit:cover;margin-right:6px;'
+            f'border:1px solid rgba(255,255,255,0.12);">'
+            for p in items[:8] if p.get("logo_path")
+        )
+        st.markdown(
+            f'<div style="display:flex; align-items:center; gap:10px; margin-bottom:8px;">'
+            f'<span style="font-size:0.6rem; font-weight:700; color:#FFC107; text-transform:uppercase; '
+            f'min-width:44px;">{label}</span><span>{logos}</span></div>',
+            unsafe_allow_html=True)
+
+
+def stat_cards(cards):
+    """cards: [(value, unit, label), ...]"""
+    cells = "".join(
+        f'<div style="flex:1; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.10); '
+        f'border-radius:12px; padding:12px 6px; text-align:center;">'
+        f'<div style="font-size:1.25rem; font-weight:800; color:#FFC107; line-height:1;">{v}'
+        f'<span style="font-size:0.62rem; color:#aaa; font-weight:600;"> {u}</span></div>'
+        f'<div style="font-size:0.56rem; color:#9a9a9a; text-transform:uppercase; '
+        f'letter-spacing:0.06em; font-weight:700; margin-top:5px;">{l}</div></div>'
+        for v, u, l in cards
+    )
+    st.markdown(f'<div style="display:flex; gap:8px; margin:10px 0;">{cells}</div>',
+                unsafe_allow_html=True)
+
+
 @st.dialog("Manage Show")
 def manage_show_dialog(show_id, show_name):
     details = fetch_show_bundle(show_id)
     current_show = get_show(show_id)
+    in_lib = current_show is not None
+    is_dropped = bool(current_show.get("dropped", False)) if in_lib else False
 
-    watched_list = current_show.get("watched_episodes", []) if current_show else []
-    total_eps = (current_show.get("total_episodes") if current_show else None) or details.get("number_of_episodes", 0) or 0
+    watched_list = current_show.get("watched_episodes", []) if in_lib else []
+    watched_n = len(watched_list)
+    total_eps = (current_show.get("total_episodes") if in_lib else None) or details.get("number_of_episodes", 0) or 0
+    seasons_meta = [x for x in details.get("seasons", []) if (x.get("season_number") or 0) > 0]
+    runtimes = details.get("episode_run_time") or []
+    ep_minutes = runtimes[0] if runtimes else 45
 
-    badges = f'<span class="badge badge-gold">{details.get("status")}</span>'
-    if current_show:
-        badges += f'<span class="badge">✅ {len(watched_list)}/{total_eps} watched</span>'
-    badges += "".join([f'<span class="badge">{g["name"]}</span>' for g in details.get("genres", [])])
+    # ---------- header ----------
+    badges = f'<span class="badge badge-gold">{details.get("status", "Series")}</span>'
+    if details.get("vote_average"):
+        badges += f'<span class="badge">⭐ {round(details["vote_average"], 1)}</span>'
+    if details.get("first_air_date"):
+        badges += f'<span class="badge">{str(details["first_air_date"])[:4]}</span>'
+    if seasons_meta:
+        badges += f'<span class="badge">{len(seasons_meta)} seasons</span>'
+    if is_dropped:
+        badges += '<span class="badge">⚰️ Dropped</span>'
+    badges += "".join(f'<span class="badge">{g["name"]}</span>' for g in (details.get("genres") or [])[:3])
     render_apple_tv_header(details.get("backdrop_path"), details.get("poster_path"), show_name, badges)
 
-    if not current_show:
+    # ---------- progress ----------
+    if in_lib and total_eps:
+        pct = min(watched_n / total_eps, 1.0)
+        st.progress(pct)
+        left = max(0, total_eps - watched_n)
+        st.caption(f"**{watched_n} of {total_eps} episodes** · {int(pct * 100)}% complete"
+                   + (" · finished 🎉" if left == 0 else f" · {left} to go"))
+        mins_left = left * ep_minutes
+        stats = show_history_stats(show_id)
+        stat_cards([
+            (left, "eps", "Remaining"),
+            (f"{mins_left // 60}", "hrs", "Time left"),
+            (stats["avg"] if stats and stats["avg"] else "—", "avg", "Your rating"),
+        ])
+
+    # ---------- next episode ----------
+    nxt = details.get("next_episode_to_air") or {}
+    if nxt.get("air_date"):
+        st.markdown(
+            f'<div style="background:rgba(255,193,7,0.08); border:1px dashed rgba(255,193,7,0.5); '
+            f'border-radius:12px; padding:11px 13px; margin:6px 0 10px;">'
+            f'<div style="font-size:0.58rem; font-weight:800; color:#FFC107; text-transform:uppercase; '
+            f'letter-spacing:0.1em;">Next episode</div>'
+            f'<div style="font-size:0.85rem; font-weight:700; margin-top:3px;">'
+            f'S{nxt.get("season_number")}E{nxt.get("episode_number")} · {nxt.get("name", "TBA")}</div>'
+            f'<div style="font-size:0.68rem; color:#bbb; margin-top:2px;">'
+            f'{nxt["air_date"]} · {calc_time_remaining(nxt["air_date"])}</div></div>',
+            unsafe_allow_html=True)
+
+    # ---------- library actions ----------
+    if not in_lib:
+        st.warning("Not in your library yet — add it to start tracking episodes.")
         if st.button("➕ Add to Library", use_container_width=True, type="primary", key=f"add_show_{show_id}"):
-            st.session_state.db["shows"].append({"id": show_id, "name": show_name, "watched_episodes": [], "poster_path": details.get("poster_path", ""), "first_air_date": details.get("first_air_date", ""), "total_episodes": details.get("number_of_episodes", 1), "dropped": False})
+            st.session_state.db["shows"].append({
+                "id": show_id, "name": show_name, "watched_episodes": [],
+                "poster_path": details.get("poster_path", ""), "first_air_date": details.get("first_air_date", ""),
+                "total_episodes": details.get("number_of_episodes", 1), "dropped": False})
             save_db()
+            open_dialog("show", id=show_id, name=show_name)
             st.rerun()
     else:
-        is_dropped = current_show.get("dropped", False)
         c1, c2 = st.columns(2)
         with c1:
             if is_dropped:
                 if st.button("↺ Restore Show", use_container_width=True, type="primary", key=f"restore_show_{show_id}"):
                     cb_restore_tv(show_id)
+                    open_dialog("show", id=show_id, name=show_name)
                     st.rerun()
             else:
                 if st.button("⚰️ Drop Show", use_container_width=True, key=f"drop_show_{show_id}"):
                     cb_drop_tv(show_id)
+                    open_dialog("show", id=show_id, name=show_name)
                     st.rerun()
         with c2:
             if is_dropped:
@@ -1527,49 +1894,123 @@ def manage_show_dialog(show_id, show_name):
                     close_dialog()
                     st.rerun()
 
-    st.write(details.get("overview", "No overview available."))
+    # ---------- your history with this show ----------
+    stats = show_history_stats(show_id)
+    if stats:
+        st.markdown("<div style='font-size:0.68rem; font-weight:800; text-transform:uppercase; "
+                    "letter-spacing:0.1em; color:#9a9a9a; margin:14px 0 6px;'>Your history</div>",
+                    unsafe_allow_html=True)
+        bits = [f"📅 First watched **{stats['first']}**"]
+        if stats["last"] != stats["first"]:
+            bits.append(f"🕘 Last watched **{stats['last']}**")
+        bits.append(f"✅ **{stats['count']}** episodes logged")
+        if stats["rated"]:
+            bits.append(f"⭐ **{stats['avg']}** average over {stats['rated']} rated")
+        if stats["platform"]:
+            bits.append(f"📡 Mostly on **{stats['platform']}**")
+        if stats["mood"]:
+            bits.append(f"🎭 Usually **{stats['mood']}**")
+        st.markdown(
+            '<div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); '
+            'border-radius:12px; padding:11px 13px; font-size:0.75rem; line-height:1.7;">'
+            + "<br>".join(bits) + '</div>', unsafe_allow_html=True)
 
-    providers = fetch_api(f"https://api.themoviedb.org/3/tv/{show_id}/watch/providers?api_key={TMDB_KEY}")
-    if "AE" in providers.get("results", {}):
-        streams = providers["results"]["AE"].get("flatrate", [])
-        if streams:
-            st.info(f"📱 **Streaming locally:** {', '.join([p['provider_name'] for p in streams])}")
+    # ---------- overview + providers ----------
+    if details.get("overview"):
+        with st.expander("Synopsis", expanded=not in_lib):
+            st.write(details["overview"])
+    render_providers("tv", show_id)
 
+    # ---------- seasons ----------
     st.divider()
     st.markdown("#### Episodes")
+    if not in_lib:
+        st.info("Add this show to your library to tick episodes off.")
 
-    if not current_show:
-        st.warning("➕ Add this show to your library to track episodes!")
+    if seasons_meta:
+        labels, lookup = [], {}
+        for meta in seasons_meta:
+            n = meta["season_number"]
+            done, aired, _ = season_progress(show_id, details, n)
+            tick = " ✓" if aired and done >= aired else ""
+            label = f"Season {n} — {done}/{aired} watched{tick}" if aired else f"Season {n} — not aired"
+            labels.append(label)
+            lookup[label] = n
 
-    s_nums = [s["season_number"] for s in details.get("seasons", []) if s["season_number"] > 0]
-    if s_nums:
-        sel_s = st.selectbox("Select Season", s_nums, key=f"dlg_s_{show_id}")
-        for ep in season_episodes(details, show_id, sel_s):
+        sel_label = st.selectbox("Select Season", labels, key=f"dlg_s_{show_id}", label_visibility="collapsed")
+        sel_s = lookup[sel_label]
+        eps = season_episodes(details, show_id, sel_s)
+        done, aired, _ = season_progress(show_id, details, sel_s)
+
+        if in_lib and aired:
+            b1, b2 = st.columns(2)
+            with b1:
+                if st.button(f"✅ Mark season {sel_s}", use_container_width=True,
+                             key=f"bulk_on_{show_id}_{sel_s}", disabled=(done >= aired)):
+                    n = mark_season(show_id, sel_s, eps, True)
+                    open_dialog("show", id=show_id, name=show_name)
+                    st.rerun()
+            with b2:
+                if st.button(f"↩ Unmark season {sel_s}", use_container_width=True,
+                             key=f"bulk_off_{show_id}_{sel_s}", disabled=(done == 0)):
+                    mark_season(show_id, sel_s, eps, False)
+                    open_dialog("show", id=show_id, name=show_name)
+                    st.rerun()
+
+        for ep in eps:
             e_code = f"S{sel_s}E{ep['episode_number']}"
             ep_watched = is_episode_watched(show_id, e_code)
-            ep_col1, ep_col2 = st.columns([6, 1])
-            with ep_col1:
-                st.checkbox(f"**E{ep['episode_number']}.** {ep.get('name', 'Episode')}", value=ep_watched, key=f"chk_dlg_{show_id}_{e_code}", on_change=cb_toggle_episode, args=(show_id, e_code), disabled=(current_show is None))
+            air = str(ep.get("air_date") or "").strip()
+            future = bool(air and air > TODAY)
+
+            col_a, col_b = st.columns([6, 1])
+            with col_a:
+                st.checkbox(f"**E{ep['episode_number']}.** {ep.get('name', 'Episode')}",
+                            value=ep_watched, key=f"chk_dlg_{show_id}_{e_code}",
+                            on_change=cb_toggle_episode, args=(show_id, e_code),
+                            disabled=(not in_lib or future))
+
+                meta_bits = []
                 if ep_watched:
-                    h_log = find_history("tv", show_id, e_code)
-                    if h_log:
+                    log = find_history("tv", show_id, e_code)
+                    if log:
                         try:
-                            st.markdown(
-                                f"<div style='font-size: 0.65rem; color: #FFC107; margin-top:-10px; margin-left: 28px; margin-bottom: 8px;'>✅ Watched on {datetime.strptime(h_log['d'], '%Y-%m-%d %H:%M:%S').strftime('%b %d, %Y')}</div>",
-                                unsafe_allow_html=True)
+                            meta_bits.append("✅ " + datetime.strptime(log["d"], "%Y-%m-%d %H:%M:%S").strftime("%b %d, %Y"))
                         except Exception:
                             pass
-            with ep_col2:
-                if st.button("ℹ INFO", key=f"inf_btn_ep_{show_id}_{e_code}"):
+                        if log.get("r"):
+                            meta_bits.append("⭐" * int(log["r"]))
+                        if log.get("p"):
+                            meta_bits.append("📡 " + log["p"])
+                        if log.get("f"):
+                            meta_bits.append(log["f"])
+                elif future:
+                    meta_bits.append(f"🗓 {air} · {calc_time_remaining(air)}")
+                elif air:
+                    meta_bits.append(f"Aired {air}")
+                if ep.get("vote_average"):
+                    meta_bits.append(f"⭐ {round(ep['vote_average'], 1)}")
+
+                if meta_bits:
+                    st.markdown(
+                        f"<div style='font-size:0.63rem; color:#FFC107; margin-top:-10px; "
+                        f"margin-left:28px; margin-bottom:8px;'>{' · '.join(meta_bits)}</div>",
+                        unsafe_allow_html=True)
+            with col_b:
+                if st.button("ℹ", key=f"inf_btn_ep_{show_id}_{e_code}"):
                     cb_toggle_ep_info(show_id, e_code)
 
             if st.session_state.get(f"view_info_{show_id}_{e_code}", False):
                 with st.container(border=True):
                     if ep.get("still_path"):
                         st.image(f"https://image.tmdb.org/t/p/w500{ep['still_path']}", use_container_width=True)
-                    st.caption(f"⭐ {ep.get('vote_average', 0.0)} | **Aired:** {ep.get('air_date', 'N/A')}")
                     st.write(ep.get("overview", "No synopsis available."))
+                    if ep_watched and st.button("📝 Open full episode & notes", key=f"open_full_{show_id}_{e_code}",
+                                                use_container_width=True):
+                        open_dialog("episode", id=show_id, name=show_name, code=e_code)
+                        st.rerun()
 
+    # ---------- cast ----------
     st.divider()
     st.markdown("#### Top Cast")
     cast_data = fetch_api(f"https://api.themoviedb.org/3/tv/{show_id}/credits?api_key={TMDB_KEY}").get("cast") or []
@@ -2073,8 +2514,8 @@ with t_tv:
                             st.markdown('<span class="grid-3-col"></span>', unsafe_allow_html=True)
 
             if total_tv_display > st.session_state.tv_lib_limit:
-                if st.button("Load 50 More", use_container_width=True, key="load_more_tv_lib"):
-                    st.session_state.tv_lib_limit += 50
+                if st.button("Load 100 more", use_container_width=True, key="load_more_tv_lib"):
+                    st.session_state.tv_lib_limit += 100
                     st.rerun()
 
 # ==========================================
@@ -2156,8 +2597,8 @@ with t_movies:
                             st.markdown('<span class="grid-3-col"></span>', unsafe_allow_html=True)
 
             if total_mov_display > st.session_state.mov_lib_limit:
-                if st.button("Load 50 More", use_container_width=True, key="load_more_mov_lib"):
-                    st.session_state.mov_lib_limit += 50
+                if st.button("Load 100 more", use_container_width=True, key="load_more_mov_lib"):
+                    st.session_state.mov_lib_limit += 100
                     st.rerun()
 
 # ==========================================
@@ -2553,9 +2994,19 @@ with t_profile:
                             if st.button("INFO", key=f"h_r_tv_{h['i']}_{ep_code}_{h_idx}", use_container_width=True):
                                 show_dialog_once(show_episode_details, h['i'], s_name, ep_code)
                 if len(tv_hist) > st.session_state.hist_tv_limit:
-                    if st.button("Load More Series", use_container_width=True, key="load_more_tv_hist"):
-                        st.session_state.hist_tv_limit += 20
-                        st.rerun()
+                    shown = min(st.session_state.hist_tv_limit, len(tv_hist))
+                    st.caption(f"Showing {shown:,} of {len(tv_hist):,} entries")
+                    pg1, pg2 = st.columns(2)
+                    with pg1:
+                        if st.button(f"Load {HISTORY_PAGE_SIZE} more", use_container_width=True, key="load_more_tv_hist"):
+                            st.session_state.hist_tv_limit += HISTORY_PAGE_SIZE
+                            st.rerun()
+                    with pg2:
+                        if st.button("Show everything", use_container_width=True, key="load_all_tv_hist"):
+                            st.session_state.hist_tv_limit = len(tv_hist)
+                            st.rerun()
+                else:
+                    st.caption(f"All {len(tv_hist):,} entries shown")
 
         with h_mov:
             mov_hist = [h for h in history_sorted if h.get("t") == "m"]
@@ -2592,9 +3043,19 @@ with t_profile:
                             if st.button("OPEN", key=f"h_r_mov_{h['i']}_{h_idx}", use_container_width=True):
                                 show_dialog_once(show_movie_details, h['i'], m_name)
                 if len(mov_hist) > st.session_state.hist_mov_limit:
-                    if st.button("Load More Movies", use_container_width=True, key="load_more_mov_hist"):
-                        st.session_state.hist_mov_limit += 20
-                        st.rerun()
+                    shown = min(st.session_state.hist_mov_limit, len(mov_hist))
+                    st.caption(f"Showing {shown:,} of {len(mov_hist):,} entries")
+                    pg1, pg2 = st.columns(2)
+                    with pg1:
+                        if st.button(f"Load {HISTORY_PAGE_SIZE} more", use_container_width=True, key="load_more_mov_hist"):
+                            st.session_state.hist_mov_limit += HISTORY_PAGE_SIZE
+                            st.rerun()
+                    with pg2:
+                        if st.button("Show everything", use_container_width=True, key="load_all_mov_hist"):
+                            st.session_state.hist_mov_limit = len(mov_hist)
+                            st.rerun()
+                else:
+                    st.caption(f"All {len(mov_hist):,} entries shown")
 
     with t_prof_recaps:
         seen_recaps = sorted(list(set(st.session_state.db.get("seen_recaps", []))), reverse=True)
@@ -2624,9 +3085,42 @@ with t_profile:
                         show_dialog_once(show_yearly_recap_dialog, int(year_str), y_tv, y_mov, r_id)
 
     with t_prof_set:
+        with st.expander("💾 Backup / Export", expanded=True):
+            st.caption("Downloads everything — library, history, analytics — as one JSON file. "
+                       "Do this before any import or migration.")
+            backup = {
+                "exported_at": get_dubai_time().strftime('%Y-%m-%d %H:%M:%S'),
+                "shows": st.session_state.db.get("shows", []),
+                "movies": st.session_state.db.get("movies", []),
+                "history": st.session_state.db.get("history", []),
+                "analytics": st.session_state.db.get("analytics", {}),
+                "seen_recaps": st.session_state.db.get("seen_recaps", []),
+            }
+            st.download_button(
+                f"⬇ Download backup ({len(backup['history'])} history entries)",
+                data=json.dumps(backup, indent=2),
+                file_name=f"mytvtime-backup-{get_dubai_time().strftime('%Y%m%d-%H%M')}.json",
+                mime="application/json",
+                use_container_width=True,
+                key="backup_dl",
+            )
+
+        with st.expander("🔧 Repair", expanded=False):
+            st.caption("Recounts the monthly totals behind the Activity chart and the "
+                       "recaps directly from your history. Use it if the numbers ever "
+                       "look doubled or out of step.")
+            if st.button("Recount monthly totals from history", use_container_width=True, key="rebuild_analytics"):
+                result = rebuild_analytics_from_history()
+                st.success(f"Recounted {len(result)} months from "
+                           f"{len(st.session_state.db.get('history', []))} history entries.")
+
         with st.expander("⚙️ Import TV Time Data", expanded=True):
             st.warning("Ensure you keep the app open until the progress bar reaches 100%.")
-            wipe_db = st.checkbox("Wipe current library before importing", value=True, key="wipe_chk")
+            st.info("**Merging into an existing library?** Leave the box below UNTICKED. "
+                    "The import will only fill in entries you don't already have — your "
+                    "ratings, platforms and moods stay exactly as they are. "
+                    "Tick it only if you want to erase everything and start clean.")
+            wipe_db = st.checkbox("Wipe current library before importing", value=False, key="wipe_chk")
             m_file = st.file_uploader("Upload Movies JSON", type="json", key="import_movies")
             t_file = st.file_uploader("Upload Series JSON", type="json", key="import_shows")
 
@@ -2669,14 +3163,15 @@ with t_profile:
                                         poster, release_date = match.get("poster_path", ""), match.get("release_date", "")
                                         was_watched = m.get("is_watched", False)
 
+                                        # Add the movie only if it is new...
                                         if not any(str(movie["id"]) == str(tmdb_id) for movie in new_db["movies"]):
                                             new_db["movies"].append({"id": tmdb_id, "name": title, "watched": was_watched, "poster_path": poster or "", "release_date": release_date or "", "runtime": 120, "dropped": False})
-                                            if was_watched:
-                                                w_dt = parse_tvtime_date(m.get("watched_at"))
-                                                m_key = datetime.strptime(w_dt, "%Y-%m-%d %H:%M:%S").strftime("%Y-%m")
-                                                new_db["analytics"].setdefault(m_key, {"tv": 0, "movie": 0})
-                                                new_db["analytics"][m_key]["movie"] += 1
-                                                new_db["history"].append({"t": "m", "i": tmdb_id, "e": "", "d": w_dt, "r": 0, "f": "", "p": ""})
+                                        # ...but record the watch date either way. This used to sit
+                                        # inside the branch above, so movies already in your library
+                                        # silently lost their TV Time watch date.
+                                        if was_watched:
+                                            w_dt = parse_tvtime_date(m.get("watched_at"))
+                                            new_db["history"].append({"t": "m", "i": tmdb_id, "e": "", "d": w_dt, "r": 0, "f": "", "p": ""})
                                 except Exception:
                                     continue
                         except Exception as e:
@@ -2721,9 +3216,6 @@ with t_profile:
                                                     e_code = f"S{s_num}E{ep.get('number')}"
                                                     watched_eps.append(e_code)
                                                     w_dt = parse_tvtime_date(ep.get("watched_at"))
-                                                    m_key = datetime.strptime(w_dt, "%Y-%m-%d %H:%M:%S").strftime("%Y-%m")
-                                                    new_db["analytics"].setdefault(m_key, {"tv": 0, "movie": 0})
-                                                    new_db["analytics"][m_key]["tv"] += 1
                                                     new_db["history"].append({"t": "s", "i": tmdb_id, "e": e_code, "d": w_dt, "r": 0, "f": "", "p": ""})
 
                                         if is_new_show:
@@ -2739,10 +3231,22 @@ with t_profile:
                             st.error(f"Error processing series: {e}")
 
                     new_db["history"].sort(key=lambda x: x.get("d", "2000-01-01 12:00:00"), reverse=True)
-                    tv_h = [h for h in new_db["history"] if h.get("t") == "s"][:100]
-                    mov_h = [h for h in new_db["history"] if h.get("t") == "m"][:100]
-                    new_db["history"] = tv_h + mov_h
+
+                    # History goes to its own table in bulk — every entry, no cap.
+                    stat_txt.text("Writing watch history...")
+                    if wipe_db:
+                        history_delete_all()
+                    if new_db["history"]:
+                        # overwrite=False when merging into an existing library, so
+                        # ratings / platforms / moods already in the app survive.
+                        if not history_insert_many(new_db["history"], overwrite=bool(wipe_db)):
+                            st.error("Some history rows failed to save. Re-run the import to retry.")
+
+                    new_db["legacy_history"] = []
                     st.session_state.db = new_db
+                    st.session_state.db["history"] = load_history()
+                    stat_txt.text("Recounting monthly totals...")
+                    rebuild_analytics_from_history()
                     st.session_state["_reconciled"] = False
 
                     if save_db():
