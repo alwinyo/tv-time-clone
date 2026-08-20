@@ -6,7 +6,7 @@ import time
 import re
 import calendar
 import random
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from st_keyup import st_keyup
 import altair as alt
 
@@ -352,13 +352,14 @@ st.markdown("""
     div[data-testid="column"]:has(.ep-row-body) label p {
         font-size: 0.78rem !important; line-height: 1.25 !important;
     }
-    div[data-testid="column"]:has(.ep-row-body) div[data-testid="stButton"] button {
-        padding: 3px 10px !important; min-height: 0 !important; height: auto !important;
+    div[data-testid="column"]:has(.ep-row-thumb) div[data-testid="stButton"] button {
+        padding: 3px 6px !important; min-height: 0 !important; height: auto !important;
+        margin-top: 5px !important;
         border-radius: 8px !important; background: rgba(255,255,255,0.05) !important;
         border: 1px solid rgba(255,255,255,0.12) !important;
     }
-    div[data-testid="column"]:has(.ep-row-body) div[data-testid="stButton"] button p {
-        font-size: 0.6rem !important; font-weight: 700 !important;
+    div[data-testid="column"]:has(.ep-row-thumb) div[data-testid="stButton"] button p {
+        font-size: 0.58rem !important; font-weight: 700 !important;
     }
 
     /* --- INLINE SEARCH CLEAR BUTTON OVERRIDE --- */
@@ -424,9 +425,34 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 
-# --- DUBAI TIMEZONE OVERRIDE ---
+# --- DUBAI TIMEZONE ---
+# Gulf Standard Time is UTC+4 all year (the UAE has no daylight saving), so a
+# fixed offset is correct. datetime.utcnow() is deprecated from Python 3.12 and
+# returns a naive value that is easy to misread; this builds the same wall-clock
+# time from an explicit timezone, then drops the tzinfo so every existing naive
+# comparison in the app keeps working unchanged.
+DUBAI_TZ = timezone(timedelta(hours=4))
+
+
 def get_dubai_time():
-    return datetime.utcnow() + timedelta(hours=4)
+    return datetime.now(DUBAI_TZ).replace(tzinfo=None)
+
+
+def humanize_days(days):
+    """3 -> '3d', 47 -> '1mo 17d', 800 -> '2y 2mo'. Approximate by design."""
+    days = max(0, int(days or 0))
+    if days == 0:
+        return "0d"
+    years, rem = divmod(days, 365)
+    months, rest = divmod(rem, 30)
+    parts = []
+    if years:
+        parts.append(f"{years}y")
+    if months:
+        parts.append(f"{months}mo")
+    if rest and not years:
+        parts.append(f"{rest}d")
+    return " ".join(parts) or "0d"
 
 
 def parse_tvtime_date(date_str):
@@ -1022,20 +1048,35 @@ def mark_movie(movie_id, watched):
 
 
 def calc_time_remaining(date_str):
+    """Countdown to an air date, measured in Dubai time.
+
+    TMDB gives a calendar date in the show's country of origin with no clock
+    time, so this counts to midnight Dubai on that date. A US show airing
+    Tuesday evening ET therefore reads "Out now" here from Tuesday 00:00 Dubai,
+    a few hours before it actually airs. That is a limit of the source data,
+    not a rounding error.
+    """
     if not date_str:
         return "Soon"
     try:
-        target = datetime.strptime(date_str, '%Y-%m-%d')
+        target = datetime.strptime(str(date_str)[:10], '%Y-%m-%d')
         diff = target - get_dubai_time()
-        days, hours = diff.days, diff.seconds // 3600
-        if days > 0:
+        secs = diff.total_seconds()
+        if secs <= 0:
+            return "Out now"
+        days = int(secs // 86400)
+        hours = int((secs % 86400) // 3600)
+        if days >= 365:
+            return f"In {days // 365}y {(days % 365) // 30}mo"
+        if days >= 60:
+            return f"In {days // 30}mo"
+        if days >= 14:
+            return f"In {days // 7}w"
+        if days >= 1:
             return f"In {days}d {hours}h"
-        elif days == 0 and hours > 0:
+        if hours >= 1:
             return f"In {hours}h"
-        elif diff.total_seconds() > 0:
-            return "In <1h"
-        else:
-            return "Out Now"
+        return "In <1h"
     except Exception:
         return "Soon"
 
@@ -1500,165 +1541,307 @@ def render_inline_actor_pokedex(actor_id):
 
 
 # --- RECAP ENGINE ---
-@st.dialog("🌙 Monthly Wrap-Up")
+def recap_hero(big, caption, sub=""):
+    return (
+        f'<div style="background:linear-gradient(135deg,#FFD54F 0%,#FFC107 100%); border-radius:16px; '
+        f'padding:22px 18px; color:#000; text-align:center; margin:4px 0 14px; '
+        f'box-shadow:0 8px 24px rgba(255,193,7,0.28);">'
+        f'<div style="font-size:2.6rem; font-weight:900; line-height:1;">{big}</div>'
+        f'<div style="font-size:0.7rem; font-weight:800; text-transform:uppercase; '
+        f'letter-spacing:0.12em; margin-top:6px;">{caption}</div>'
+        + (f'<div style="font-size:0.72rem; font-weight:600; opacity:0.75; margin-top:5px;">{sub}</div>' if sub else '')
+        + '</div>'
+    )
+
+
+def recap_facts(rows):
+    """rows: [(icon, label, value), ...] — one clean table, no wall of markdown."""
+    if not rows:
+        return ""
+    cells = "".join(
+        f'<div style="display:flex; align-items:center; gap:10px; padding:9px 0; '
+        f'border-bottom:1px solid rgba(255,255,255,0.06);">'
+        f'<span style="font-size:0.95rem; width:22px; text-align:center;">{icon}</span>'
+        f'<span style="flex:1; font-size:0.7rem; color:#9a9a9a; text-transform:uppercase; '
+        f'letter-spacing:0.06em; font-weight:700;">{label}</span>'
+        f'<span style="font-size:0.82rem; font-weight:800; color:#FFD54F; text-align:right; '
+        f'max-width:52%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{value}</span>'
+        f'</div>'
+        for icon, label, value in rows
+    )
+    return (f'<div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); '
+            f'border-radius:14px; padding:4px 14px; margin-bottom:14px;">{cells}</div>')
+
+
+def recap_top_shows(counts, limit=3):
+    """Podium of most-watched shows, with posters."""
+    top = sorted(counts.items(), key=lambda x: x[1], reverse=True)[:limit]
+    cards = []
+    for rank, (sid, n) in enumerate(top, 1):
+        obj = get_show(sid)
+        if not obj:
+            continue
+        poster = (f'https://image.tmdb.org/t/p/w185{obj.get("poster_path")}'
+                  if obj.get("poster_path") else 'https://via.placeholder.com/185x278/222/555?text=%20')
+        cards.append(
+            f'<div style="display:flex; align-items:center; gap:12px; padding:8px 0;">'
+            f'<span style="font-size:1rem; font-weight:900; color:#FFC107; width:20px;">{rank}</span>'
+            f'<img src="{poster}" style="width:38px; height:57px; border-radius:6px; object-fit:cover; '
+            f'border:1px solid rgba(255,255,255,0.12);">'
+            f'<span style="flex:1; min-width:0;">'
+            f'<span style="display:block; font-size:0.8rem; font-weight:700; white-space:nowrap; '
+            f'overflow:hidden; text-overflow:ellipsis;">{obj["name"]}</span>'
+            f'<span style="display:block; font-size:0.65rem; color:#9a9a9a;">{n} episodes</span>'
+            f'</span></div>'
+        )
+    if not cards:
+        return ""
+    return (f'<div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); '
+            f'border-radius:14px; padding:6px 14px; margin-bottom:14px;">{"".join(cards)}</div>')
+
+
+def month_slice(month_key):
+    """Aggregate one month's journal entries."""
+    shows, plats, feels, ratings, days = {}, {}, {}, [], {}
+    for h in st.session_state.db.get("history", []):
+        if not str(h.get("d", "")).startswith(month_key):
+            continue
+        if h.get("t") == "s":
+            shows[h["i"]] = shows.get(h["i"], 0) + 1
+        if h.get("p"):
+            plats[h["p"]] = plats.get(h["p"], 0) + 1
+        if h.get("f"):
+            feels[h["f"]] = feels.get(h["f"], 0) + 1
+        if h.get("r", 0) > 0:
+            ratings.append(h["r"])
+        days[h["d"][:10]] = days.get(h["d"][:10], 0) + 1
+    return shows, plats, feels, ratings, days
+
+
+def mark_recap_seen(recap_id):
+    seen = st.session_state.db.setdefault("seen_recaps", [])
+    if recap_id not in seen:
+        seen.append(recap_id)
+        save_db()
+
+
+@st.dialog("Wrap-Up")
 def show_monthly_recap_dialog(month_key, month_title, stats, recap_id):
-    st.markdown(f"## {month_title} Recap")
-    st.write("Here is a quick look at your screening inventory from last month:")
     tv_count, mov_count = stats.get("tv", 0), stats.get("movie", 0)
     total_mins = (tv_count * 45) + (mov_count * 120)
+    shows, plats, feels, ratings, days = month_slice(month_key)
+
+    st.markdown(
+        f'<div style="text-align:center; margin-bottom:2px;">'
+        f'<div style="font-size:0.65rem; font-weight:800; letter-spacing:0.16em; '
+        f'text-transform:uppercase; color:#FFC107;">Monthly wrap-up</div>'
+        f'<div style="font-size:1.35rem; font-weight:900; margin-top:2px;">{month_title}</div></div>',
+        unsafe_allow_html=True)
+
+    st.markdown(recap_hero(f"{tv_count + mov_count:,}", "Titles watched",
+                           f"about {total_mins // 60} hours of screen time"),
+                unsafe_allow_html=True)
 
     c1, c2 = st.columns(2)
     with c1:
-        st.metric("📺 Episodes Logged", f"{tv_count} eps")
+        st.markdown(
+            f'<div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); '
+            f'border-radius:14px; padding:14px; text-align:center;">'
+            f'<div style="font-size:1.5rem; font-weight:800; color:#FFC107;">{tv_count}</div>'
+            f'<div style="font-size:0.6rem; color:#9a9a9a; text-transform:uppercase; '
+            f'font-weight:700; letter-spacing:0.06em;">Episodes</div></div>', unsafe_allow_html=True)
     with c2:
-        st.metric("🎬 Movies Watched", f"{mov_count} titles")
-    st.markdown(f"⏳ **Screen Time Investment:** ~`{total_mins // 60}` hours spent streaming.")
+        st.markdown(
+            f'<div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); '
+            f'border-radius:14px; padding:14px; text-align:center;">'
+            f'<div style="font-size:1.5rem; font-weight:800; color:#FFC107;">{mov_count}</div>'
+            f'<div style="font-size:0.6rem; color:#9a9a9a; text-transform:uppercase; '
+            f'font-weight:700; letter-spacing:0.06em;">Films</div></div>', unsafe_allow_html=True)
 
-    show_counts, plat_counts, feel_counts = {}, {}, {}
-    for h in st.session_state.db.get("history", []):
-        if str(h.get("d", "")).startswith(month_key):
-            if h.get("t") == "s":
-                show_counts[h["i"]] = show_counts.get(h["i"], 0) + 1
-            if h.get("p") and h.get("p") != "None":
-                plat_counts[h["p"]] = plat_counts.get(h["p"], 0) + 1
-            if h.get("f") and h.get("f") != "None":
-                feel_counts[h["f"]] = feel_counts.get(h["f"], 0) + 1
+    st.markdown("<div style='height:14px;'></div>", unsafe_allow_html=True)
 
-    if show_counts:
-        top_show_id = max(show_counts, key=show_counts.get)
-        show = get_show(top_show_id)
-        if show:
-            st.markdown(f"🔥 **Top Binge Focus:** *{show['name']}* ({show_counts[top_show_id]} episodes)")
-    if plat_counts:
-        st.markdown(f"📡 **Platform Loyalty:** Most watched on **{max(plat_counts, key=plat_counts.get)}**")
-    if feel_counts:
-        st.markdown(f"🎭 **Monthly Vibe:** **{max(feel_counts, key=feel_counts.get)}**")
+    facts = []
+    if ratings:
+        facts.append(("⭐", "Average rating", f"{round(sum(ratings) / len(ratings), 1)} / 5"))
+    if plats:
+        facts.append(("📡", "Top platform", max(plats, key=plats.get)))
+    if feels:
+        facts.append(("🎭", "Mood of the month", max(feels, key=feels.get)))
+    if days:
+        top_day, top_n = max(days.items(), key=lambda x: x[1])
+        facts.append(("🔥", "Biggest day", f"{top_n} on {top_day[5:]}"))
+        facts.append(("📅", "Days watched", f"{len(days)} of the month"))
+    if facts:
+        st.markdown(recap_facts(facts), unsafe_allow_html=True)
 
-    st.divider()
-    is_seen = recap_id in st.session_state.db.get("seen_recaps", [])
-    if st.button("✖ Close Recap" if is_seen else "Sweet!", use_container_width=True, key=f"close_month_recap_{recap_id}"):
-        if not is_seen:
-            st.session_state.db.setdefault("seen_recaps", []).append(recap_id)
-            save_db()
-        close_dialog()
+    if shows:
+        st.markdown("<div style='font-size:0.65rem; font-weight:800; text-transform:uppercase; "
+                    "letter-spacing:0.1em; color:#9a9a9a; margin-bottom:4px;'>Most watched</div>",
+                    unsafe_allow_html=True)
+        st.markdown(recap_top_shows(shows), unsafe_allow_html=True)
+
+    if not facts and not shows:
+        st.caption("No journal detail for this month — only the totals were recorded.")
+
+    seen = recap_id in st.session_state.db.get("seen_recaps", [])
+    if st.button("Nice" if not seen else "Close", use_container_width=True,
+                 type="primary", key=f"close_month_recap_{recap_id}"):
+        mark_recap_seen(recap_id)
+        nxt = pending_recaps()
+        st.session_state.dialog = ({k: v for k, v in nxt[0].items() if k != "sort"}) if nxt else None
         st.rerun()
 
 
-@st.dialog("🏆 Your Cinematic Wrapped")
+@st.dialog("Year in Review")
 def show_yearly_recap_dialog(year, y_tv, y_mov, recap_id):
-    st.markdown(f"# 🍿 {year} YEAR IN REVIEW")
-    st.write("You smashed your theater goals last year! Check out your custom achievements:")
     total_time = (y_tv * 45) + (y_mov * 120)
-    days = total_time // 1440
+    days_total = total_time // 1440
 
-    html_hero = (
-        f'<div style="background: linear-gradient(135deg, #FFD54F 0%, #FFC107 100%); border-radius: 14px; padding: 22px; color: black; text-align: center; margin-bottom: 15px; box-shadow: 0 4px 15px rgba(255,193,7,0.3);">'
-        f'<div style="font-size: 2.6rem; font-weight: 900; line-height:1;">{y_tv + y_mov:,}</div>'
-        f'<div style="font-size: 0.75rem; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; margin-top:4px;">Total Titles Inventoried</div>'
-        f'</div>'
-    )
-    st.markdown(html_hero, unsafe_allow_html=True)
-
-    c1, c2 = st.columns(2)
-    with c1:
-        st.markdown(
-            f'<div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 15px; text-align: center;">'
-            f'<div style="font-size: 1.4rem; font-weight: 800; color: #FFC107;">{y_tv}</div>'
-            f'<div style="font-size: 0.65rem; color: #aaa; text-transform: uppercase; font-weight:700;">Episodes Logged</div>'
-            f'</div>', unsafe_allow_html=True)
-    with c2:
-        st.markdown(
-            f'<div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 15px; text-align: center;">'
-            f'<div style="font-size: 1.4rem; font-weight: 800; color: #FFC107;">{y_mov}</div>'
-            f'<div style="font-size: 0.65rem; color: #aaa; text-transform: uppercase; font-weight:700;">Movies Checked</div>'
-            f'</div>', unsafe_allow_html=True)
-
-    st.markdown(f"⏳ **Time Commitment:** You dedicated a total of **{days} days** and **{(total_time % 1440) // 60} hours** to premium story arcs.")
-
-    y_hist = [h for h in st.session_state.db.get("history", []) if str(h.get("d", "")).startswith(str(year))]
-    date_counts, plat_counts, feel_counts, show_counts, ratings = {}, {}, {}, {}, []
-
-    for h in y_hist:
-        d_only = h["d"][:10]
-        date_counts[d_only] = date_counts.get(d_only, 0) + 1
-        if h.get("p") and h.get("p") != "None":
-            plat_counts[h["p"]] = plat_counts.get(h["p"], 0) + 1
-        if h.get("f") and h.get("f") != "None":
-            feel_counts[h["f"]] = feel_counts.get(h["f"], 0) + 1
-        if h["t"] == "s":
-            show_counts[h["i"]] = show_counts.get(h["i"], 0) + 1
+    hist = [h for h in st.session_state.db.get("history", []) if str(h.get("d", "")).startswith(str(year))]
+    date_counts, plats, feels, shows, ratings, months = {}, {}, {}, {}, [], {}
+    for h in hist:
+        d = h.get("d", "")
+        date_counts[d[:10]] = date_counts.get(d[:10], 0) + 1
+        months[d[:7]] = months.get(d[:7], 0) + 1
+        if h.get("p"):
+            plats[h["p"]] = plats.get(h["p"], 0) + 1
+        if h.get("f"):
+            feels[h["f"]] = feels.get(h["f"], 0) + 1
+        if h.get("t") == "s":
+            shows[h["i"]] = shows.get(h["i"], 0) + 1
         if h.get("r", 0) > 0:
             ratings.append(h["r"])
 
-    st.divider()
-    st.markdown("### The Deep Dive")
+    st.markdown(
+        f'<div style="text-align:center; margin-bottom:2px;">'
+        f'<div style="font-size:0.65rem; font-weight:800; letter-spacing:0.16em; '
+        f'text-transform:uppercase; color:#FFC107;">Year in review</div>'
+        f'<div style="font-size:1.9rem; font-weight:900; line-height:1.1; margin-top:2px;">{year}</div></div>',
+        unsafe_allow_html=True)
+
+    st.markdown(recap_hero(f"{y_tv + y_mov:,}", "Titles watched",
+                           f"{days_total} days and {(total_time % 1440) // 60} hours on screen"),
+                unsafe_allow_html=True)
+
+    c1, c2 = st.columns(2)
+    for col, val, label in [(c1, y_tv, "Episodes"), (c2, y_mov, "Films")]:
+        with col:
+            st.markdown(
+                f'<div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); '
+                f'border-radius:14px; padding:14px; text-align:center;">'
+                f'<div style="font-size:1.5rem; font-weight:800; color:#FFC107;">{val:,}</div>'
+                f'<div style="font-size:0.6rem; color:#9a9a9a; text-transform:uppercase; '
+                f'font-weight:700; letter-spacing:0.06em;">{label}</div></div>', unsafe_allow_html=True)
+
+    st.markdown("<div style='height:14px;'></div>", unsafe_allow_html=True)
+
+    facts = []
     if ratings:
-        st.markdown(f"⭐ **Average Rating:** {round(sum(ratings)/len(ratings), 1)} / 5.0")
-    if plat_counts:
-        st.markdown(f"📡 **Top Platform:** {max(plat_counts, key=plat_counts.get)}")
-    if feel_counts:
-        st.markdown(f"🎭 **Top Vibe:** {max(feel_counts, key=feel_counts.get)}")
+        facts.append(("⭐", "Average rating", f"{round(sum(ratings) / len(ratings), 1)} / 5"))
+    if plats:
+        facts.append(("📡", "Top platform", max(plats, key=plats.get)))
+    if feels:
+        facts.append(("🎭", "Signature mood", max(feels, key=feels.get)))
+    if months:
+        busiest = max(months, key=months.get)
+        try:
+            label = datetime.strptime(busiest, "%Y-%m").strftime("%B")
+        except Exception:
+            label = busiest
+        facts.append(("📈", "Busiest month", f"{label} · {months[busiest]}"))
     if date_counts:
-        max_d, max_c = max(date_counts.items(), key=lambda x: x[1])
-        st.markdown(f"🔥 **Ultimate Binge Day:** {max_c} items on {max_d}")
+        d, n = max(date_counts.items(), key=lambda x: x[1])
+        facts.append(("🔥", "Biggest day", f"{n} on {d}"))
+        facts.append(("📅", "Days watched", f"{len(date_counts)} days"))
+    if facts:
+        st.markdown(recap_facts(facts), unsafe_allow_html=True)
 
-    if show_counts:
-        st.markdown("**🏆 Top 3 Shows:**")
-        for sid, sc in sorted(show_counts.items(), key=lambda x: x[1], reverse=True)[:3]:
-            s_obj = get_show(sid)
-            if s_obj:
-                st.markdown(f"- {s_obj['name']} ({sc} eps)")
+    if shows:
+        st.markdown("<div style='font-size:0.65rem; font-weight:800; text-transform:uppercase; "
+                    "letter-spacing:0.1em; color:#9a9a9a; margin-bottom:4px;'>Your top shows</div>",
+                    unsafe_allow_html=True)
+        st.markdown(recap_top_shows(shows, limit=5), unsafe_allow_html=True)
 
-    if days > 12:
-        tier_title, tier_desc = "👑 Emperor of the Couch", "Absolute legend. Hollywood production lines should put you on their payroll."
-    elif days > 5:
-        tier_title, tier_desc = "🍿 Marathon Veteran", "You know exactly how to lock down a weekend block and demolish complex plotlines."
+    if days_total > 12:
+        tier, desc = "👑 Emperor of the Couch", "Hollywood should be putting you on the payroll."
+    elif days_total > 5:
+        tier, desc = "🍿 Marathon Veteran", "You know how to lock down a weekend and finish what you start."
     else:
-        tier_title, tier_desc = "🎬 Curation Connoisseur", "High-taste selection habits. You filter for absolute choice cinema narrative styles."
+        tier, desc = "🎬 Curation Connoisseur", "Selective. You watch what's worth watching."
 
     st.markdown(
-        f'<div style="background: rgba(255, 193, 7, 0.08); border: 1px dashed #FFC107; border-radius: 12px; padding: 15px; margin-top: 15px; text-align: center;">'
-        f'<div style="font-size: 1.15rem; font-weight: 800; color: #FFD54F;">{tier_title}</div>'
-        f'<div style="font-size: 0.75rem; color: #eee; margin-top: 5px; line-height:1.3;">{tier_desc}</div>'
-        f'</div>', unsafe_allow_html=True)
-    st.divider()
-    is_seen = recap_id in st.session_state.db.get("seen_recaps", [])
-    if st.button("✖ Close Recap" if is_seen else "Claim Achievement Status", use_container_width=True, key=f"close_year_recap_{recap_id}"):
-        if not is_seen:
-            st.session_state.db.setdefault("seen_recaps", []).append(recap_id)
-            save_db()
-        close_dialog()
+        f'<div style="background:rgba(255,193,7,0.08); border:1px dashed rgba(255,193,7,0.55); '
+        f'border-radius:14px; padding:16px; text-align:center; margin-bottom:6px;">'
+        f'<div style="font-size:1.05rem; font-weight:800; color:#FFD54F;">{tier}</div>'
+        f'<div style="font-size:0.72rem; color:#ddd; margin-top:5px; line-height:1.4;">{desc}</div></div>',
+        unsafe_allow_html=True)
+
+    seen = recap_id in st.session_state.db.get("seen_recaps", [])
+    if st.button("Claim it" if not seen else "Close", use_container_width=True,
+                 type="primary", key=f"close_year_recap_{recap_id}"):
+        mark_recap_seen(recap_id)
+        nxt = pending_recaps()
+        st.session_state.dialog = ({k: v for k, v in nxt[0].items() if k != "sort"}) if nxt else None
         st.rerun()
 
 
+def pending_recaps():
+    """Every recap earned but not yet seen, oldest first.
+
+    The old version only ever looked at LAST month and LAST year, so if you
+    didn't open the app for a while the recaps in between were skipped for
+    good. This walks the whole analytics history instead, so nothing is lost.
+    """
+    db = st.session_state.db
+    seen = set(db.get("seen_recaps", []))
+    analytics = db.get("analytics", {})
+    now = get_dubai_time()
+    this_month = now.strftime("%Y-%m")
+    out = []
+
+    for month_key in sorted(analytics.keys()):
+        if month_key >= this_month:
+            continue                       # never recap a month still running
+        rid = f"monthly-{month_key}"
+        if rid in seen:
+            continue
+        stats = analytics.get(month_key, {})
+        if (stats.get("tv", 0) + stats.get("movie", 0)) <= 0:
+            continue
+        try:
+            title = datetime.strptime(month_key, "%Y-%m").strftime("%B %Y")
+        except Exception:
+            title = month_key
+        out.append({"kind": "recap_month", "month_key": month_key, "title": title,
+                    "stats": stats, "recap_id": rid, "sort": month_key})
+
+    years = {k[:4] for k in analytics.keys()}
+    for year in sorted(years):
+        if int(year) >= now.year:
+            continue                       # never recap a year still running
+        rid = f"yearly-{year}"
+        if rid in seen:
+            continue
+        y_tv = sum(v.get("tv", 0) for k, v in analytics.items() if k.startswith(year))
+        y_mov = sum(v.get("movie", 0) for k, v in analytics.items() if k.startswith(year))
+        if y_tv + y_mov <= 0:
+            continue
+        out.append({"kind": "recap_year", "year": int(year), "y_tv": y_tv, "y_mov": y_mov,
+                    "recap_id": rid, "sort": year + "-13"})
+
+    out.sort(key=lambda r: r["sort"])
+    return out
+
+
 def queue_pending_recaps():
-    """Queues a recap only if nothing else already owns the dialog slot."""
     if st.session_state.get("recaps_checked"):
         return
     st.session_state.recaps_checked = True
     if st.session_state.dialog:
         return
-    db = st.session_state.db
-    seen = db.setdefault("seen_recaps", [])
-    now = get_dubai_time()
-
-    last_day_of_prev_month = now.replace(day=1) - timedelta(days=1)
-    prev_month_key = last_day_of_prev_month.strftime("%Y-%m")
-
-    if f"monthly-{prev_month_key}" not in seen:
-        stats = db.get("analytics", {}).get(prev_month_key, {"tv": 0, "movie": 0})
-        if stats["tv"] > 0 or stats["movie"] > 0:
-            open_dialog("recap_month", month_key=prev_month_key, title=last_day_of_prev_month.strftime("%B %Y"), stats=stats, recap_id=f"monthly-{prev_month_key}")
-            return
-
-    if f"yearly-{now.year - 1}" not in seen:
-        y_tv, y_mov = 0, 0
-        for k, v in db.get("analytics", {}).items():
-            if k.startswith(str(now.year - 1)):
-                y_tv += v.get("tv", 0)
-                y_mov += v.get("movie", 0)
-        if y_tv > 0 or y_mov > 0:
-            open_dialog("recap_year", year=now.year - 1, y_tv=y_tv, y_mov=y_mov, recap_id=f"yearly-{now.year - 1}")
+    queue = pending_recaps()
+    if queue:
+        st.session_state.dialog = {k: v for k, v in queue[0].items() if k != "sort"}
 
 
 # --- CENTRALIZED MANAGEMENT DIALOGS ---
@@ -1889,10 +2072,14 @@ def manage_show_dialog(show_id, show_name):
         st.caption(f"**{watched_n} of {total_eps} episodes** · {int(pct * 100)}% complete"
                    + (" · finished 🎉" if left == 0 else f" · {left} to go"))
         mins_left = left * ep_minutes
+        if mins_left >= 1440:
+            time_val, time_unit = f"{mins_left // 1440}d {(mins_left % 1440) // 60}", "hrs"
+        else:
+            time_val, time_unit = f"{mins_left // 60}", "hrs"
         stats = show_history_stats(show_id)
         stat_cards([
             (left, "eps", "Remaining"),
-            (f"{mins_left // 60}", "hrs", "Time left"),
+            (time_val, time_unit, "Time left"),
             (stats["avg"] if stats and stats["avg"] else "—", "avg", "Your rating"),
         ])
 
@@ -2025,6 +2212,13 @@ def manage_show_dialog(show_id, show_name):
                         'rgba(255,255,255,0.05); display:flex; align-items:center; justify-content:center; '
                         'color:#4a4a4a; font-size:0.6rem;">No still</div>', unsafe_allow_html=True)
 
+                # Notes sits under the still, using the dead space beside the synopsis
+                if ep_watched and in_lib:
+                    if st.button("📝 Notes", key=f"open_full_{show_id}_{e_code}",
+                                 use_container_width=True):
+                        open_dialog("episode", id=show_id, name=show_name, code=e_code)
+                        st.rerun()
+
             with body:
                 st.markdown('<span class="ep-row ep-row-body"></span>', unsafe_allow_html=True)
                 st.checkbox(f"**E{ep['episode_number']}.** {ep.get('name', 'Episode')}",
@@ -2068,11 +2262,6 @@ def manage_show_dialog(show_id, show_name):
                         f"display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; "
                         f"overflow:hidden; margin-bottom:2px;'>{overview}</div>",
                         unsafe_allow_html=True)
-
-                if ep_watched and in_lib:
-                    if st.button("📝 Notes", key=f"open_full_{show_id}_{e_code}"):
-                        open_dialog("episode", id=show_id, name=show_name, code=e_code)
-                        st.rerun()
 
             st.markdown("<hr style='margin:6px 0 10px 0; border-color:rgba(255,255,255,0.07);'>",
                         unsafe_allow_html=True)
@@ -2850,9 +3039,9 @@ with t_profile:
 
         c1, c2, c3 = st.columns(3)
         for col, val, unit, label in [
-            (c1, days_to_clear, "Days", "To Clear Backlog"),
+            (c1, humanize_days(days_to_clear), "", "To Clear Backlog"),
             (c2, eps_last_7, "Eps", "Binge Velocity"),
-            (c3, streak, "Days", "Current Streak"),
+            (c3, humanize_days(streak), "", "Current Streak"),
         ]:
             with col:
                 st.markdown(
