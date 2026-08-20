@@ -331,6 +331,36 @@ st.markdown("""
     div[data-testid="column"]:has(.carousel-marker-cast) div[data-testid="stButton"] button[kind="tertiary"]:hover p,
     div[data-testid="stColumn"]:has(.carousel-marker-cast) div[data-testid="stButton"] button[kind="tertiary"]:hover p { color: #FFC107 !important; text-decoration: underline !important;}
 
+    /* --- EPISODE ROWS ---
+       Streamlit stacks columns on mobile, which would drop the still above the
+       text. Force the row to stay side-by-side with a fixed thumbnail column. */
+    div[data-testid="stHorizontalBlock"]:has(.ep-row),
+    div[data-testid="stColumns"]:has(.ep-row) {
+        display: flex !important; flex-direction: row !important; flex-wrap: nowrap !important;
+        gap: 10px !important; align-items: flex-start !important;
+    }
+    div[data-testid="column"]:has(.ep-row-thumb),
+    div[data-testid="stColumn"]:has(.ep-row-thumb) {
+        flex: 0 0 104px !important; width: 104px !important; min-width: 104px !important;
+        padding: 0 !important; display: block !important;
+    }
+    div[data-testid="column"]:has(.ep-row-body),
+    div[data-testid="stColumn"]:has(.ep-row-body) {
+        flex: 1 1 auto !important; width: auto !important; min-width: 0 !important;
+        padding: 0 !important; display: block !important;
+    }
+    div[data-testid="column"]:has(.ep-row-body) label p {
+        font-size: 0.78rem !important; line-height: 1.25 !important;
+    }
+    div[data-testid="column"]:has(.ep-row-body) div[data-testid="stButton"] button {
+        padding: 3px 10px !important; min-height: 0 !important; height: auto !important;
+        border-radius: 8px !important; background: rgba(255,255,255,0.05) !important;
+        border: 1px solid rgba(255,255,255,0.12) !important;
+    }
+    div[data-testid="column"]:has(.ep-row-body) div[data-testid="stButton"] button p {
+        font-size: 0.6rem !important; font-weight: 700 !important;
+    }
+
     /* --- INLINE SEARCH CLEAR BUTTON OVERRIDE --- */
     div[data-testid="stVerticalBlock"]:has(> div > div > .search-container-hook) { position: relative !important; }
     div:has(> .clear-btn-hook) + div { position: absolute !important; right: 8px !important; top: 7px !important; width: 26px !important; z-index: 100 !important; }
@@ -421,7 +451,7 @@ for k in ["next_tv_limit", "next_mov_limit", "soon_tv_limit", "soon_mov_limit"]:
 # Streamlit re-renders every one on every interaction, so a few hundred is the
 # practical ceiling before taps start lagging. "Show everything" is available
 # per tab for when you actually want the full scroll.
-HISTORY_PAGE_SIZE = 20
+HISTORY_PAGE_SIZE = 100
 
 for k in ["hist_tv_limit", "hist_mov_limit"]:
     if k not in st.session_state:
@@ -1225,10 +1255,6 @@ def cb_clear_lib_mov():
     st.session_state.lib_mov_reset_ctr += 1
 
 
-def cb_toggle_ep_info(sid, ecode):
-    st.session_state[f"view_info_{sid}_{ecode}"] = not st.session_state.get(f"view_info_{sid}_{ecode}", False)
-
-
 # --- VISUAL HELPERS ---
 def render_poster_card(title, poster_path, subtitle="", progress_pct=-1.0):
     """
@@ -1346,23 +1372,44 @@ def show_cast_horizontal(cast_list, key_prefix, limit=15):
 
 
 def render_apple_tv_header(backdrop_path, poster_path, title, badges_html):
-    bg = f"https://image.tmdb.org/t/p/w780{backdrop_path}" if backdrop_path else f"https://image.tmdb.org/t/p/w342{poster_path}"
-    post = f"https://image.tmdb.org/t/p/w185{poster_path}" if poster_path else "https://via.placeholder.com/185x278/222222/555555?text=No+Poster"
-    blur = 0 if backdrop_path else 15
+    """
+    Dialog header: backdrop behind, poster and title bottom-aligned on top.
+
+    The old version hung the poster 20px below the backdrop with a negative
+    offset and then patched the gap with a spacer div, so the poster sat
+    slightly proud of the artwork and the title floated. Everything now lives
+    inside one padded flex row, and the poster is a fixed 2/3 box with
+    object-fit:cover so wide or short artwork can't distort it.
+    """
+    bg = f"https://image.tmdb.org/t/p/w780{backdrop_path}" if backdrop_path else (
+         f"https://image.tmdb.org/t/p/w342{poster_path}" if poster_path else "")
+    post = f"https://image.tmdb.org/t/p/w342{poster_path}" if poster_path else \
+           "https://via.placeholder.com/342x513/222222/555555?text=No+Poster"
+    blur = 0 if backdrop_path else 18
+
+    bg_layer = (f'<div style="position:absolute; inset:0; background-image:url(\'{bg}\'); '
+                f'background-size:cover; background-position:center; '
+                f'filter:brightness(0.55) blur({blur}px); transform:scale(1.05);"></div>') if bg else ''
 
     html = (
-        f'<div style="margin: -24px -24px 0 -24px; position: relative; overflow: hidden;">'
-        f'<div style="width: 100%; height: 220px; background-image: url(\'{bg}\'); background-size: cover; background-position: center; filter: brightness(0.6) blur({blur}px);"></div>'
-        f'<div style="position: absolute; bottom: 0; left: 0; right: 0; height: 120px; background: linear-gradient(to top, rgba(15,17,22,1) 0%, rgba(15,17,22,0) 100%);"></div>'
-        f'<div style="position: absolute; bottom: -20px; left: 20px; right: 20px; display: flex; align-items: flex-end; gap: 15px; z-index: 10;">'
-        f'<img src="{post}" style="width: 105px; height: 157px; border-radius: 8px; box-shadow: 0 8px 20px rgba(0,0,0,0.8); border: 1px solid rgba(255,255,255,0.1); object-fit: cover;">'
-        f'<div style="padding-bottom: 25px; flex: 1; min-width: 0;">'
-        f'<div style="margin: 0; padding: 0; font-size: 1.4rem; font-weight: 800; line-height: 1.1; text-shadow: 0 2px 4px rgba(0,0,0,0.8); color: white; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">{title}</div>'
-        f'<div style="margin-top: 6px;">{badges_html}</div>'
+        f'<div style="margin:-24px -24px 14px -24px; position:relative; overflow:hidden; min-height:200px;">'
+        f'{bg_layer}'
+        f'<div style="position:absolute; inset:0; background:linear-gradient(to top, '
+        f'rgba(15,17,22,0.99) 0%, rgba(15,17,22,0.72) 45%, rgba(15,17,22,0.15) 100%);"></div>'
+        f'<div style="position:relative; z-index:2; display:flex; align-items:flex-end; gap:14px; '
+        f'padding:74px 18px 18px 18px;">'
+        f'<div style="flex:0 0 96px; width:96px; aspect-ratio:2/3; border-radius:10px; overflow:hidden; '
+        f'box-shadow:0 10px 24px rgba(0,0,0,0.85); border:1px solid rgba(255,255,255,0.14); background:#111;">'
+        f'<img src="{post}" style="width:100%; height:100%; object-fit:cover; display:block;">'
+        f'</div>'
+        f'<div style="flex:1; min-width:0; padding-bottom:2px;">'
+        f'<div style="font-size:1.25rem; font-weight:800; line-height:1.15; color:#fff; '
+        f'text-shadow:0 2px 6px rgba(0,0,0,0.9); display:-webkit-box; -webkit-line-clamp:3; '
+        f'-webkit-box-orient:vertical; overflow:hidden; margin-bottom:7px;">{title}</div>'
+        f'<div style="line-height:1.9;">{badges_html}</div>'
         f'</div>'
         f'</div>'
         f'</div>'
-        f'<div style="height: 35px;"></div>'
     )
     st.markdown(html, unsafe_allow_html=True)
 
@@ -1963,8 +2010,23 @@ def manage_show_dialog(show_id, show_name):
             air = str(ep.get("air_date") or "").strip()
             future = bool(air and air > TODAY)
 
-            col_a, col_b = st.columns([6, 1])
-            with col_a:
+            thumb, body = st.columns([1, 3])
+            with thumb:
+                st.markdown('<span class="ep-row ep-row-thumb"></span>', unsafe_allow_html=True)
+                if ep.get("still_path"):
+                    st.markdown(
+                        f'<img src="https://image.tmdb.org/t/p/w300{ep["still_path"]}" '
+                        f'style="width:100%; aspect-ratio:16/9; object-fit:cover; border-radius:8px; '
+                        f'display:block; {"opacity:0.45;" if future else ""}">',
+                        unsafe_allow_html=True)
+                else:
+                    st.markdown(
+                        '<div style="width:100%; aspect-ratio:16/9; border-radius:8px; background:'
+                        'rgba(255,255,255,0.05); display:flex; align-items:center; justify-content:center; '
+                        'color:#4a4a4a; font-size:0.6rem;">No still</div>', unsafe_allow_html=True)
+
+            with body:
+                st.markdown('<span class="ep-row ep-row-body"></span>', unsafe_allow_html=True)
                 st.checkbox(f"**E{ep['episode_number']}.** {ep.get('name', 'Episode')}",
                             value=ep_watched, key=f"chk_dlg_{show_id}_{e_code}",
                             on_change=cb_toggle_episode, args=(show_id, e_code),
@@ -1987,28 +2049,33 @@ def manage_show_dialog(show_id, show_name):
                 elif future:
                     meta_bits.append(f"🗓 {air} · {calc_time_remaining(air)}")
                 elif air:
-                    meta_bits.append(f"Aired {air}")
+                    meta_bits.append(air)
                 if ep.get("vote_average"):
                     meta_bits.append(f"⭐ {round(ep['vote_average'], 1)}")
 
                 if meta_bits:
                     st.markdown(
-                        f"<div style='font-size:0.63rem; color:#FFC107; margin-top:-10px; "
-                        f"margin-left:28px; margin-bottom:8px;'>{' · '.join(meta_bits)}</div>",
+                        f"<div style='font-size:0.62rem; color:#FFC107; font-weight:600; "
+                        f"margin:-8px 0 4px 0;'>{' · '.join(meta_bits)}</div>",
                         unsafe_allow_html=True)
-            with col_b:
-                if st.button("ℹ", key=f"inf_btn_ep_{show_id}_{e_code}"):
-                    cb_toggle_ep_info(show_id, e_code)
 
-            if st.session_state.get(f"view_info_{show_id}_{e_code}", False):
-                with st.container(border=True):
-                    if ep.get("still_path"):
-                        st.image(f"https://image.tmdb.org/t/p/w500{ep['still_path']}", use_container_width=True)
-                    st.write(ep.get("overview", "No synopsis available."))
-                    if ep_watched and st.button("📝 Open full episode & notes", key=f"open_full_{show_id}_{e_code}",
-                                                use_container_width=True):
+                # Synopsis inline, clamped to three lines. This replaces the old
+                # per-episode info button -- nothing to tap to see what it's about.
+                overview = (ep.get("overview") or "").strip()
+                if overview:
+                    st.markdown(
+                        f"<div style='font-size:0.68rem; color:#a8a8a8; line-height:1.45; "
+                        f"display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; "
+                        f"overflow:hidden; margin-bottom:2px;'>{overview}</div>",
+                        unsafe_allow_html=True)
+
+                if ep_watched and in_lib:
+                    if st.button("📝 Notes", key=f"open_full_{show_id}_{e_code}"):
                         open_dialog("episode", id=show_id, name=show_name, code=e_code)
                         st.rerun()
+
+            st.markdown("<hr style='margin:6px 0 10px 0; border-color:rgba(255,255,255,0.07);'>",
+                        unsafe_allow_html=True)
 
     # ---------- cast ----------
     st.divider()
