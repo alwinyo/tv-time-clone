@@ -337,7 +337,9 @@ st.markdown("""
     div[data-testid="stHorizontalBlock"]:has(.ep-row),
     div[data-testid="stColumns"]:has(.ep-row) {
         display: flex !important; flex-direction: row !important; flex-wrap: nowrap !important;
-        gap: 10px !important; align-items: flex-start !important;
+        /* stretch, not flex-start, so the thumbnail column is as tall as the
+           text beside it and Notes can be pushed to the bottom of the row */
+        gap: 10px !important; align-items: stretch !important;
     }
     div[data-testid="column"]:has(.ep-row-thumb),
     div[data-testid="stColumn"]:has(.ep-row-thumb) {
@@ -352,9 +354,21 @@ st.markdown("""
     div[data-testid="column"]:has(.ep-row-body) label p {
         font-size: 0.78rem !important; line-height: 1.25 !important;
     }
+    /* Column becomes a flex stack; the Notes container takes margin-top:auto so
+       it drops to the bottom edge of the row instead of hugging the still. */
+    div[data-testid="column"]:has(.ep-row-thumb) > div,
+    div[data-testid="stColumn"]:has(.ep-row-thumb) > div {
+        display: flex !important; flex-direction: column !important;
+        height: 100% !important; gap: 0 !important;
+    }
+    div[data-testid="column"]:has(.ep-row-thumb) [data-testid="stElementContainer"]:has(div[data-testid="stButton"]),
+    div[data-testid="stColumn"]:has(.ep-row-thumb) [data-testid="stElementContainer"]:has(div[data-testid="stButton"]) {
+        margin-top: auto !important;
+        padding-bottom: 4px !important;
+    }
     div[data-testid="column"]:has(.ep-row-thumb) div[data-testid="stButton"] button {
         padding: 3px 6px !important; min-height: 0 !important; height: auto !important;
-        margin-top: 5px !important;
+        margin-top: 8px !important;
         border-radius: 8px !important; background: rgba(255,255,255,0.05) !important;
         border: 1px solid rgba(255,255,255,0.12) !important;
     }
