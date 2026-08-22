@@ -1315,6 +1315,16 @@ def cb_clear_lib_mov():
 
 
 # --- VISUAL HELPERS ---
+def tmdb_img(path, size="w342", fallback="https://via.placeholder.com/342x513/222222/555555?text=No+Poster"):
+    """Football shows store an absolute crest URL; TMDB stores a bare path.
+    Prefixing a full URL with the TMDB host produced broken images in the
+    journal and in recaps, so every render site goes through this."""
+    path = str(path or "")
+    if path.startswith("http"):
+        return path
+    return f"https://image.tmdb.org/t/p/{size}{path}" if path else fallback
+
+
 def render_poster_card(title, poster_path, subtitle="", progress_pct=-1.0, media_html=None):
     """
     Poster with the title along the bottom and the episode/countdown badge as a
@@ -1610,6 +1620,10 @@ def render_inline_actor_pokedex(actor_id):
 # Add FOOTBALL_KEY to your Streamlit secrets (free key from
 # football-data.org/client/register). Without it the feature stays hidden.
 # =====================================================================
+
+# A match runs ~90 min plus stoppage and half-time. Counting one as a 45-minute
+# TV episode roughly halved the screen time football contributed to your stats.
+MATCH_MINUTES = 115
 
 FOOTBALL_KEY = st.secrets.get("FOOTBALL_KEY", "")
 FOOTBALL_ENABLED = bool(FOOTBALL_KEY)
@@ -2009,8 +2023,8 @@ def recap_top_shows(counts, limit=3):
         obj = get_show(sid)
         if not obj:
             continue
-        poster = (f'https://image.tmdb.org/t/p/w185{obj.get("poster_path")}'
-                  if obj.get("poster_path") else 'https://via.placeholder.com/185x278/222/555?text=%20')
+        poster = tmdb_img(obj.get("poster_path"), "w185",
+                          "https://via.placeholder.com/185x278/222/555?text=%20")
         cards.append(
             f'<div style="display:flex; align-items:center; gap:12px; padding:8px 0;">'
             f'<span style="font-size:1rem; font-weight:900; color:#FFC107; width:20px;">{rank}</span>'
@@ -3388,7 +3402,7 @@ with t_profile:
         for show in shows:
             w_eps = len(show.get("watched_episodes", []))
             total_episodes_watched += w_eps
-            total_tv_mins += (w_eps * 45)
+            total_tv_mins += w_eps * (MATCH_MINUTES if is_football_show(show) else 45)
 
         for m in st.session_state.db["movies"]:
             if m.get("watched", False):
@@ -3515,19 +3529,30 @@ with t_profile:
             curr_d -= timedelta(days=1)
 
         stagnant_shows, almost_finished = [], []
+        backlog_mins = 0
         for s in st.session_state.db["shows"]:
             if s.get("dropped", False):
                 continue
-            t_eps = s.get("total_episodes", 1)
+            football = is_football_show(s)
+            if football:
+                # Only fixtures that have actually kicked off are a backlog. The
+                # whole 380-match season counted as "to watch" made the clearance
+                # estimate meaningless.
+                code, season = parse_football_id(s["id"])
+                t_eps = sum(1 for games in football_matchdays(code, season).values()
+                            for g in games if g["started"])
+            else:
+                t_eps = s.get("total_episodes", 1)
             w_eps = len(s.get("watched_episodes", []))
             total_ep_db += t_eps
             watched_ep_db += w_eps
-            rem = t_eps - w_eps
+            rem = max(0, t_eps - w_eps)
+            backlog_mins += rem * (MATCH_MINUTES if football else 45)
 
-            if 0 < rem <= 3:
+            if 0 < rem <= 3 and not football:
                 almost_finished.append({"name": s["name"], "rem": rem})
 
-            if 0 < w_eps < t_eps:
+            if 0 < w_eps < t_eps and not football:
                 s_hist = [h for h in history_sorted if h["t"] == "s" and str(h["i"]) == str(s["id"])]
                 if s_hist:
                     try:
@@ -3538,7 +3563,7 @@ with t_profile:
 
         total_mov_db = len(st.session_state.db["movies"])
         watched_mov_db = sum(1 for m in st.session_state.db["movies"] if m.get("watched") and not m.get("dropped"))
-        backlog_mins = ((total_ep_db - watched_ep_db) * 45) + ((total_mov_db - watched_mov_db) * 120)
+        backlog_mins += (total_mov_db - watched_mov_db) * 120
         days_to_clear = int(backlog_mins / daily_avg_mins) if daily_avg_mins > 0 else 999
         total_items = total_ep_db + total_mov_db
         completion_pct = int(((watched_ep_db + watched_mov_db) / total_items) * 100) if total_items > 0 else 0
@@ -3616,6 +3641,8 @@ with t_profile:
 
             genre_counts = {}
             for t, i in top_10:
+                if not str(i).isdigit():
+                    continue          # football ids aren't TMDB ids; skip the lookup
                 details = fetch_api(f"https://api.themoviedb.org/3/{'tv' if t == 's' else 'movie'}/{i}?api_key={TMDB_KEY}")
                 for g in details.get("genres", []):
                     genre_counts[g["name"]] = genre_counts.get(g["name"], 0) + 1
@@ -3749,7 +3776,8 @@ with t_profile:
                         ep_code = h.get('e', '')
                         r_stars = ("⭐" * h.get('r', 0)) if h.get('r', 0) > 0 else ""
                         f_moji = h.get('f', '')
-                        poster_url = f"https://image.tmdb.org/t/p/w185{poster}" if poster else "https://via.placeholder.com/185x278/222222/555555?text=No+Img"
+                        poster_url = tmdb_img(poster, "w185",
+                                              "https://via.placeholder.com/185x278/222222/555555?text=No+Img")
 
                         badges = pill(ep_code, gold=True) + pill(r_stars) + pill(f_moji if f_moji and f_moji != "None" else "") + pill(f"📡 {h.get('p')}" if h.get("p") and h.get("p") != "None" else "")
 
@@ -3758,7 +3786,10 @@ with t_profile:
                             st.markdown(history_card_html(s_name, poster_url, dt, badges), unsafe_allow_html=True)
                             st.markdown('<span class="history-wrapper"></span>', unsafe_allow_html=True)
                             if st.button("INFO", key=f"h_r_tv_{h['i']}_{ep_code}_{h_idx}", use_container_width=True):
-                                show_dialog_once(show_episode_details, h['i'], s_name, ep_code)
+                                if is_football_show(show):
+                                    show_dialog_once(football_dialog, h['i'], s_name)
+                                else:
+                                    show_dialog_once(show_episode_details, h['i'], s_name, ep_code)
                 if len(tv_hist) > st.session_state.hist_tv_limit:
                     shown = min(st.session_state.hist_tv_limit, len(tv_hist))
                     st.caption(f"Showing {shown:,} of {len(tv_hist):,} entries")
@@ -3798,7 +3829,8 @@ with t_profile:
 
                         r_stars = ("⭐" * h.get('r', 0)) if h.get('r', 0) > 0 else ""
                         f_moji = h.get('f', '')
-                        poster_url = f"https://image.tmdb.org/t/p/w185{poster}" if poster else "https://via.placeholder.com/185x278/222222/555555?text=No+Img"
+                        poster_url = tmdb_img(poster, "w185",
+                                              "https://via.placeholder.com/185x278/222222/555555?text=No+Img")
 
                         badges = pill("🎬 Movie", gold=True) + pill(r_stars) + pill(f_moji if f_moji and f_moji != "None" else "") + pill(f"📡 {h.get('p')}" if h.get("p") and h.get("p") != "None" else "")
 
