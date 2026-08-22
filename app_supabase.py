@@ -690,7 +690,7 @@ def pack_db(db):
     for m in db.get("movies", []):
         packed["m"].append([m["id"], m["name"], 1 if m["watched"] else 0, m.get("poster_path", ""), m.get("release_date", ""), m.get("runtime", 0), 1 if m.get("dropped") else 0])
     for s in db.get("shows", []):
-        packed["s"].append([s["id"], s["name"], encode_eps(s.get("watched_episodes", [])), s.get("poster_path", ""), s.get("first_air_date", ""), s.get("total_episodes", 1), 1 if s.get("dropped") else 0])
+        packed["s"].append([s["id"], s["name"], encode_eps(s.get("watched_episodes", [])), s.get("poster_path", ""), s.get("first_air_date", ""), s.get("total_episodes", 1), 1 if s.get("dropped") else 0, s.get("src", "tmdb")])
     for k, v in db.get("analytics", {}).items():
         packed["a"][k] = [v.get("tv", 0), v.get("movie", 0)]
     packed["r"] = db.get("seen_recaps", [])
@@ -702,7 +702,7 @@ def unpack_db(packed):
     for m in packed.get("m", []):
         db["movies"].append({"id": m[0], "name": m[1], "watched": bool(m[2]), "poster_path": m[3], "release_date": m[4], "runtime": m[5], "dropped": bool(m[6]) if len(m) > 6 else False})
     for s in packed.get("s", []):
-        db["shows"].append({"id": s[0], "name": s[1], "watched_episodes": decode_eps(s[2]), "poster_path": s[3], "first_air_date": s[4], "total_episodes": s[5], "dropped": bool(s[6]) if len(s) > 6 else False})
+        db["shows"].append({"id": s[0], "name": s[1], "watched_episodes": decode_eps(s[2]), "poster_path": s[3], "first_air_date": s[4], "total_episodes": s[5], "dropped": bool(s[6]) if len(s) > 6 else False, "src": s[7] if len(s) > 7 else "tmdb"})
     # Old payloads still carry "h". Park it under legacy_history so the one-time
     # migration can move it into the table; it is NOT used as live history.
     for h in packed.get("h", []):
@@ -1135,6 +1135,7 @@ def shows_payload():
             bool(s.get("dropped", False)),
         )
         for s in st.session_state.db.get("shows", [])
+        if s.get("src", "tmdb") != "football"      # football has its own scan
     )
 
 
@@ -1320,7 +1321,12 @@ def render_poster_card(title, poster_path, subtitle="", progress_pct=-1.0):
     artwork, where it got clipped. Moving it to the opposite corner removes the
     collision entirely and reads better -- it is where streaming apps put it.
     """
-    img_url = f"https://image.tmdb.org/t/p/w342{poster_path}" if poster_path else "https://via.placeholder.com/342x513/222222/555555?text=No+Poster"
+    # Football entries carry an absolute crest URL rather than a TMDB path.
+    absolute = str(poster_path or "").startswith("http")
+    img_url = (poster_path if absolute else
+               (f"https://image.tmdb.org/t/p/w342{poster_path}" if poster_path
+                else "https://via.placeholder.com/342x513/222222/555555?text=No+Poster"))
+    fit = "contain" if absolute else "cover"
     prog_width = min(progress_pct, 1.0) * 100
     prog_html = (f'<div style="position:absolute; bottom:0; left:0; height:3px; width:{prog_width}%; '
                  f'background:#FFC107; box-shadow:0 0 8px #FFC107; z-index:4;"></div>') if progress_pct >= 0 else ''
@@ -1344,7 +1350,7 @@ def render_poster_card(title, poster_path, subtitle="", progress_pct=-1.0):
 
     html = (
         f'<div style="position:relative; aspect-ratio:2/3; background-color:#111; border-radius:8px; overflow:hidden;">'
-        f'<img src="{img_url}" style="width:100%; height:100%; object-fit:cover; display:block;">'
+        f'<img src="{img_url}" style="width:100%; height:100%; object-fit:{fit}; display:block;">'
         f'<div style="position:absolute; bottom:0; left:0; right:0; height:55%; '
         f'background:linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.7) 45%, rgba(0,0,0,0) 100%); z-index:1;"></div>'
         f'{badge_html}'
@@ -1436,10 +1442,14 @@ def render_apple_tv_header(backdrop_path, poster_path, title, badges_html):
     inside one padded flex row, and the poster is a fixed 2/3 box with
     object-fit:cover so wide or short artwork can't distort it.
     """
-    bg = f"https://image.tmdb.org/t/p/w780{backdrop_path}" if backdrop_path else (
-         f"https://image.tmdb.org/t/p/w342{poster_path}" if poster_path else "")
-    post = f"https://image.tmdb.org/t/p/w342{poster_path}" if poster_path else \
-           "https://via.placeholder.com/342x513/222222/555555?text=No+Poster"
+    bg = (f"https://image.tmdb.org/t/p/w780{backdrop_path}" if backdrop_path else
+          ("" if str(poster_path or "").startswith("http") else
+           (f"https://image.tmdb.org/t/p/w342{poster_path}" if poster_path else "")))
+    absolute = str(poster_path or "").startswith("http")
+    post = (poster_path if absolute else
+            (f"https://image.tmdb.org/t/p/w342{poster_path}" if poster_path else
+             "https://via.placeholder.com/342x513/222222/555555?text=No+Poster"))
+    fit = "contain" if absolute else "cover"
     blur = 0 if backdrop_path else 18
 
     bg_layer = (f'<div style="position:absolute; inset:0; background-image:url(\'{bg}\'); '
@@ -1455,7 +1465,7 @@ def render_apple_tv_header(backdrop_path, poster_path, title, badges_html):
         f'padding:74px 18px 18px 18px;">'
         f'<div style="flex:0 0 96px; width:96px; aspect-ratio:2/3; border-radius:10px; overflow:hidden; '
         f'box-shadow:0 10px 24px rgba(0,0,0,0.85); border:1px solid rgba(255,255,255,0.14); background:#111;">'
-        f'<img src="{post}" style="width:100%; height:100%; object-fit:cover; display:block;">'
+        f'<img src="{post}" style="width:100%; height:100%; object-fit:{fit}; display:block;">'
         f'</div>'
         f'<div style="flex:1; min-width:0; padding-bottom:2px;">'
         f'<div style="font-size:1.25rem; font-weight:800; line-height:1.15; color:#fff; '
@@ -1552,6 +1562,354 @@ def render_inline_actor_pokedex(actor_id):
                         st.session_state.active_actor = None
                         open_dialog("show" if item.get("media_type") == "tv" else "movie", id=item['id'], name=i_title)
                         st.rerun()
+
+
+
+# =====================================================================
+# FOOTBALL (football-data.org)
+#
+# TMDB does not index live sport, so fixtures come from football-data.org.
+# The free tier returns real UTC kickoff times -- more precise than TMDB's
+# bare calendar dates.
+#
+# It slots into the existing model rather than bolting on a parallel one:
+#   season   -> a show, id "PL-2026", src "football"
+#   matchday -> a season (1..38)
+#   match    -> an episode, S{matchday}E{n}
+# So the library, Up Next, Soon, history and journal all work untouched.
+#
+# NOTHING here is pinned to a year or to one league:
+#   * the current season is read from the API, so August rollover is automatic
+#   * seasons are tracked independently, so 26/27 stays in your library
+#     as a finished season while 27/28 starts
+#   * adding another competition is one line in FOOTBALL_COMPETITIONS
+#
+# Add FOOTBALL_KEY to your Streamlit secrets (free key from
+# football-data.org/client/register). Without it the feature stays hidden.
+# =====================================================================
+
+FOOTBALL_KEY = st.secrets.get("FOOTBALL_KEY", "")
+FOOTBALL_ENABLED = bool(FOOTBALL_KEY)
+
+# Free tier also covers: BL1 Bundesliga, SA Serie A, PD La Liga, FL1 Ligue 1,
+# DED Eredivisie, PPL Primeira Liga, ELC Championship, CL Champions League.
+FOOTBALL_COMPETITIONS = {
+    "PL": "Premier League",
+}
+
+
+def football_headers():
+    return {"X-Auth-Token": FOOTBALL_KEY}
+
+
+@st.cache_data(ttl=21600, show_spinner=False)
+def fetch_competition(code):
+    """Competition metadata, including which season is currently running."""
+    if not FOOTBALL_ENABLED:
+        return {}
+    try:
+        res = requests.get(f"https://api.football-data.org/v4/competitions/{code}",
+                           headers=football_headers(), timeout=10)
+        return res.json() if res.status_code == 200 else {}
+    except Exception:
+        return {}
+
+
+def calendar_season():
+    """Season year from the calendar alone — no network, never fails.
+
+    European seasons run August to May, so before July we are still inside
+    last year's campaign.
+    """
+    now = get_dubai_time()
+    return now.year if now.month >= 7 else now.year - 1
+
+
+def current_season_year(code):
+    """The running season, straight from the API — never hardcoded.
+
+    Falls back to the calendar if the API is unreachable, so a football-data
+    outage degrades to a sensible guess instead of an error.
+    """
+    season = (fetch_competition(code) or {}).get("currentSeason") or {}
+    start = str(season.get("startDate") or "")[:4]
+    return int(start) if start.isdigit() else calendar_season()
+
+
+def competition_emblem(code):
+    return (fetch_competition(code) or {}).get("emblem") or \
+           f"https://crests.football-data.org/{code}.png"
+
+
+def football_show_id(code, season):
+    return f"{code}-{season}"
+
+
+def parse_football_id(show_id):
+    """'PL-2026' -> ('PL', 2026). Tolerant of anything unexpected."""
+    try:
+        code, season = str(show_id).rsplit("-", 1)
+        return code, int(season)
+    except Exception:
+        # Deliberately the calendar fallback, not current_season_year: a
+        # malformed id must never trigger a network call.
+        return "PL", calendar_season()
+
+
+def season_label(code, season):
+    name = FOOTBALL_COMPETITIONS.get(code, code)
+    return f"{name} {season}/{str(season + 1)[2:]}"
+
+
+def is_football_show(show):
+    return bool(show) and show.get("src") == "football"
+
+
+@st.cache_data(ttl=3600, show_spinner=False)
+def fetch_football_fixtures(code, season):
+    """Every fixture for one campaign in a single request.
+
+    Free tier allows 10 requests/minute; cached for an hour, so scores stay
+    fresh without ever approaching the limit.
+    """
+    if not FOOTBALL_ENABLED:
+        return []
+    try:
+        res = requests.get(
+            f"https://api.football-data.org/v4/competitions/{code}/matches?season={season}",
+            headers=football_headers(), timeout=10)
+        if res.status_code != 200:
+            return []
+        return res.json().get("matches", []) or []
+    except Exception:
+        return []
+
+
+def kickoff_local(utc_iso):
+    """UTC kickoff -> naive Dubai time. Real clock times, not just a date."""
+    if not utc_iso:
+        return None
+    try:
+        return datetime.fromisoformat(str(utc_iso).replace("Z", "+00:00")) \
+                       .astimezone(DUBAI_TZ).replace(tzinfo=None)
+    except Exception:
+        return None
+
+
+@st.cache_data(ttl=3600, show_spinner=False)
+def football_matchdays(code, season):
+    """{matchday: [match, ...]} flattened to what the UI needs."""
+    out = {}
+    for m in fetch_football_fixtures(code, season):
+        md = m.get("matchday") or 0
+        if not md:
+            continue
+        ko = kickoff_local(m.get("utcDate"))
+        score = (m.get("score", {}) or {}).get("fullTime", {}) or {}
+        home, away = m.get("homeTeam") or {}, m.get("awayTeam") or {}
+        out.setdefault(md, []).append({
+            "home": home.get("shortName") or home.get("name") or "TBC",
+            "away": away.get("shortName") or away.get("name") or "TBC",
+            "home_crest": home.get("crest") or "",
+            "away_crest": away.get("crest") or "",
+            "status": m.get("status", "SCHEDULED"),
+            "home_goals": score.get("home"),
+            "away_goals": score.get("away"),
+            "kickoff": ko.strftime("%Y-%m-%d %H:%M") if ko else "",
+            "date": ko.strftime("%Y-%m-%d") if ko else "",
+            "started": bool(ko and ko <= get_dubai_time()),
+        })
+    for md in out:
+        out[md].sort(key=lambda x: x["kickoff"] or "9999")
+    return dict(sorted(out.items()))
+
+
+def football_total(code, season):
+    return sum(len(v) for v in football_matchdays(code, season).values())
+
+
+def match_label(match):
+    return f"{match['home']} vs {match['away']}"
+
+
+def match_score(match):
+    if match.get("home_goals") is None:
+        return ""
+    return f"{match['home_goals']}\u2013{match['away_goals']}"
+
+
+def ensure_football_show(code, season):
+    """Add a season to the library if it isn't already there."""
+    sid = football_show_id(code, season)
+    show = get_show(sid)
+    if show:
+        return show
+    show = {
+        "id": sid, "name": season_label(code, season), "watched_episodes": [],
+        "poster_path": competition_emblem(code), "first_air_date": "",
+        "total_episodes": football_total(code, season) or 380,
+        "dropped": False, "src": "football",
+    }
+    st.session_state.db["shows"].append(show)
+    save_db()
+    return show
+
+
+def tracked_football_shows():
+    return [s for s in st.session_state.db.get("shows", []) if is_football_show(s)]
+
+
+def compute_football_rows(kind):
+    """Up Next / Soon rows for football, in the same shape as the TV rows."""
+    if not FOOTBALL_ENABLED:
+        return []
+    rows = []
+    for show in tracked_football_shows():
+        if show.get("dropped"):
+            continue
+        code, season = parse_football_id(show["id"])
+        watched = set(show.get("watched_episodes", []))
+        pick = None
+        for md, games in football_matchdays(code, season).items():
+            for i, g in enumerate(games, 1):
+                code_str = f"S{md}E{i}"
+                if code_str in watched:
+                    continue
+                if kind == "next" and g["started"]:
+                    pick = (code_str, g)
+                    break
+                if kind == "soon" and not g["started"]:
+                    pick = (code_str, g)
+                    break
+            if pick:
+                break
+        if not pick:
+            continue
+        code_str, g = pick
+        rows.append({
+            "id": show["id"], "name": show["name"], "poster": show.get("poster_path"),
+            "backdrop": "", "code": code_str, "ep_name": match_label(g),
+            "date": g["date"] or TODAY, "is_skipped": False, "src": "football",
+        })
+    return rows
+
+
+@st.dialog("Football")
+def football_dialog(show_id, show_name):
+    code, season = parse_football_id(show_id)
+    show = get_show(show_id)
+    in_lib = show is not None
+    days = football_matchdays(code, season)
+    total = sum(len(v) for v in days.values())
+    watched = set(show.get("watched_episodes", [])) if in_lib else set()
+    played = sum(1 for games in days.values() for g in games if g["started"])
+    is_current = (season == current_season_year(code))
+
+    badges = '<span class="badge badge-gold">Football</span>'
+    badges += f'<span class="badge">{len(days)} matchdays</span>'
+    if not is_current:
+        badges += '<span class="badge">Past season</span>'
+    if in_lib:
+        badges += f'<span class="badge">\u2705 {len(watched)}/{total or 380}</span>'
+    render_apple_tv_header("", competition_emblem(code), show_name, badges)
+
+    if not days:
+        st.error("Couldn't load fixtures. Check FOOTBALL_KEY, or wait a minute — "
+                 "the free tier allows 10 requests per minute.")
+        return
+
+    if in_lib:
+        st.progress(min(len(watched) / total, 1.0) if total else 0.0)
+        st.caption(f"**{len(watched)} of {total} matches** · {max(0, played - len(watched))} played but unwatched")
+        stat_cards([
+            (max(0, played - len(watched)), "left", "To catch up"),
+            (total - played, "fix", "Still to play"),
+            (len(days), "md", "Matchdays"),
+        ])
+    else:
+        if st.button("➕ Track this season", use_container_width=True, type="primary",
+                     key=f"add_fb_{show_id}"):
+            ensure_football_show(code, season)
+            open_dialog("football", id=show_id, name=show_name)
+            st.rerun()
+
+    md_keys = list(days.keys())
+    default_md = next((md for md in md_keys if any(not g["started"] for g in days[md])), md_keys[-1])
+    labels, lookup = [], {}
+    for md in md_keys:
+        games = days[md]
+        done = sum(1 for i, g in enumerate(games, 1) if f"S{md}E{i}" in watched)
+        label = f"Matchday {md} — {done}/{len(games)}" + (" ✓" if done == len(games) else "")
+        labels.append(label)
+        lookup[label] = md
+
+    sel = st.selectbox("Matchday", labels, index=md_keys.index(default_md),
+                       key=f"fb_md_{show_id}", label_visibility="collapsed")
+    md = lookup[sel]
+    games = days[md]
+
+    if in_lib:
+        playable = [f"S{md}E{i}" for i, g in enumerate(games, 1) if g["started"]]
+        if playable:
+            b1, b2 = st.columns(2)
+            with b1:
+                if st.button("✅ Mark matchday", use_container_width=True, key=f"fb_all_{show_id}_{md}",
+                             disabled=all(c in watched for c in playable)):
+                    for c in playable:
+                        if c not in watched:
+                            mark_episode(show_id, c, True)
+                    open_dialog("football", id=show_id, name=show_name)
+                    st.rerun()
+            with b2:
+                if st.button("↩ Unmark matchday", use_container_width=True, key=f"fb_none_{show_id}_{md}",
+                             disabled=not any(c in watched for c in playable)):
+                    for c in playable:
+                        if c in watched:
+                            mark_episode(show_id, c, False)
+                    open_dialog("football", id=show_id, name=show_name)
+                    st.rerun()
+
+    st.markdown("<div style='height:6px;'></div>", unsafe_allow_html=True)
+
+    for i, g in enumerate(games, 1):
+        ecode = f"S{md}E{i}"
+        seen = ecode in watched
+        score = match_score(g)
+        crest = "width:22px;height:22px;object-fit:contain;vertical-align:middle;margin:0 5px;"
+
+        left, right = st.columns([5, 2])
+        with left:
+            st.markdown(
+                f'<div style="display:flex; align-items:center; gap:2px; font-size:0.78rem; '
+                f'font-weight:700; {"opacity:0.55;" if not g["started"] else ""}">'
+                + (f'<img src="{g["home_crest"]}" style="{crest}">' if g["home_crest"] else '')
+                + f'<span>{g["home"]}</span>'
+                + f'<span style="color:#FFC107; font-weight:800; margin:0 6px;">{score or "v"}</span>'
+                + (f'<img src="{g["away_crest"]}" style="{crest}">' if g["away_crest"] else '')
+                + f'<span>{g["away"]}</span></div>'
+                + f'<div style="font-size:0.62rem; color:#9a9a9a; margin-top:2px;">'
+                + (f'{g["kickoff"]} · {"FT" if g["status"] == "FINISHED" else g["status"].title()}'
+                   if g["started"] else f'{g["kickoff"]} · {calc_time_remaining(g["date"])}')
+                + '</div>', unsafe_allow_html=True)
+        with right:
+            if in_lib and g["started"]:
+                if st.button("✓ Seen" if seen else "Mark", key=f"fb_m_{show_id}_{ecode}",
+                             use_container_width=True, type="secondary" if seen else "primary"):
+                    mark_episode(show_id, ecode, not seen)
+                    open_dialog("football", id=show_id, name=show_name)
+                    st.rerun()
+            elif not g["started"]:
+                st.caption("Upcoming")
+
+        st.markdown("<hr style='margin:6px 0; border-color:rgba(255,255,255,0.06);'>",
+                    unsafe_allow_html=True)
+
+    if in_lib:
+        st.divider()
+        if st.button("⚰️ Stop tracking this season", use_container_width=True, key=f"fb_drop_{show_id}"):
+            cb_drop_tv(show_id)
+            close_dialog()
+            st.rerun()
 
 
 # --- RECAP ENGINE ---
@@ -2390,6 +2748,8 @@ if _d:
         show_dialog_once(manage_show_dialog, _d["id"], _d["name"])
     elif kind == "movie":
         show_dialog_once(show_movie_details, _d["id"], _d["name"])
+    elif kind == "football":
+        show_dialog_once(football_dialog, _d["id"], _d["name"])
     elif kind == "recap_month":
         show_dialog_once(show_monthly_recap_dialog, _d["month_key"], _d["title"], _d["stats"], _d["recap_id"])
     elif kind == "recap_year":
@@ -2424,7 +2784,9 @@ with t_next:
     if next_filter == "📺 Series":
         up_next_tv, heal = compute_up_next_tv(shows_payload(), TODAY)
         apply_heal(heal)
-        up_next_tv = [dict(r, is_rec=("s", str(r["id"])) in recent_active_ids) for r in up_next_tv]
+        up_next_tv = list(up_next_tv) + compute_football_rows("next")
+        up_next_tv = [dict(r, is_rec=("s", str(r["id"])) in recent_active_ids,
+                           is_skipped=r.get("is_skipped", False)) for r in up_next_tv]
 
         if next_sort == "Alphabetical":
             up_next_tv.sort(key=lambda x: x["name"].lower())
@@ -2455,7 +2817,10 @@ with t_next:
                 st.button("▶ Resume Watching", key=f"hero_w_tv_{hero['id']}", on_click=cb_watch_tv_feed, args=(hero['id'], hero['name'], hero['code']), use_container_width=True, type="primary")
             with c_h2:
                 if st.button("ℹ INFO", key=f"hero_i_tv_{hero['id']}", use_container_width=True):
-                    show_dialog_once(show_episode_details, hero['id'], hero['name'], hero['code'])
+                    if hero.get("src") == "football":
+                        show_dialog_once(football_dialog, hero['id'], hero['name'])
+                    else:
+                        show_dialog_once(show_episode_details, hero['id'], hero['name'], hero['code'])
 
             st.markdown("<div style='height: 15px;'></div>", unsafe_allow_html=True)
 
@@ -2467,9 +2832,13 @@ with t_next:
                     with cols[j]:
                         if idx < len(visible):
                             item = visible[idx]
+                            badge = item["ep_name"] if item.get("src") == "football" else item["code"]
                             if poster_button(item["name"], item["poster"],
-                                             key=f"n_i_tv_{item['id']}_{item['code']}_{idx}", subtitle=item["code"]):
-                                show_dialog_once(show_episode_details, item['id'], item['name'], item['code'])
+                                             key=f"n_i_tv_{item['id']}_{item['code']}_{idx}", subtitle=badge):
+                                if item.get("src") == "football":
+                                    show_dialog_once(football_dialog, item['id'], item['name'])
+                                else:
+                                    show_dialog_once(show_episode_details, item['id'], item['name'], item['code'])
                         else:
                             st.markdown('<span class="grid-3-col"></span>', unsafe_allow_html=True)
 
@@ -2530,7 +2899,7 @@ with t_soon:
     if soon_filter == "📺 Series":
         soon_tv, heal = compute_soon_tv(shows_payload(), TODAY)
         apply_heal(heal)
-        soon_tv = list(soon_tv)
+        soon_tv = list(soon_tv) + compute_football_rows("soon")
 
         if soon_sort == "Alphabetical":
             soon_tv.sort(key=lambda x: x["name"].lower())
@@ -2549,10 +2918,14 @@ with t_soon:
                     with cols[j]:
                         if idx < len(visible):
                             item = visible[idx]
+                            head = item["ep_name"] if item.get("src") == "football" else item["code"]
                             if poster_button(item["name"], item["poster"],
                                              key=f"s_i_tv_{item['id']}_{item['code']}_{idx}",
-                                             subtitle=f"{item['code']} • {calc_time_remaining(item['date'])}"):
-                                show_dialog_once(show_episode_details, item['id'], item['name'], item['code'])
+                                             subtitle=f"{head} • {calc_time_remaining(item['date'])}"):
+                                if item.get("src") == "football":
+                                    show_dialog_once(football_dialog, item['id'], item['name'])
+                                else:
+                                    show_dialog_once(show_episode_details, item['id'], item['name'], item['code'])
                         else:
                             st.markdown('<span class="grid-3-col"></span>', unsafe_allow_html=True)
 
@@ -2634,8 +3007,25 @@ with t_search:
                                 show_dialog_once(manage_show_dialog if search_type == "TV Shows" else show_movie_details, item_id, title)
                         else:
                             st.markdown('<span class="grid-3-col"></span>', unsafe_allow_html=True)
+        else:
+            # An empty result used to render nothing at all, so "no matches" and
+            # "app is broken" looked identical.
+            other = "Movies" if search_type == "TV Shows" else "TV Shows"
+            st.markdown(
+                f'<div style="text-align:center; padding:36px 18px; color:#9a9a9a;">'
+                f'<div style="font-size:1.6rem; margin-bottom:8px;">🔍</div>'
+                f'<div style="font-size:0.9rem; font-weight:700; color:#EDEDED; margin-bottom:6px;">'
+                f'Nothing found in {search_type}</div>'
+                f'<div style="font-size:0.75rem; line-height:1.5;">No {search_type.lower()} match '
+                f'&ldquo;{search_query}&rdquo;. Try switching to {other}, or a shorter title.</div>'
+                f'<div style="font-size:0.68rem; line-height:1.5; margin-top:12px; color:#7a7a7a;">'
+                f'Live sport isn&rsquo;t in TMDB, so leagues and fixtures won&rsquo;t appear here &mdash; '
+                f'only documentaries and highlight shows about them.</div>'
+                f'</div>', unsafe_allow_html=True)
     else:
         genre_options = ["Trending", "Comedy", "Action", "Sci-Fi", "Thriller", "Horror"]
+        if FOOTBALL_ENABLED:
+            genre_options.append("Football")
         if "discover_genre" not in st.session_state:
             st.session_state.discover_genre = "Trending"
         segmented_nav("discover_genre", [(g, g) for g in genre_options], "genre_nav", per_row=3)
@@ -2666,7 +3056,48 @@ with t_search:
                         st.session_state.c_limits[title] = limit + 10
                         st.rerun()
 
-        if selected_genre == "Trending":
+        if selected_genre == "Football":
+            for code, comp_name in FOOTBALL_COMPETITIONS.items():
+                season = current_season_year(code)          # from the API, not hardcoded
+                sid = football_show_id(code, season)
+                label = season_label(code, season)
+                fx = football_matchdays(code, season)
+
+                st.markdown(f"<h5 style='margin-bottom:5px;'>{comp_name}</h5>", unsafe_allow_html=True)
+                if not fx:
+                    st.error("Couldn't load fixtures — check FOOTBALL_KEY in your secrets, or wait "
+                             "a minute (the free tier allows 10 requests per minute).")
+                    continue
+
+                tracked_now = get_show(sid)
+                st.caption(f"{sum(len(v) for v in fx.values())} fixtures across {len(fx)} matchdays"
+                           + (" · tracking" if tracked_now else ""))
+
+                # Anything from an earlier campaign you still have in the library.
+                past = [x for x in tracked_football_shows()
+                        if parse_football_id(x["id"])[0] == code and x["id"] != sid]
+                if past and not tracked_now:
+                    st.info(f"**New season available.** {label} has started — add it below. "
+                            f"Your earlier season stays in your library untouched.")
+
+                cards = [{"id": sid, "name": label, "poster": competition_emblem(code),
+                          "sub": "Tracking" if tracked_now else "Tap to add"}]
+                cards += [{"id": x["id"], "name": x["name"], "poster": x.get("poster_path"),
+                           "sub": "Past season"} for x in past]
+
+                for row_start in range(0, len(cards), 3):
+                    cols = st.columns(3)
+                    for j in range(3):
+                        idx = row_start + j
+                        with cols[j]:
+                            if idx < len(cards):
+                                c = cards[idx]
+                                if poster_button(c["name"], c["poster"],
+                                                 key=f"fb_card_{c['id']}", subtitle=c["sub"]):
+                                    show_dialog_once(football_dialog, c["id"], c["name"])
+                            else:
+                                st.markdown('<span class="grid-3-col"></span>', unsafe_allow_html=True)
+        elif selected_genre == "Trending":
             if not st.session_state.rec_show:
                 watched_tv = [s for s in st.session_state.db.get("shows", []) if s.get("watched_episodes")]
                 if watched_tv:
@@ -2695,6 +3126,8 @@ with t_search:
                 render_carousel(f"🇰🇷 K-Movies ({current_date.strftime('%B %Y')})", k_mov["results"], "movie")
         else:
             genre_map_tv = {"Comedy": 35, "Action": 10759, "Sci-Fi": 10765, "Thriller": 9648, "Horror": 9648}
+            if selected_genre not in genre_map_tv:
+                st.stop()
             genre_map_mov = {"Comedy": 35, "Action": 28, "Sci-Fi": 878, "Thriller": 53, "Horror": 27}
             tv_g = fetch_api(f"https://api.themoviedb.org/3/discover/tv?api_key={TMDB_KEY}&with_genres={genre_map_tv[selected_genre]}&sort_by=popularity.desc")
             mov_g = fetch_api(f"https://api.themoviedb.org/3/discover/movie?api_key={TMDB_KEY}&with_genres={genre_map_mov[selected_genre]}&sort_by=popularity.desc")
@@ -2779,7 +3212,10 @@ with t_tv:
                             show, t_eps, w_eps = paginated_shows[idx]
                             prog_val = min(w_eps / t_eps, 1.0) if t_eps > 0 else 0.0
                             if poster_button(show["name"], show.get("poster_path"), key=f"s_mgr_{show['id']}_{idx}", progress_pct=prog_val):
-                                show_dialog_once(manage_show_dialog, show['id'], show['name'])
+                                if is_football_show(show):
+                                    show_dialog_once(football_dialog, show['id'], show['name'])
+                                else:
+                                    show_dialog_once(manage_show_dialog, show['id'], show['name'])
                         else:
                             st.markdown('<span class="grid-3-col"></span>', unsafe_allow_html=True)
 
