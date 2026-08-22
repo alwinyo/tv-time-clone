@@ -5,6 +5,7 @@ import json
 import time
 import re
 import calendar
+import math
 import random
 from datetime import datetime, timedelta, timezone
 from st_keyup import st_keyup
@@ -392,7 +393,9 @@ st.markdown("""
     }
     div[data-testid="column"]:has(.seg-nav),
     div[data-testid="stColumn"]:has(.seg-nav) {
-        flex: 1 1 50% !important; width: 50% !important; min-width: 0 !important;
+        /* 1 1 0, not 50%: the old fixed basis was written for the 2x2 library
+           filters and broke as soon as a row held three or more buttons. */
+        flex: 1 1 0 !important; width: auto !important; min-width: 0 !important;
         padding: 0 !important; display: block !important;
     }
     div[data-testid="column"]:has(.seg-nav) div[data-testid="stButton"] button,
@@ -1312,7 +1315,7 @@ def cb_clear_lib_mov():
 
 
 # --- VISUAL HELPERS ---
-def render_poster_card(title, poster_path, subtitle="", progress_pct=-1.0):
+def render_poster_card(title, poster_path, subtitle="", progress_pct=-1.0, media_html=None):
     """
     Poster with the title along the bottom and the episode/countdown badge as a
     floating pill in the TOP-LEFT corner.
@@ -1348,9 +1351,12 @@ def render_poster_card(title, poster_path, subtitle="", progress_pct=-1.0):
         f'overflow-wrap:anywhere;">{title}</div>'
     )
 
+    media = media_html or (
+        f'<img src="{img_url}" style="width:100%; height:100%; object-fit:{fit}; display:block;">')
+
     html = (
         f'<div style="position:relative; aspect-ratio:2/3; background-color:#111; border-radius:8px; overflow:hidden;">'
-        f'<img src="{img_url}" style="width:100%; height:100%; object-fit:{fit}; display:block;">'
+        f'{media}'
         f'<div style="position:absolute; bottom:0; left:0; right:0; height:55%; '
         f'background:linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.7) 45%, rgba(0,0,0,0) 100%); z-index:1;"></div>'
         f'{badge_html}'
@@ -1364,11 +1370,26 @@ def render_poster_card(title, poster_path, subtitle="", progress_pct=-1.0):
 
 
 def segmented_nav(state_key, options, key_prefix, per_row=2):
-    """Filter buttons as an even grid. Shared by the library tabs and Discover."""
+    """Filter buttons as an even grid. Shared by the library tabs and Discover.
+
+    Rows are balanced rather than greedy: seven options at three per row become
+    3 / 2 / 2, not 3 / 3 / 1. A lone button on the last row looked stranded and
+    stretched oddly, which is what a seventh genre exposed.
+    """
     current = st.session_state[state_key]
-    for row_start in range(0, len(options), per_row):
-        cols = st.columns(per_row)
-        for offset, (label, value) in enumerate(options[row_start:row_start + per_row]):
+    total = len(options)
+    if total == 0:
+        return
+    row_count = max(1, math.ceil(total / per_row))
+    base, extra = divmod(total, row_count)
+
+    idx = 0
+    for r in range(row_count):
+        size = base + (1 if r < extra else 0)
+        chunk = options[idx:idx + size]
+        idx += size
+        cols = st.columns(len(chunk))
+        for offset, (label, value) in enumerate(chunk):
             with cols[offset]:
                 st.markdown('<span class="seg-nav"></span>', unsafe_allow_html=True)
                 if st.button(label, key=f"{key_prefix}_{value}",
@@ -1378,7 +1399,8 @@ def segmented_nav(state_key, options, key_prefix, per_row=2):
                     st.rerun()
 
 
-def poster_button(title, poster_path, key, subtitle="", progress_pct=-1.0, marker="grid-3-col"):
+def poster_button(title, poster_path, key, subtitle="", progress_pct=-1.0, marker="grid-3-col",
+                  media_html=None):
     """
     Renders a poster whose entire artwork is one clickable hit area.
     The poster markdown and the button are the ONLY things placed in the
@@ -1387,7 +1409,8 @@ def poster_button(title, poster_path, key, subtitle="", progress_pct=-1.0, marke
     """
     if marker:
         st.markdown(f'<span class="{marker}"></span>', unsafe_allow_html=True)
-    render_poster_card(title, poster_path, subtitle=subtitle, progress_pct=progress_pct)
+    render_poster_card(title, poster_path, subtitle=subtitle, progress_pct=progress_pct,
+                       media_html=media_html)
     st.markdown('<span class="poster-wrapper"></span>', unsafe_allow_html=True)
     return st.button("OPEN", key=key, use_container_width=True)
 
@@ -1790,8 +1813,41 @@ def compute_football_rows(kind):
             "id": show["id"], "name": show["name"], "poster": show.get("poster_path"),
             "backdrop": "", "code": code_str, "ep_name": match_label(g),
             "date": g["date"] or TODAY, "is_skipped": False, "src": "football",
+            "match": g, "matchday": int(str(code_str).split("E")[0].replace("S", "")),
         })
     return rows
+
+
+def fixture_poster_html(row):
+    """Compose a fixture poster from the two club crests.
+
+    Nobody publishes per-matchday artwork, so every football card would
+    otherwise be the same competition emblem. Building it from the crests
+    gives each fixture its own identity, and they arrive in the same API
+    response as the fixture, so it costs no extra requests.
+    """
+    g = row.get("match") or {}
+    home, away = g.get("home_crest") or "", g.get("away_crest") or ""
+    crest = ("width:44%; max-width:52px; aspect-ratio:1; object-fit:contain; "
+             "filter:drop-shadow(0 3px 6px rgba(0,0,0,0.6));")
+    inner = ""
+    if home:
+        inner += f'<img src="{home}" style="{crest}">'
+    inner += ('<span style="color:#FFC107; font-size:0.62rem; font-weight:900; '
+              'margin:0 3px; opacity:0.85;">v</span>')
+    if away:
+        inner += f'<img src="{away}" style="{crest}">'
+
+    return (
+        f'<div style="position:absolute; inset:0; background:'
+        f'radial-gradient(circle at 50% 32%, #232A3A 0%, #0B0E14 78%); '
+        f'display:flex; flex-direction:column; align-items:center; justify-content:center; '
+        f'gap:9px; padding:10px 8px 34px;">'
+        f'<div style="font-size:0.5rem; font-weight:900; letter-spacing:0.16em; color:#FFC107; '
+        f'text-transform:uppercase; opacity:0.9;">Matchday {row.get("matchday", "")}</div>'
+        f'<div style="display:flex; align-items:center; justify-content:center; width:100%;">{inner}</div>'
+        f'</div>'
+    )
 
 
 @st.dialog("Football")
@@ -2832,9 +2888,11 @@ with t_next:
                     with cols[j]:
                         if idx < len(visible):
                             item = visible[idx]
-                            badge = item["ep_name"] if item.get("src") == "football" else item["code"]
+                            is_fb = item.get("src") == "football"
+                            badge = item["ep_name"] if is_fb else item["code"]
                             if poster_button(item["name"], item["poster"],
-                                             key=f"n_i_tv_{item['id']}_{item['code']}_{idx}", subtitle=badge):
+                                             key=f"n_i_tv_{item['id']}_{item['code']}_{idx}", subtitle=badge,
+                                             media_html=fixture_poster_html(item) if is_fb else None):
                                 if item.get("src") == "football":
                                     show_dialog_once(football_dialog, item['id'], item['name'])
                                 else:
@@ -2918,10 +2976,12 @@ with t_soon:
                     with cols[j]:
                         if idx < len(visible):
                             item = visible[idx]
-                            head = item["ep_name"] if item.get("src") == "football" else item["code"]
+                            is_fb = item.get("src") == "football"
+                            head = item["ep_name"] if is_fb else item["code"]
                             if poster_button(item["name"], item["poster"],
                                              key=f"s_i_tv_{item['id']}_{item['code']}_{idx}",
-                                             subtitle=f"{head} • {calc_time_remaining(item['date'])}"):
+                                             subtitle=f"{head} • {calc_time_remaining(item['date'])}",
+                                             media_html=fixture_poster_html(item) if is_fb else None):
                                 if item.get("src") == "football":
                                     show_dialog_once(football_dialog, item['id'], item['name'])
                                 else:
