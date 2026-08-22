@@ -1633,6 +1633,7 @@ FOOTBALL_ENABLED = bool(FOOTBALL_KEY)
 FOOTBALL_COMPETITIONS = {
     "PL": "Premier League",
 }
+FOOTBALL_CACHE_ENDPOINT = f"{SUPABASE_URL}/rest/v1/football_cache"
 
 
 def football_headers():
@@ -1676,6 +1677,41 @@ def current_season_year(code):
 def competition_emblem(code):
     return (fetch_competition(code) or {}).get("emblem") or \
            f"https://crests.football-data.org/{code}.png"
+
+
+def sync_football_cache(code, season):
+    """Push fixtures to Supabase so the phone app can read them.
+
+    The browser cannot call football-data.org: the v4 API sends no CORS
+    headers, so a fetch from a phone dies as "Failed to fetch". Streamlit runs
+    server-side where that restriction does not apply, so it acts as the
+    fetcher of record and parks the result where both apps can reach it.
+    """
+    if not FOOTBALL_ENABLED:
+        return False
+    matches = fetch_football_fixtures(code, season)
+    if not matches:
+        return False
+    comp = fetch_competition(code) or {}
+    payload = {
+        "meta": {
+            "name": comp.get("name") or FOOTBALL_COMPETITIONS.get(code, code),
+            "emblem": comp.get("emblem") or f"https://crests.football-data.org/{code}.png",
+            "current_season": current_season_year(code),
+            "synced_at": get_dubai_time().strftime("%Y-%m-%d %H:%M:%S"),
+        },
+        "matches": matches,
+    }
+    try:
+        res = requests.post(
+            f"{FOOTBALL_CACHE_ENDPOINT}?on_conflict=competition,season",
+            json={"competition": code, "season": int(season), "payload": payload,
+                  "updated_at": datetime.now(timezone.utc).isoformat()},
+            headers={**HEADERS, "Prefer": "resolution=merge-duplicates,return=minimal"},
+            timeout=20)
+        return res.status_code in (200, 201, 204)
+    except Exception:
+        return False
 
 
 def football_show_id(code, season):
@@ -3144,6 +3180,11 @@ with t_search:
                     continue
 
                 tracked_now = get_show(sid)
+                sync_key = f"fbsync_{code}_{season}_{get_dubai_time().strftime('%Y%m%d%H')}"
+                if not st.session_state.get(sync_key):
+                    st.session_state[sync_key] = True
+                    sync_football_cache(code, season)      # keeps the phone app fed
+
                 st.caption(f"{sum(len(v) for v in fx.values())} fixtures across {len(fx)} matchdays"
                            + (" · tracking" if tracked_now else ""))
 
@@ -3902,6 +3943,23 @@ with t_profile:
                 use_container_width=True,
                 key="backup_dl",
             )
+
+        if FOOTBALL_ENABLED:
+            with st.expander("⚽ Football sync", expanded=False):
+                st.caption("Your phone app can't call football-data.org directly (the API "
+                           "sends no CORS headers), so this app fetches fixtures and stores "
+                           "them in Supabase for it to read.")
+                for _code in FOOTBALL_COMPETITIONS:
+                    _season = current_season_year(_code)
+                    if st.button(f"Push {season_label(_code, _season)} to Supabase",
+                                 use_container_width=True, key=f"fbsync_btn_{_code}"):
+                        with st.spinner("Fetching and uploading fixtures..."):
+                            ok = sync_football_cache(_code, _season)
+                        if ok:
+                            st.success("Uploaded. Open the phone app and tap ↻.")
+                        else:
+                            st.error("Couldn't sync — check FOOTBALL_KEY and that the "
+                                     "football_cache table exists.")
 
         with st.expander("🔧 Repair", expanded=False):
             st.caption("Recounts the monthly totals behind the Activity chart and the "
