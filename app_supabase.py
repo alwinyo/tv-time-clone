@@ -782,6 +782,7 @@ def _entry_to_row(entry):
         "episode_code": entry.get("e", "") or "",
         "watched_at": entry.get("d") or get_dubai_time().strftime('%Y-%m-%d %H:%M:%S'),
         "rating": int(entry.get("r", 0) or 0),
+        "cycle": int(entry.get("c", 1) or 1),
         "feeling": entry.get("f", "") or "",
         "platform": entry.get("p", "") or "",
     }
@@ -810,7 +811,7 @@ def load_history():
 def history_insert(entry):
     """Upsert one row; returns its database id (or None). Re-marking the same
     episode merges instead of creating a duplicate."""
-    url = f"{HISTORY_ENDPOINT}?on_conflict=media_type,item_id,episode_code"
+    url = f"{HISTORY_ENDPOINT}?on_conflict=media_type,item_id,episode_code,watched_at"
     headers = _hist_headers("resolution=merge-duplicates,return=representation")
     try:
         res = requests.post(url, json=_entry_to_row(entry), headers=headers, timeout=10)
@@ -829,7 +830,7 @@ def history_insert_many(entries, chunk=500, overwrite=True):
     left completely alone. That is what protects ratings, platforms and moods
     you have added in the app from being blanked by a re-import.
     """
-    url = f"{HISTORY_ENDPOINT}?on_conflict=media_type,item_id,episode_code"
+    url = f"{HISTORY_ENDPOINT}?on_conflict=media_type,item_id,episode_code,watched_at"
     resolution = "merge-duplicates" if overwrite else "ignore-duplicates"
     headers = _hist_headers(f"resolution={resolution},return=minimal")
     rows = [_entry_to_row(e) for e in entries]
